@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* imfilms cinema theme - dark mode always */
+    --background: 0 0% 10%; /* #191919 negro */
+    --foreground: 48 71% 62%; /* #F5D849 amarillo principal */
+
+    --card: 0 0% 15%; /* slightly lighter than background */
+    --card-foreground: 45 14% 91%; /* #F5F2EB marfil */
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 45 14% 91%;
+
+    --primary: 48 71% 62%; /* #F5D849 amarillo marquesina */
+    --primary-foreground: 0 0% 10%; /* negro sobre amarillo */
+
+    --secondary: 47 54% 47%; /* #B8A237 amarillo oscuro */
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 60 2% 53%; /* #878A83 gris carbón */
+
+    --accent: 48 71% 62%; /* amarillo principal */
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 45 14% 91%;
+
+    --border: 0 0% 25%;
+    --input: 0 0% 20%;
+    --ring: 48 71% 62%;
+
+    --radius: 0.75rem;
+
+    /* Custom cinema variables */
+    --cinema-yellow: 48 71% 62%; /* #F5D849 */
+    --cinema-yellow-dark: 47 54% 47%; /* #B8A237 */
+    --cinema-black: 0 0% 10%; /* #191919 */
+    --cinema-gray: 60 2% 53%; /* #878A83 */
+    --cinema-ivory: 45 14% 91%; /* #F5F2EB */
+
+    /* Gradients */
+    --gradient-cinema: linear-gradient(135deg, hsl(48 71% 62%), hsl(47 54% 47%));
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 12%), hsl(0 0% 8%));
+
+    /* Shadows with yellow glow */
+    --shadow-cinema: 0 10px 40px -10px hsl(48 71% 62% / 0.3);
+    --shadow-glow: 0 0 50px hsl(48 71% 62% / 0.2);
+
+    /* Animations */
+    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  }
+  .dark {
+    --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "kern" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Import Google Fonts - TEKO and Manrope */
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Manrope&display=swap");
+
+@layer utilities {
+  .font-cinema {
+    font-family: 'TEKO', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .font-body {
+    font-family: 'Manrope', sans-serif;
+  }
+
+  .text-cinema-gradient {
+    background: var(--gradient-cinema);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .cinema-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .cinema-card {
+    background: var(--gradient-dark);
+    border: 1px solid hsl(var(--border));
+    transition: var(--transition-smooth);
+  }
+
+  .cinema-card:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: var(--shadow-cinema);
+    transform: translateY(-2px);
+  }
+
+  /* Cinematic icon system - consistent styling for all icons */
+  .cinema-icon {
+    color: #E5E5E5;
+    stroke-width: 1.5px;
+    transition: color 0.3s ease, transform 0.3s ease;
+  }
+
+  .cinema-icon:hover,
+  .cinema-icon-active {
+    color: hsl(var(--cinema-yellow));
+  }
+
+  .cinema-icon-decorative {
+    color: hsl(var(--cinema-yellow));
+    opacity: 1;
+  }
+}
+
+/* ---break---
+*/
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,147 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ConflictCheckParams {
+  filmGenre?: string;
+  targetAudience?: string;
+  territory?: string;
+  premiereStart?: string;
+  premiereEnd?: string;
+  platforms?: string[];
+  excludeCampaignId?: string;
+}
+
+interface ConflictResult {
+  level: 'none' | 'low' | 'medium' | 'high';
+  conflicts: Array<{
+    id: string;
+    filmTitle: string;
+    reason: string[];
+    premiereDate: string;
+  }>;
+  score: number;
+}
+
+export const useConflictDetection = () => {
+  const [isChecking, setIsChecking] = useState(false);
+  const [lastResult, setLastResult] = useState<ConflictResult | null>(null);
+
+  const checkConflicts = async (params: ConflictCheckParams): Promise<ConflictResult> => {
+    setIsChecking(true);
+
+    try {
+      // Buscar campañas activas/en revisión en fechas similares
+      const { data: campaigns, error } = await supabase
+        .from('campaigns')
+        .select(`
+          id,
+          film_id,
+          status,
+          premiere_weekend_start,
+          premiere_weekend_end,
+          territory,
+          films (
+            id,
+            title,
+            genre,
+            target_audience_text
+          )
+        `)
+        .in('status', ['borrador', 'en_revision', 'pendiente_creativos', 'aprobada', 'activa'])
+        .neq('id', params.excludeCampaignId || '00000000-0000-0000-0000-000000000000');
+
+      if (error) throw error;
+
+      const conflicts: ConflictResult['conflicts'] = [];
+      let totalScore = 0;
+
+      if (campaigns && params.premiereStart) {
+        const targetDate = new Date(params.premiereStart);
+
+        for (const campaign of campaigns) {
+          const reasons: string[] = [];
+          let conflictScore = 0;
+
+          // Check 1: Solapamiento de fechas (±14 días)
+          const campaignDate = new Date(campaign.premiere_weekend_start);
+          const daysDiff = Math.abs((targetDate.getTime() - campaignDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (daysDiff <= 14) {
+            reasons.push(`Estreno en fechas cercanas (${Math.round(daysDiff)} días de diferencia)`);
+            conflictScore += 3;
+          }
+
+          // Check 2: Mismo género
+          const filmData = campaign.films as any;
+          if (filmData && params.filmGenre && filmData.genre?.toLowerCase() === params.filmGenre.toLowerCase()) {
+            reasons.push('Mismo género cinematográfico');
+            conflictScore += 3;
+          }
+
+          // Check 3: Audiencia similar (keywords básicas)
+          if (filmData?.target_audience_text && params.targetAudience) {
+            const keywords1 = params.targetAudience.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            const keywords2 = filmData.target_audience_text.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+            const commonKeywords = keywords1.filter(k => keywords2.includes(k));
+
+            if (commonKeywords.length >= 2) {
+              reasons.push(`Audiencia similar (${commonKeywords.length} coincidencias)`);
+              conflictScore += 2;
+            }
+          }
+
+          // Check 4: Mismo territorio
+          if (campaign.territory && params.territory && campaign.territory === params.territory) {
+            reasons.push('Mismo territorio geográfico');
+            conflictScore += 1;
+          }
+
+          // Si hay razones de conflicto, añadir a la lista
+          if (reasons.length > 0) {
+            conflicts.push({
+              id: campaign.id,
+              filmTitle: filmData?.title || 'Película sin título',
+              reason: reasons,
+              premiereDate: campaign.premiere_weekend_start,
+            });
+            totalScore += conflictScore;
+          }
+        }
+      }
+
+      // Determinar nivel de conflicto
+      let level: ConflictResult['level'] = 'none';
+      if (totalScore >= 8) {
+        level = 'high';
+      } else if (totalScore >= 5) {
+        level = 'medium';
+      } else if (totalScore > 0) {
+        level = 'low';
+      }
+
+      const result: ConflictResult = {
+        level,
+        conflicts,
+        score: totalScore,
+      };
+
+      setLastResult(result);
+      return result;
+    } catch (error) {
+      console.error('Error checking conflicts:', error);
+      return {
+        level: 'none',
+        conflicts: [],
+        score: 0,
+      };
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  return {
+    checkConflicts,
+    isChecking,
+    lastResult,
+  };
+};

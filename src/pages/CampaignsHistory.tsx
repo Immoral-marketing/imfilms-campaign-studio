@@ -1,0 +1,534 @@
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { formatDateShort } from "@/utils/dateUtils";
+import logoImfilms from "@/assets/logo-imfilms.png";
+import { z } from "zod";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users } from "lucide-react";
+import GlobalHelpButton from "@/components/GlobalHelpButton";
+import OnboardingTour from "@/components/OnboardingTour";
+import { useOnboarding } from "@/hooks/useOnboarding";
+
+const loginSchema = z.object({
+  email: z.string().trim().email("Email inválido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+
+const CampaignsHistory = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [distributor, setDistributor] = useState<any>(null);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  
+  const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        setUser(session.user);
+        await loadDistributorAndCampaigns(session.user.id);
+      }
+    } catch (error) {
+      console.error("Auth check error:", error);
+    }
+  };
+
+  const loadDistributorAndCampaigns = async (userId: string) => {
+    setLoading(true);
+    try {
+      // Load distributor profile
+      const { data: distData, error: distError } = await supabase
+        .from("distributors")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (distError) throw distError;
+      setDistributor(distData);
+
+      // Load campaigns
+      const { data: campaignsData, error: campaignsError } = await supabase
+        .from("campaigns")
+        .select(`
+          *,
+          films (
+            title,
+            genre
+          )
+        `)
+        .eq("distributor_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (campaignsError) throw campaignsError;
+      setCampaigns(campaignsData || []);
+    } catch (error: any) {
+      console.error("Error loading data:", error);
+      toast.error("Error al cargar tus campañas");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const validated = loginSchema.parse(loginData);
+      setLoading(true);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: validated.email,
+        password: validated.password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        setUser(data.user);
+        await loadDistributorAndCampaigns(data.user.id);
+        toast.success("¡Bienvenido de nuevo!");
+      }
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      } else {
+        toast.error(error.message || "Error al iniciar sesión");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setDistributor(null);
+      setCampaigns([]);
+      toast.success("Sesión cerrada");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Error al cerrar sesión");
+    }
+  };
+
+  // Calculate KPIs
+  const kpis = useMemo(() => {
+    const total = campaigns.length;
+    const activeCampaigns = campaigns.filter(c => 
+      ['nuevo', 'en_revision', 'aprobado'].includes(c.status || 'nuevo')
+    ).length;
+    const totalInvestment = campaigns.reduce((sum, c) => sum + (c.ad_investment_amount || 0), 0);
+    const avgInvestment = total > 0 ? totalInvestment / total : 0;
+
+    return {
+      total,
+      active: activeCampaigns,
+      totalInvestment,
+      avgInvestment,
+    };
+  }, [campaigns]);
+
+  // Filter and sort campaigns
+  const filteredCampaigns = useMemo(() => {
+    let filtered = [...campaigns];
+    
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(c => c.status === statusFilter);
+    }
+
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.premiere_weekend_start).getTime();
+      const dateB = new Date(b.premiere_weekend_start).getTime();
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
+
+    return filtered;
+  }, [campaigns, statusFilter, sortOrder]);
+
+  const getStatusBadge = (status: string) => {
+    const styles: any = {
+      nuevo: "bg-primary/20 text-primary",
+      borrador: "bg-muted text-muted-foreground",
+      en_revision: "bg-blue-500/20 text-blue-400",
+      aprobado: "bg-green-500/20 text-green-400",
+      rechazado: "bg-red-500/20 text-red-400",
+    };
+    const labels: any = {
+      nuevo: "Nuevo",
+      borrador: "Borrador",
+      en_revision: "En revisión",
+      aprobado: "Aprobado",
+      rechazado: "Rechazado",
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || styles.nuevo}`}>
+        {labels[status] || status}
+      </span>
+    );
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="cinema-card w-full max-w-md p-8 space-y-6">
+          <div className="text-center space-y-4">
+            <button onClick={() => navigate("/")} className="block mx-auto">
+              <img 
+                src={logoImfilms}
+                alt="IMFILMS" 
+                className="w-48 cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </button>
+            <h2 className="font-cinema text-3xl text-primary">Mis Estrenos</h2>
+            <p className="text-muted-foreground">
+              Inicia sesión para ver tu historial
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-cinema-ivory">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={loginData.email}
+                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                className="bg-muted border-border text-foreground"
+                disabled={loading}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-cinema-ivory">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                value={loginData.password}
+                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleLogin(e as any)}
+                className="bg-muted border-border text-foreground"
+                disabled={loading}
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground hover:bg-secondary"
+              disabled={loading}
+            >
+              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <button
+              onClick={() => navigate("/")}
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              ← Volver al inicio
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background py-12 px-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="font-cinema text-5xl md:text-6xl text-primary mb-2">
+              Tus Estrenos
+            </h1>
+            {distributor && (
+              <p className="text-cinema-ivory text-lg">
+                Hola, <span className="text-primary font-semibold">{distributor.company_name}</span>
+              </p>
+            )}
+            <p className="text-muted-foreground mt-1 text-sm">
+              Aquí tienes el resumen de todo lo que hemos lanzado juntos y de lo que está por venir.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => navigate("/wizard")}
+              className="bg-primary text-primary-foreground hover:bg-secondary"
+            >
+              <Plus className="w-4 h-4 mr-2 cinema-icon" />
+              Nueva campaña
+            </Button>
+            <Button
+              onClick={() => navigate("/team")}
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10"
+            >
+              <Users className="w-4 h-4 mr-2 cinema-icon" />
+              Equipo
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10"
+            >
+              <LogOut className="w-4 h-4 mr-2 cinema-icon" />
+              Cerrar sesión
+            </Button>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+            <p className="text-muted-foreground mt-4">Cargando tu dashboard...</p>
+          </div>
+        )}
+
+        {!loading && campaigns.length === 0 && (
+          <Card className="cinema-card p-16 text-center space-y-6">
+            <div className="flex justify-center">
+              <Sparkles className="w-16 h-16 text-primary cinema-icon-decorative animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-cinema text-3xl text-primary">
+                Todavía no hemos lanzado ningún estreno juntos
+              </h3>
+              <p className="text-cinema-ivory max-w-md mx-auto">
+                Configura tu primera campaña y empecemos a llenar salas. 
+                La magia del cine está a punto de comenzar.
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/wizard")}
+              size="lg"
+              className="bg-primary text-primary-foreground hover:bg-secondary mt-4"
+            >
+              <Film className="w-5 h-5 mr-2 cinema-icon" />
+              Crear mi primera campaña
+            </Button>
+          </Card>
+        )}
+
+        {!loading && campaigns.length > 0 && (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total Campaigns */}
+              <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
+                <div className="flex items-center justify-between">
+                  <Film className="w-8 h-8 text-primary cinema-icon-decorative" />
+                  <span className="text-xs text-muted-foreground">Total</span>
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-primary font-cinema">
+                    {kpis.total}
+                  </p>
+                  <p className="text-sm text-cinema-ivory mt-1">
+                    {kpis.total === 1 ? "Campaña" : "Campañas"}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  La historia que ya hemos contado juntos
+                </p>
+              </Card>
+
+              {/* Active Campaigns */}
+              <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
+                <div className="flex items-center justify-between">
+                  <Activity className="w-8 h-8 text-blue-400 cinema-icon-decorative" />
+                  <span className="text-xs text-muted-foreground">Activas</span>
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-blue-400 font-cinema">
+                    {kpis.active}
+                  </p>
+                  <p className="text-sm text-cinema-ivory mt-1">
+                    En marcha
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  Campañas que siguen dando guerra en digital
+                </p>
+              </Card>
+
+              {/* Total Investment */}
+              <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
+                <div className="flex items-center justify-between">
+                  <DollarSign className="w-8 h-8 text-cinema-yellow cinema-icon-decorative" />
+                  <span className="text-xs text-muted-foreground">Inversión</span>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-cinema-yellow font-cinema">
+                    {kpis.totalInvestment.toLocaleString("es-ES")}€
+                  </p>
+                  <p className="text-sm text-cinema-ivory mt-1">
+                    Total gestionado
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  Euros que ya has invertido con imfilms
+                </p>
+              </Card>
+
+              {/* Average Investment */}
+              <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
+                <div className="flex items-center justify-between">
+                  <TrendingUp className="w-8 h-8 text-green-400 cinema-icon-decorative" />
+                  <span className="text-xs text-muted-foreground">Media</span>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-green-400 font-cinema">
+                    {kpis.avgInvestment.toLocaleString("es-ES", { maximumFractionDigits: 0 })}€
+                  </p>
+                  <p className="text-sm text-cinema-ivory mt-1">
+                    Por campaña
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  Inversión promedio por estreno
+                </p>
+              </Card>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-muted/20 p-4 rounded-lg border border-border">
+              <div className="flex gap-4 items-center flex-wrap">
+                <Label className="text-cinema-ivory text-sm font-semibold">Filtrar:</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[180px] bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las campañas</SelectItem>
+                    <SelectItem value="nuevo">Nuevas</SelectItem>
+                    <SelectItem value="en_revision">En revisión</SelectItem>
+                    <SelectItem value="aprobado">Aprobadas</SelectItem>
+                    <SelectItem value="rechazado">Rechazadas</SelectItem>
+                    <SelectItem value="borrador">Borradores</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex gap-4 items-center">
+                <Label className="text-cinema-ivory text-sm font-semibold">Ordenar:</Label>
+                <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "asc" | "desc")}>
+                  <SelectTrigger className="w-[180px] bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Más recientes</SelectItem>
+                    <SelectItem value="asc">Más antiguas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Campaigns List */}
+            <div className="space-y-4">
+              {filteredCampaigns.length === 0 ? (
+                <Card className="cinema-card p-8 text-center">
+                  <p className="text-muted-foreground">
+                    No hay campañas con los filtros seleccionados
+                  </p>
+                </Card>
+              ) : (
+                filteredCampaigns.map((campaign) => (
+                  <Card 
+                    key={campaign.id} 
+                    className="cinema-card p-6 space-y-4 hover:border-primary/40 transition-all cursor-pointer"
+                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                  >
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                      <div className="space-y-2 flex-1">
+                        <h3 className="font-cinema text-2xl text-primary">
+                          {campaign.films?.title || "Sin título"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {campaign.films?.genre}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Creado: {formatDateShort(new Date(campaign.created_at))}
+                        </p>
+                      </div>
+                      {getStatusBadge(campaign.status || "nuevo")}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-muted-foreground">Estreno:</p>
+                        </div>
+                        <p className="text-cinema-ivory font-semibold">
+                          {formatDateShort(new Date(campaign.premiere_weekend_start))}
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-muted-foreground">Inversión publicitaria:</p>
+                        </div>
+                        <p className="text-cinema-yellow font-semibold">
+                          {campaign.ad_investment_amount.toLocaleString("es-ES")}€
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <BarChart className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-muted-foreground">Total estimado:</p>
+                        </div>
+                        <p className="text-primary font-semibold">
+                          {campaign.total_estimated_amount.toLocaleString("es-ES")}€
+                        </p>
+                      </div>
+                    </div>
+
+                    {campaign.additional_comments && (
+                      <div className="pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-1">Comentarios:</p>
+                        <p className="text-sm text-cinema-ivory italic">{campaign.additional_comments}</p>
+                      </div>
+                    )}
+                  </Card>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Onboarding Tour */}
+      {user && showOnboarding && (
+        <OnboardingTour 
+          onComplete={completeOnboarding}
+          onSkip={skipOnboarding}
+        />
+      )}
+
+      {/* Global Help Button */}
+      {user && <GlobalHelpButton context="campañas" />}
+    </div>
+  );
+};
+
+export default CampaignsHistory;
