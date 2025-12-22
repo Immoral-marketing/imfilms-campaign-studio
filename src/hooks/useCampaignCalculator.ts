@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 
 export interface CampaignCosts {
   adInvestment: number;
@@ -42,18 +42,11 @@ const calculateVariableFee = (investment: number): number => {
 };
 
 export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts => {
-  const [costs, setCosts] = useState<CampaignCosts>({
-    adInvestment: 0,
-    fixedFeePlatforms: 0,
-    variableFeeInvestment: 0,
-    setupFee: 0,
-    addonsBaseCost: 0,
-    totalEstimated: 0,
-  });
+  const { adInvestment, isFirstRelease, selectedAddons, platforms } = config;
 
-  useEffect(() => {
-    const numPlatforms = config.platforms.length;
-    const investment = config.adInvestment;
+  return useMemo(() => {
+    const numPlatforms = platforms.length;
+    const investment = adInvestment;
 
     // Fixed fee per platforms
     let fixedFeePlatforms = 0;
@@ -65,29 +58,34 @@ export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts => 
     const variableFeeInvestment = calculateVariableFee(investment);
 
     // Setup fee (only for first release)
-    const setupFee = config.isFirstRelease ? numPlatforms * PLATFORM_SETUP_FEE : 0;
+    const setupFee = isFirstRelease ? numPlatforms * PLATFORM_SETUP_FEE : 0;
 
     // Addons base cost
     let addonsBaseCost = 0;
-    if (config.selectedAddons.adaptacion) addonsBaseCost += ADDON_PRICES.adaptacion;
-    if (config.selectedAddons.microsite) addonsBaseCost += ADDON_PRICES.microsite;
-    if (config.selectedAddons.emailWhatsapp) addonsBaseCost += ADDON_PRICES.emailWhatsapp;
+    if (selectedAddons.adaptacion) addonsBaseCost += ADDON_PRICES.adaptacion;
+    if (selectedAddons.microsite) addonsBaseCost += ADDON_PRICES.microsite;
+    if (selectedAddons.emailWhatsapp) addonsBaseCost += ADDON_PRICES.emailWhatsapp;
 
     // Total estimated
     const totalEstimated =
       investment + fixedFeePlatforms + variableFeeInvestment + setupFee + addonsBaseCost;
 
-    setCosts({
+    return {
       adInvestment: investment,
       fixedFeePlatforms,
       variableFeeInvestment,
       setupFee,
       addonsBaseCost,
       totalEstimated,
-    });
-  }, [config]);
-
-  return costs;
+    };
+  }, [
+    adInvestment,
+    isFirstRelease,
+    selectedAddons.adaptacion,
+    selectedAddons.microsite,
+    selectedAddons.emailWhatsapp,
+    platforms.length,
+  ]);
 };
 
 export const validateInvestment = (amount: number): { valid: boolean; error?: string } => {

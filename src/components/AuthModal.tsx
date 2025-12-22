@@ -46,19 +46,11 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("No se pudo crear el usuario");
 
-      // 2. Crear registro en distributors
-      const { error: distributorError } = await supabase
-        .from("distributors")
-        .insert({
-          id: authData.user.id,
-          company_name: formData.companyName,
-          contact_name: formData.contactName,
-          contact_email: formData.email,
-          contact_phone: formData.contactPhone || null,
-          is_active: true,
-        });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("No se pudo crear el usuario");
 
-      if (distributorError) throw distributorError;
+      // El trigger en Supabase se encarga de crear el registro en distributors
+      // usando los metadatos proporcionados en signUp opciones.
 
       toast({
         title: "¡Cuenta creada con éxito!",
@@ -206,8 +198,8 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
               {loading
                 ? "Procesando..."
                 : mode === "register"
-                ? "Crear cuenta y ver presupuesto"
-                : "Entrar y ver presupuesto"}
+                  ? "Crear cuenta y ver presupuesto"
+                  : "Entrar y ver presupuesto"}
             </Button>
 
             <Button

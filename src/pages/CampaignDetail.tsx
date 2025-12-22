@@ -13,7 +13,7 @@ import { formatDateShort } from '@/utils/dateUtils';
 import logoImfilms from '@/assets/logo-imfilms.png';
 
 const CampaignDetail = () => {
-  const { campaignId } = useParams<{ campaignId: string }>();
+  const { id: campaignId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState<any>(null);
   const [film, setFilm] = useState<any>(null);
@@ -28,7 +28,7 @@ const CampaignDetail = () => {
   const checkAuthAndLoadCampaign = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session?.user) {
         navigate('/campaigns');
         return;
@@ -37,12 +37,14 @@ const CampaignDetail = () => {
       setUser(session.user);
 
       // Check if user is admin
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', session.user.id)
         .eq('role', 'admin')
         .maybeSingle();
+
+      if (roleError) console.error("Error checking role:", roleError);
 
       setUserRole(roleData ? 'admin' : 'distributor');
 
@@ -386,7 +388,7 @@ const CampaignDetail = () => {
           <TabsContent value="assets" className="space-y-4">
             <Card className="p-6">
               <h2 className="font-cinema text-2xl mb-6">Materiales Creativos</h2>
-              <CreativeAssets 
+              <CreativeAssets
                 campaignId={campaign.id}
                 isAdmin={userRole === 'admin'}
                 creativesDeadline={campaign.creatives_deadline}
