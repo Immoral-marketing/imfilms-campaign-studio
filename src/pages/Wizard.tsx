@@ -586,6 +586,33 @@ const Wizard = () => {
         });
       }
 
+      // Notify Admin via Email
+      try {
+        console.log("SENDING EMAIL NOTIFICATION...", {
+          type: 'new_campaign',
+          campaignId: campaignRecord.id,
+          campaignTitle: filmData.title,
+          distributorName: filmData.distributorName,
+          recipientEmail: signupData.contactEmail
+        });
+
+        const { data, error } = await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'new_campaign',
+            campaignId: campaignRecord.id,
+            campaignTitle: filmData.title,
+            distributorName: filmData.distributorName || distributor?.company_name || "Desconocido",
+            recipientEmail: signupData.contactEmail || distributor?.contact_email
+          }
+        });
+
+        console.log("EMAIL RESULT:", data, error);
+
+        if (error) console.error("EMAIL FUNCTION ERROR:", error);
+      } catch (emailError) {
+        console.error("Failed to send notification email (CATCH):", emailError);
+      }
+
       // Clear draft on successful submission
       clearDraft();
 

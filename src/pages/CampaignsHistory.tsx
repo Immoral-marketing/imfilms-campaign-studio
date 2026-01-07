@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2 } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -24,12 +24,13 @@ const CampaignsHistory = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [distributor, setDistributor] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  
+
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
   useEffect(() => {
@@ -39,41 +40,63 @@ const CampaignsHistory = () => {
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
         setUser(session.user);
-        await loadDistributorAndCampaigns(session.user.id);
+
+        // Check if user is admin
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
+
+        const isUserAdmin = !!roles;
+        setIsAdmin(isUserAdmin);
+
+        await loadData(session.user.id, isUserAdmin);
       }
     } catch (error) {
       console.error("Auth check error:", error);
     }
   };
 
-  const loadDistributorAndCampaigns = async (userId: string) => {
+  const loadData = async (userId: string, isUserAdmin: boolean) => {
     setLoading(true);
     try {
-      // Load distributor profile
-      const { data: distData, error: distError } = await supabase
-        .from("distributors")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      if (!isUserAdmin) {
+        // Load distributor profile for regular users
+        const { data: distData, error: distError } = await supabase
+          .from("distributors")
+          .select("*")
+          .eq("id", userId)
+          .single();
 
-      if (distError) throw distError;
-      setDistributor(distData);
+        if (distError) throw distError;
+        setDistributor(distData);
+      }
 
-      // Load campaigns
-      const { data: campaignsData, error: campaignsError } = await supabase
+      // Load campaigns query
+      let query = supabase
         .from("campaigns")
         .select(`
           *,
           films (
             title,
             genre
+          ),
+          distributors (
+            company_name
           )
-        `)
-        .eq("distributor_id", userId)
-        .order("created_at", { ascending: false });
+        `);
+
+      // If not admin, filter by distributor_id (userId)
+      if (!isUserAdmin) {
+        query = query.eq("distributor_id", userId);
+      }
+
+      const { data: campaignsData, error: campaignsError } = await query.order("created_at", { ascending: false });
 
       if (campaignsError) throw campaignsError;
       setCampaigns(campaignsData || []);
@@ -85,9 +108,68 @@ const CampaignsHistory = () => {
     }
   };
 
+  const handleStatusChange = async (campaignId: string, newStatus: string) => {
+    if (!isAdmin) return;
+
+    // Save old status for optimistic update rollback
+    const oldCampaigns = [...campaigns];
+
+    // Optimistic update
+    setCampaigns(prev => prev.map(c =>
+      c.id === campaignId ? { ...c, status: newStatus } : c
+    ));
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ status: newStatus })
+        .eq('id', campaignId);
+
+      if (error) throw error;
+      toast.success("Estado actualizado correctamente");
+
+      // EMAIL NOTIFICATION
+      try {
+        const campaign = campaigns.find(c => c.id === campaignId);
+        if (campaign) {
+          console.log("STARTING EMAIL PROCESS FOR STATUS UPDATE...", {
+            campaignId,
+            newStatus,
+            recipient: campaign.contact_email
+          });
+
+          const { data: emailData, error: emailError } = await supabase.functions.invoke('send-email', {
+            body: {
+              type: 'status_update',
+              campaignId: campaignId,
+              campaignTitle: campaign.films?.title || 'Campaña',
+              newStatus: newStatus,
+              recipientEmail: campaign.contact_email
+            }
+          });
+
+          console.log("EMAIL FUNCTION RESPONSE:", emailData, emailError);
+
+          if (emailError) {
+            console.error("Email function specific error:", emailError);
+          }
+        } else {
+          console.warn("Campaign not found for email notification");
+        }
+      } catch (err) {
+        console.error("FAILED to invoke email function:", err);
+      }
+
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Error al actualizar el estado");
+      setCampaigns(oldCampaigns); // Rollback
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const validated = loginSchema.parse(loginData);
       setLoading(true);
@@ -101,7 +183,18 @@ const CampaignsHistory = () => {
 
       if (data.user) {
         setUser(data.user);
-        await loadDistributorAndCampaigns(data.user.id);
+        // Check admin role again on login
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .single();
+
+        const isUserAdmin = !!roles;
+        setIsAdmin(isUserAdmin);
+
+        await loadData(data.user.id, isUserAdmin);
         toast.success("¡Bienvenido de nuevo!");
       }
     } catch (error: any) {
@@ -119,6 +212,7 @@ const CampaignsHistory = () => {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      setIsAdmin(false);
       setDistributor(null);
       setCampaigns([]);
       toast.success("Sesión cerrada");
@@ -131,7 +225,7 @@ const CampaignsHistory = () => {
   // Calculate KPIs
   const kpis = useMemo(() => {
     const total = campaigns.length;
-    const activeCampaigns = campaigns.filter(c => 
+    const activeCampaigns = campaigns.filter(c =>
       ['nuevo', 'en_revision', 'aprobado'].includes(c.status || 'nuevo')
     ).length;
     const totalInvestment = campaigns.reduce((sum, c) => sum + (c.ad_investment_amount || 0), 0);
@@ -148,7 +242,7 @@ const CampaignsHistory = () => {
   // Filter and sort campaigns
   const filteredCampaigns = useMemo(() => {
     let filtered = [...campaigns];
-    
+
     if (statusFilter !== "all") {
       filtered = filtered.filter(c => c.status === statusFilter);
     }
@@ -190,9 +284,9 @@ const CampaignsHistory = () => {
         <Card className="cinema-card w-full max-w-md p-8 space-y-6">
           <div className="text-center space-y-4">
             <button onClick={() => navigate("/")} className="block mx-auto">
-              <img 
+              <img
                 src={logoImfilms}
-                alt="IMFILMS" 
+                alt="IMFILMS"
                 className="w-48 cursor-pointer hover:opacity-80 transition-opacity"
               />
             </button>
@@ -259,15 +353,24 @@ const CampaignsHistory = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="font-cinema text-5xl md:text-6xl text-primary mb-2">
-              Tus Estrenos
+              {isAdmin ? "Panel de Administración" : "Tus Estrenos"}
             </h1>
-            {distributor && (
+            {isAdmin ? (
               <p className="text-cinema-ivory text-lg">
-                Hola, <span className="text-primary font-semibold">{distributor.company_name}</span>
+                Vista de <span className="text-primary font-semibold">Superusuario</span>
               </p>
+            ) : (
+              distributor && (
+                <p className="text-cinema-ivory text-lg">
+                  Hola, <span className="text-primary font-semibold">{distributor.company_name}</span>
+                </p>
+              )
             )}
             <p className="text-muted-foreground mt-1 text-sm">
-              Aquí tienes el resumen de todo lo que hemos lanzado juntos y de lo que está por venir.
+              {isAdmin
+                ? "Gestión centralizada de todas las campañas y estados."
+                : "Aquí tienes el resumen de todo lo que hemos lanzado juntos y de lo que está por venir."
+              }
             </p>
           </div>
           <div className="flex gap-3">
@@ -311,21 +414,25 @@ const CampaignsHistory = () => {
             </div>
             <div className="space-y-2">
               <h3 className="font-cinema text-3xl text-primary">
-                Todavía no hemos lanzado ningún estreno juntos
+                {isAdmin ? "No hay campañas registradas" : "Todavía no hemos lanzado ningún estreno juntos"}
               </h3>
               <p className="text-cinema-ivory max-w-md mx-auto">
-                Configura tu primera campaña y empecemos a llenar salas. 
-                La magia del cine está a punto de comenzar.
+                {isAdmin
+                  ? "Esperando a que los usuarios creen nuevas campañas."
+                  : "Configura tu primera campaña y empecemos a llenar salas. La magia del cine está a punto de comenzar."
+                }
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/wizard")}
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-secondary mt-4"
-            >
-              <Film className="w-5 h-5 mr-2 cinema-icon" />
-              Crear mi primera campaña
-            </Button>
+            {!isAdmin && (
+              <Button
+                onClick={() => navigate("/wizard")}
+                size="lg"
+                className="bg-primary text-primary-foreground hover:bg-secondary mt-4"
+              >
+                <Film className="w-5 h-5 mr-2 cinema-icon" />
+                Crear mi primera campaña
+              </Button>
+            )}
           </Card>
         )}
 
@@ -348,7 +455,7 @@ const CampaignsHistory = () => {
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  La historia que ya hemos contado juntos
+                  {isAdmin ? "Total global" : "La historia que ya hemos contado juntos"}
                 </p>
               </Card>
 
@@ -367,7 +474,7 @@ const CampaignsHistory = () => {
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  Campañas que siguen dando guerra en digital
+                  {isAdmin ? "Requieren atención" : "Campañas que siguen dando guerra en digital"}
                 </p>
               </Card>
 
@@ -386,7 +493,7 @@ const CampaignsHistory = () => {
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  Euros que ya has invertido con imfilms
+                  {isAdmin ? "Volumen global" : "Euros que ya has invertido con imfilms"}
                 </p>
               </Card>
 
@@ -428,7 +535,7 @@ const CampaignsHistory = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex gap-4 items-center">
                 <Label className="text-cinema-ivory text-sm font-semibold">Ordenar:</Label>
                 <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "asc" | "desc")}>
@@ -453,24 +560,62 @@ const CampaignsHistory = () => {
                 </Card>
               ) : (
                 filteredCampaigns.map((campaign) => (
-                  <Card 
-                    key={campaign.id} 
-                    className="cinema-card p-6 space-y-4 hover:border-primary/40 transition-all cursor-pointer"
+                  <Card
+                    key={campaign.id}
+                    className="cinema-card p-6 space-y-4 hover:border-primary/40 transition-all cursor-pointer relative group"
                     onClick={() => navigate(`/campaigns/${campaign.id}`)}
                   >
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                       <div className="space-y-2 flex-1">
-                        <h3 className="font-cinema text-2xl text-primary">
-                          {campaign.films?.title || "Sin título"}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {campaign.films?.genre}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {isAdmin && (
+                            <Building2 className="w-4 h-4 text-cinema-yellow" />
+                          )}
+                          <h3 className="font-cinema text-2xl text-primary">
+                            {campaign.films?.title || "Sin título"}
+                          </h3>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {isAdmin && campaign.distributors && (
+                            <p className="text-sm font-semibold text-cinema-yellow">
+                              {campaign.distributors.company_name}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            {campaign.films?.genre}
+                          </p>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           Creado: {formatDateShort(new Date(campaign.created_at))}
                         </p>
                       </div>
-                      {getStatusBadge(campaign.status || "nuevo")}
+
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="min-w-[140px]"
+                      >
+                        {isAdmin ? (
+                          <Select
+                            value={campaign.status}
+                            onValueChange={(val) => handleStatusChange(campaign.id, val)}
+                          >
+                            <SelectTrigger className="h-8 text-xs font-semibold">
+                              <SelectValue>
+                                {getStatusBadge(campaign.status)}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nuevo">Nuevo</SelectItem>
+                              <SelectItem value="en_revision">En revisión</SelectItem>
+                              <SelectItem value="aprobado">Aprobado</SelectItem>
+                              <SelectItem value="rechazado">Rechazado</SelectItem>
+                              <SelectItem value="borrador">Borrador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          getStatusBadge(campaign.status || "nuevo")
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -515,18 +660,18 @@ const CampaignsHistory = () => {
             </div>
           </>
         )}
+
+        {/* Onboarding Tour */}
+        {user && showOnboarding && !isAdmin && (
+          <OnboardingTour
+            onComplete={completeOnboarding}
+            onSkip={skipOnboarding}
+          />
+        )}
+
+        {/* Global Help Button */}
+        {user && <GlobalHelpButton context={isAdmin ? "admin" : "campañas"} />}
       </div>
-
-      {/* Onboarding Tour */}
-      {user && showOnboarding && (
-        <OnboardingTour 
-          onComplete={completeOnboarding}
-          onSkip={skipOnboarding}
-        />
-      )}
-
-      {/* Global Help Button */}
-      {user && <GlobalHelpButton context="campañas" />}
     </div>
   );
 };
