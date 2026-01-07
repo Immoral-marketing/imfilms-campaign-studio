@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2 } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -32,6 +32,11 @@ const CampaignsHistory = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
+
+  // Admin Invite State
+  const [showInviteAdmin, setShowInviteAdmin] = useState(false);
+  const [inviteAdminEmail, setInviteAdminEmail] = useState("");
+  const [invitingAdmin, setInvitingAdmin] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -208,6 +213,40 @@ const CampaignsHistory = () => {
     }
   };
 
+  const handleInviteAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteAdminEmail) return;
+
+    setInvitingAdmin(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+
+      const { data, error } = await supabase.functions.invoke('make-admin', {
+        body: { email: inviteAdminEmail },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.message || data.error);
+      } else {
+        toast.success(data.message || "Invitación enviada correctamente");
+        setShowInviteAdmin(false);
+        setInviteAdminEmail("");
+      }
+
+    } catch (error: any) {
+      console.error("Error inviting admin:", error);
+      toast.error(error.message || "Error al invitar administrador");
+    } finally {
+      setInvitingAdmin(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -374,6 +413,16 @@ const CampaignsHistory = () => {
             </p>
           </div>
           <div className="flex gap-3">
+            {isAdmin && (
+              <Button
+                onClick={() => setShowInviteAdmin(true)}
+                variant="outline"
+                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+              >
+                <Shield className="w-4 h-4 mr-2 cinema-icon" />
+                Invitar Admin
+              </Button>
+            )}
             <Button
               onClick={() => navigate("/wizard")}
               className="bg-primary text-primary-foreground hover:bg-secondary"
@@ -672,6 +721,66 @@ const CampaignsHistory = () => {
         {/* Global Help Button */}
         {user && <GlobalHelpButton context={isAdmin ? "admin" : "campañas"} />}
       </div>
+
+      {/* Invite Admin Modal */}
+      {showInviteAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <Card className="cinema-card w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowInviteAdmin(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-cinema-yellow/20">
+                  <Shield className="w-6 h-6 text-cinema-yellow" />
+                </div>
+                <div>
+                  <h3 className="font-cinema text-2xl text-primary">Nuevo Superusuario</h3>
+                  <p className="text-sm text-cinema-ivory">Otorgar permisos globales</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Esta acción convertirá al usuario en administrador global, dándole acceso a todas las campañas y configuraciones.
+              </p>
+
+              <form onSubmit={handleInviteAdmin} className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Email del usuario</Label>
+                  <Input
+                    type="email"
+                    placeholder="usuario@ejemplo.com"
+                    value={inviteAdminEmail}
+                    onChange={(e) => setInviteAdminEmail(e.target.value)}
+                    className="bg-muted border-border"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowInviteAdmin(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-cinema-yellow text-black hover:bg-cinema-yellow/90"
+                    disabled={invitingAdmin}
+                  >
+                    {invitingAdmin ? "Procesando..." : "Confirmar Acceso"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Card>
+        </div>
+      )}
+
     </div>
   );
 };
