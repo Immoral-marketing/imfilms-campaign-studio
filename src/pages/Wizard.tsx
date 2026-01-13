@@ -463,7 +463,10 @@ const Wizard = () => {
     setLoading(true);
 
     try {
-      // Create auth user
+      // 1. Create auth user
+      // FORCE HTTPS redirect to avoid localhost issues
+      const redirectUrl = "https://estrenos.imfilms.es/campaigns";
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signupData.contactEmail,
         password: signupData.password,
@@ -473,20 +476,72 @@ const Wizard = () => {
             contact_name: signupData.contactName,
             contact_phone: signupData.contactPhone,
           },
-          emailRedirectTo: `${window.location.origin}/campaigns`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("No se pudo crear el usuario");
 
-      setUser(authData.user);
-      setIsDistributor(true);
-      setJustRegistered(true);
-      await fetchDistributorProfile(authData.user.id);
+      // 2. Submit Campaign immediately via Edge Function (Bypassing RLS for unconfirmed users)
+      const campaignPayload = {
+        userId: authData.user.id,
+        filmData: {
+          title: filmData.title,
+          genre: filmData.genre,
+          country: filmData.country,
+          distributorName: filmData.distributorName,
+          targetAudience: filmData.targetAudience,
+          goals: filmData.goals,
+        },
+        campaignData: {
+          releaseDate: releaseDate?.toISOString().split("T")[0],
+          preStartDate: campaignDates?.preStartDate.toISOString().split("T")[0],
+          preEndDate: campaignDates?.preEndDate.toISOString().split("T")[0],
+          premiereWeekendStart: campaignDates?.premiereWeekendStart.toISOString().split("T")[0],
+          premiereWeekendEnd: campaignDates?.premiereWeekendEnd.toISOString().split("T")[0],
+          finalReportDate: campaignDates?.finalReportDate.toISOString().split("T")[0],
+          creativesDeadline: campaignDates?.creativesDeadline.toISOString().split("T")[0],
+          adInvestment: costs.adInvestment,
+          fixedFee: costs.fixedFeePlatforms,
+          variableFee: costs.variableFeeInvestment,
+          setupFee: costs.setupFee,
+          addonsCost: costs.addonsBaseCost,
+          totalEstimated: costs.totalEstimated,
+          isFirstRelease: true
+        },
+        platforms: [...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])],
+        addons: Object.entries(selectedAddons)
+          .filter(([_, selected]) => selected)
+          .map(([type]) => type),
+        contactData: signupData,
+        notifyAdmin: true
+      };
 
-      toast.success("¡Cuenta creada! Ahora puedes ver tu presupuesto");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const { error: submitError } = await supabase.functions.invoke('submit-campaign', {
+        body: campaignPayload
+      });
+
+      if (submitError) {
+        console.error("Edge Function Error:", submitError);
+        throw new Error("Error al guardar la campaña. Por favor contacta con soporte.");
+      }
+
+      // Success handling
+      toast.success("¡Cuenta creada y campaña enviada con éxito!");
+
+      if (!authData.session) {
+        toast.info("Hemos enviado un correo de confirmación. Por favor revísalo para acceder a tu panel.", {
+          duration: 6000,
+        });
+      } else {
+        setUser(authData.user);
+        setIsDistributor(true);
+      }
+
+      clearDraft();
+      navigate("/confirmation");
+
     } catch (error: any) {
       console.error("Error creating account:", error);
       toast.error(error.message || "Error al crear la cuenta");
