@@ -30,25 +30,14 @@ export const useConflictDetection = () => {
     setIsChecking(true);
 
     try {
-      // Buscar campañas activas/en revisión en fechas similares
+      // Use the secure RPC function to check for conflicts globally (ignoring RLS)
+      // @ts-ignore - RPC function created via migration, types not yet updated
       const { data: campaigns, error } = await supabase
-        .from('campaigns')
-        .select(`
-          id,
-          film_id,
-          status,
-          premiere_weekend_start,
-          premiere_weekend_end,
-          territory,
-          films (
-            id,
-            title,
-            genre,
-            target_audience_text
-          )
-        `)
-        .in('status', ['borrador', 'en_revision', 'pendiente_creativos', 'aprobada', 'activa'])
-        .neq('id', params.excludeCampaignId || '00000000-0000-0000-0000-000000000000');
+        .rpc('get_active_campaigns_for_conflicts', {
+          check_start_date: params.premiereStart?.split('T')[0] || new Date().toISOString().split('T')[0],
+          check_end_date: params.premiereEnd?.split('T')[0] || new Date().toISOString().split('T')[0],
+          exclude_campaign_id: params.excludeCampaignId || '00000000-0000-0000-0000-000000000000',
+        });
 
       if (error) throw error;
 
@@ -63,7 +52,7 @@ export const useConflictDetection = () => {
           let conflictScore = 0;
 
           // Check 1: Solapamiento de fechas (±14 días)
-          const campaignDate = new Date(campaign.premiere_weekend_start);
+          const campaignDate = new Date(campaign.premiere_start);
           const daysDiff = Math.abs((targetDate.getTime() - campaignDate.getTime()) / (1000 * 60 * 60 * 24));
 
           if (daysDiff <= 14) {
@@ -72,16 +61,15 @@ export const useConflictDetection = () => {
           }
 
           // Check 2: Mismo género
-          const filmData = campaign.films as any;
-          if (filmData && params.filmGenre && filmData.genre?.toLowerCase() === params.filmGenre.toLowerCase()) {
+          if (campaign.film_genre && params.filmGenre && campaign.film_genre.toLowerCase() === params.filmGenre.toLowerCase()) {
             reasons.push('Mismo género cinematográfico');
             conflictScore += 3;
           }
 
           // Check 3: Audiencia similar (keywords básicas)
-          if (filmData?.target_audience_text && params.targetAudience) {
+          if (campaign.target_audience && params.targetAudience) {
             const keywords1 = params.targetAudience.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-            const keywords2 = filmData.target_audience_text.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+            const keywords2 = campaign.target_audience.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
             const commonKeywords = keywords1.filter(k => keywords2.includes(k));
 
             if (commonKeywords.length >= 2) {
@@ -99,10 +87,10 @@ export const useConflictDetection = () => {
           // Si hay razones de conflicto, añadir a la lista
           if (reasons.length > 0) {
             conflicts.push({
-              id: campaign.id,
-              filmTitle: filmData?.title || 'Película sin título',
+              id: campaign.campaign_id,
+              filmTitle: campaign.film_title || 'Película sin título',
               reason: reasons,
-              premiereDate: campaign.premiere_weekend_start,
+              premiereDate: campaign.premiere_start,
             });
             totalScore += conflictScore;
           }
