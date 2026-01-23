@@ -1,15 +1,17 @@
 import { Card } from "@/components/ui/card";
-import { CampaignCosts } from "@/hooks/useCampaignCalculator";
+import { CampaignCosts, FeeMode } from "@/hooks/useCampaignCalculator";
 import UnlockBudgetGate from "./UnlockBudgetGate";
+import { Info } from "lucide-react";
 
 interface CostSummaryProps {
   costs: CampaignCosts;
   isFirstRelease: boolean;
   compact?: boolean;
   showPrices?: boolean;
+  feeMode?: FeeMode;
 }
 
-const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true }: CostSummaryProps) => {
+const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true, feeMode = 'additional' }: CostSummaryProps) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
@@ -18,6 +20,8 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  const variableFeePercentage = costs.effectiveAdInvestment >= 100000 ? '6%' : '10%';
 
   if (compact) {
     if (!showPrices) {
@@ -32,9 +36,12 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
 
     return (
       <Card className="cinema-card p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground">Inversión total prevista para tu campaña:</span>
-          <span className="font-cinema text-3xl text-primary cinema-glow">
+        {/* Simple Banner for Step 3 - No detailed breakdown */}
+        <div className="flex justify-between items-center bg-muted/20 p-4 rounded-lg border border-border/50">
+          <span className="text-muted-foreground font-medium">
+            Inversión total prevista para tu campaña:
+          </span>
+          <span className="font-cinema text-4xl text-cinema-yellow cinema-glow">
             {formatCurrency(costs.totalEstimated)}
           </span>
         </div>
@@ -68,27 +75,51 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       </h3>
 
       <div className="space-y-3">
+        {/* Budget/Investment input */}
         <div className="flex justify-between items-center py-2 border-b border-border/50">
-          <span className="text-cinema-ivory">Inversión en medios:</span>
+          <span className="text-cinema-ivory">
+            {feeMode === 'integrated' ? 'Presupuesto total indicado:' : 'Inversión en medios:'}
+          </span>
           <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.adInvestment)}</span>
         </div>
 
-        <div className="flex justify-between items-center py-2 border-b border-border/50">
-          <span className="text-cinema-ivory">Fee fijo por plataformas:</span>
-          <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.fixedFeePlatforms)}</span>
+        {/* Fees section with highlight */}
+        <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Info className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-primary">Desglose de fees</span>
+          </div>
+
+          <div className="flex justify-between items-center py-1">
+            <span className="text-cinema-ivory text-sm">Fee fijo de gestión:</span>
+            <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.fixedFeePlatforms)}</span>
+          </div>
+
+          <div className="flex justify-between items-center py-1">
+            <span className="text-cinema-ivory text-sm">
+              Fee variable ({variableFeePercentage} sobre inversión):
+            </span>
+            <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.variableFeeInvestment)}</span>
+          </div>
+
+          {costs.setupFee > 0 && (
+            <div className="flex justify-between items-center py-1">
+              <span className="text-cinema-ivory text-sm">Fee setup (por plataforma):</span>
+              <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.setupFee)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center py-2 border-t border-border/50 mt-2">
+            <span className="text-cinema-ivory font-medium">Total fees:</span>
+            <span className="font-bold text-primary">{formatCurrency(costs.totalFees)}</span>
+          </div>
         </div>
 
-        <div className="flex justify-between items-center py-2 border-b border-border/50">
-          <span className="text-cinema-ivory">
-            Fee variable ({costs.adInvestment >= 100000 ? '6%' : '10%'} sobre inversión):
-          </span>
-          <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.variableFeeInvestment)}</span>
-        </div>
-
-        {costs.setupFee > 0 && (
-          <div className="flex justify-between items-center py-2 border-b border-border/50">
-            <span className="text-cinema-ivory">Fee de setup (primer estreno):</span>
-            <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.setupFee)}</span>
+        {/* Effective investment (only in integrated mode) */}
+        {feeMode === 'integrated' && (
+          <div className="flex justify-between items-center py-2 border-b border-border/50 bg-primary/5 px-3 rounded">
+            <span className="text-cinema-ivory font-medium">Inversión real en medios:</span>
+            <span className="font-bold text-lg text-cinema-yellow">{formatCurrency(costs.effectiveAdInvestment)}</span>
           </div>
         )}
 
@@ -102,7 +133,9 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
 
       <div className="pt-4 border-t-2 border-primary">
         <div className="flex justify-between items-center">
-          <span className="font-cinema text-2xl text-cinema-ivory">Inversión total prevista para tu campaña:</span>
+          <span className="font-cinema text-2xl text-cinema-ivory">
+            {feeMode === 'integrated' ? 'Inversión total:' : 'Inversión total prevista:'}
+          </span>
           <span className="font-cinema text-4xl text-primary cinema-glow">
             {formatCurrency(costs.totalEstimated)}
           </span>
@@ -110,12 +143,18 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       </div>
 
       <div className="pt-4 space-y-2">
-        {isFirstRelease && (
+        {costs.setupFee > 0 && (
           <p className="text-xs text-primary bg-primary/10 p-3 rounded border border-primary/30">
-            ℹ️ Al ser tu primer estreno con nosotros, aplicamos un fee de setup de 150€ por plataforma seleccionada.
+            ℹ️ Aplicamos un fee de setup de 150€ por plataforma seleccionada para la configuración de la campaña.
           </p>
         )}
-        
+
+        {feeMode === 'integrated' && (
+          <p className="text-xs text-secondary bg-secondary/10 p-3 rounded border border-secondary/30">
+            💡 Has elegido integrar los fees dentro de tu presupuesto. La inversión real en medios después de descontar los fees es de {formatCurrency(costs.effectiveAdInvestment)}.
+          </p>
+        )}
+
         <p className="text-xs text-muted-foreground italic">
           Los fees e inversión son una estimación inicial que ajustaremos tras revisar tu campaña. Los add-ons tienen precio fijo. Todo se validará contigo antes de la activación.
         </p>
@@ -125,3 +164,4 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
 };
 
 export default CostSummary;
+

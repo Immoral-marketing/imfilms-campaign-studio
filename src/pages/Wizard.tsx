@@ -22,7 +22,7 @@ import AuthModal from "@/components/AuthModal";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
-import { useCampaignCalculator, validateInvestment } from "@/hooks/useCampaignCalculator";
+import { useCampaignCalculator, validateInvestment, FeeMode } from "@/hooks/useCampaignCalculator";
 import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { calculateCampaignDates, formatDateEs, formatDateShort } from "@/utils/dateUtils";
 import { z } from "zod";
@@ -77,6 +77,7 @@ interface WizardDraft {
   selectedPlatforms: string[];
   otherPlatform: string;
   adInvestment: string;
+  feeMode: FeeMode;
   selectedAddons: {
     adaptacion: boolean;
     microsite: boolean;
@@ -134,6 +135,7 @@ const Wizard = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [otherPlatform, setOtherPlatform] = useState("");
   const [adInvestment, setAdInvestment] = useState("");
+  const [feeMode, setFeeMode] = useState<FeeMode>('additional');
 
   // Step 4: Add-ons
   const [selectedAddons, setSelectedAddons] = useState({
@@ -158,6 +160,7 @@ const Wizard = () => {
     platforms: selectedPlatforms,
     adInvestment: parseFloat(adInvestment) || 0,
     isFirstRelease,
+    feeMode,
     selectedAddons,
   };
 
@@ -254,6 +257,7 @@ const Wizard = () => {
       selectedPlatforms,
       otherPlatform,
       adInvestment,
+      feeMode,
       selectedAddons,
       contactData: signupData,
       isFirstRelease,
@@ -269,6 +273,7 @@ const Wizard = () => {
     selectedPlatforms,
     otherPlatform,
     adInvestment,
+    feeMode,
     selectedAddons,
     signupData,
     isFirstRelease,
@@ -319,6 +324,7 @@ const Wizard = () => {
       setSelectedPlatforms(draft.selectedPlatforms);
       setOtherPlatform(draft.otherPlatform);
       setAdInvestment(draft.adInvestment);
+      setFeeMode(draft.feeMode || 'additional');
       setSelectedAddons(draft.selectedAddons);
       setSignupData(draft.contactData);
       toast.success("Borrador recuperado correctamente");
@@ -368,6 +374,7 @@ const Wizard = () => {
     setSelectedPlatforms([]);
     setOtherPlatform("");
     setAdInvestment("");
+    setFeeMode('additional');
     setSelectedAddons({
       adaptacion: false,
       microsite: false,
@@ -433,7 +440,11 @@ const Wizard = () => {
         toast.error("Por favor selecciona al menos una plataforma");
         return;
       }
-      const validation = validateInvestment(parseFloat(adInvestment) || 0);
+      const validation = validateInvestment(
+        parseFloat(adInvestment) || 0,
+        feeMode,
+        costs.effectiveAdInvestment
+      );
       if (!validation.valid) {
         toast.error(validation.error);
         return;
@@ -503,11 +514,14 @@ const Wizard = () => {
           finalReportDate: campaignDates?.finalReportDate.toISOString().split("T")[0],
           creativesDeadline: campaignDates?.creativesDeadline.toISOString().split("T")[0],
           adInvestment: costs.adInvestment,
+          effectiveAdInvestment: costs.effectiveAdInvestment,
           fixedFee: costs.fixedFeePlatforms,
           variableFee: costs.variableFeeInvestment,
           setupFee: costs.setupFee,
+          totalFees: costs.totalFees,
           addonsCost: costs.addonsBaseCost,
           totalEstimated: costs.totalEstimated,
+          feeMode: feeMode,
           isFirstRelease: true
         },
         platforms: [...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])],
@@ -1161,8 +1175,70 @@ const Wizard = () => {
                 </p>
               </div>
 
+              {/* Fee Mode Toggle */}
               {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
-                <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
+                    <HelpTooltip
+                      fieldId="fee_mode"
+                      title="Opciones de fees"
+                      content="Puedes sumar nuestros fees a tu inversión publicitaria (opción por defecto) o integrarlos dentro de tu presupuesto total, en cuyo caso se descontarán de la inversión en medios."
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div
+                      onClick={() => setFeeMode('additional')}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                        }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                          }`}>
+                          {feeMode === 'additional' && (
+                            <div className="w-2 h-2 rounded-full bg-background" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setFeeMode('integrated')}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                        }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'integrated' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                          }`}>
+                          {feeMode === 'integrated' && (
+                            <div className="w-2 h-2 rounded-full bg-background" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-cinema-ivory">Integrar fees en mi presupuesto</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Los fees se descuentan de tu presupuesto total. La inversión real en medios será menor.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
+                <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
               )}
             </Card>
           )}
@@ -1207,7 +1283,7 @@ const Wizard = () => {
                 />
               </div>
 
-              <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={isDistributor} />
+              <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={isDistributor} feeMode={feeMode} />
             </Card>
           )}
 
