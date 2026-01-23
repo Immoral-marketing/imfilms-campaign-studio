@@ -48,8 +48,18 @@ export const useConflictDetection = () => {
         const targetDate = new Date(params.premiereStart);
 
         for (const campaign of campaigns) {
-          const reasons: string[] = [];
+
+          // Check: Strict Genre Filter (Must match to be a conflict)
+          const dbGenre = (campaign.film_genre || '').toLowerCase().trim();
+          const paramGenre = (params.filmGenre || '').toLowerCase().trim();
+
+          if (dbGenre !== paramGenre) {
+            continue; // Skip campaigns with different genres
+          }
+
           let conflictScore = 0;
+          conflictScore += 4; // Base score for genre match (now guaranteed if we are here)
+          const reasons: string[] = ['Mismo género cinematográfico']; // Always add this reason
 
           // Check 1: Solapamiento de fechas (±14 días)
           const campaignDate = new Date(campaign.premiere_start);
@@ -57,13 +67,7 @@ export const useConflictDetection = () => {
 
           if (daysDiff <= 14) {
             reasons.push(`Estreno en fechas cercanas (${Math.round(daysDiff)} días de diferencia)`);
-            conflictScore += 3;
-          }
-
-          // Check 2: Mismo género
-          if (campaign.film_genre && params.filmGenre && campaign.film_genre.toLowerCase() === params.filmGenre.toLowerCase()) {
-            reasons.push('Mismo género cinematográfico');
-            conflictScore += 3;
+            conflictScore += 4; // Increased from 3 to 4 to reach High (8) with Genre
           }
 
           // Check 3: Audiencia similar (keywords básicas)

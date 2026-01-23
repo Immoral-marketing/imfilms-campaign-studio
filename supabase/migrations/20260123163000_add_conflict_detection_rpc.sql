@@ -33,7 +33,7 @@ BEGIN
   FROM campaigns c
   JOIN films f ON c.film_id = f.id
   WHERE 
-    c.status IN ('borrador', 'en_revision', 'pendiente_creativos', 'aprobada', 'activa')
+    c.status IN ('nuevo', 'revisando', 'en_revision', 'aprobado', 'borrador')
     AND c.id != exclude_campaign_id
     -- Optimization: Only return campaigns that might overlap
     -- We look for campaigns starting within +/- 30 days of the check window to be safe

@@ -20,16 +20,14 @@ interface ConflictAlertProps {
     premiereDate: string;
   }>;
   onModifyDates?: () => void;
-  onModifyAudience?: () => void;
-  onContactTeam?: () => void;
+  isAdmin?: boolean;
 }
 
 const ConflictAlert = ({
   level,
   conflicts,
   onModifyDates,
-  onModifyAudience,
-  onContactTeam,
+  isAdmin = false,
 }: ConflictAlertProps) => {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -64,37 +62,49 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
 
   if (level === 'low') {
     return (
-      <Alert className="border-blue-500/20 bg-blue-500/5">
-        <Info className="h-5 w-5 text-blue-500" />
-        <div className="flex items-center gap-2">
-          <AlertTitle className="text-blue-500 font-cinema mb-0">Solapamiento mínimo</AlertTitle>
-          <HelpTooltip
-            title="Política de resolución de conflictos"
-            content="🎯 Protegemos el rendimiento de cada estreno
+      <>
+        <Alert className="border-blue-500/20 bg-blue-500/5">
+          <Info className="h-5 w-5 text-blue-500" />
+          <div className="flex items-center gap-2">
+            <AlertTitle className="text-blue-500 font-cinema mb-0">Solapamiento mínimo</AlertTitle>
+            <HelpTooltip
+              title="Política de resolución de conflictos"
+              content="🎯 Protegemos el rendimiento de cada estreno
 
-Para que tu campaña funcione al máximo, no aceptamos proyectos que compitan directamente entre sí.
+  Para que tu campaña funcione al máximo, no aceptamos proyectos que compitan directamente entre sí.
 
-✓ Así te beneficia:
-• Tu inversión no compite con otras películas similares
-• Mayor efectividad en costes por alcance
-• Audiencia 100% disponible para tu estreno
+  ✓ Así te beneficia:
+  • Tu inversión no compite con otras películas similares
+  • Mayor efectividad en costes por alcance
+  • Audiencia 100% disponible para tu estreno
 
-📋 Criterio sencillo y transparente:
-La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese espacio de campaña."
-            fieldId="conflict_policy"
-          />
-        </div>
-        <AlertDescription className="text-blue-400/80">
-          Hemos detectado un ligero solapamiento con {conflicts.length} campaña(s). 
-          No es bloqueante, pero podríamos optimizar la estrategia.{' '}
-          <button
-            onClick={() => setShowDetails(true)}
-            className="underline hover:text-blue-300"
-          >
-            Ver detalles
-          </button>
-        </AlertDescription>
-      </Alert>
+  📋 Criterio sencillo y transparente:
+  La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese espacio de campaña."
+              fieldId="conflict_policy"
+            />
+          </div>
+          <AlertDescription className="text-blue-400/80">
+            Hemos detectado un ligero solapamiento con {conflicts.length} campaña(s).
+            No es bloqueante, pero podríamos optimizar la estrategia. Nuestro equipo te contactará por cualquier posible conflicto.
+            {isAdmin && (
+              <button
+                onClick={() => setShowDetails(true)}
+                className="underline hover:text-blue-300 ml-1"
+              >
+                Ver detalles
+              </button>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        <ConflictDetailsDialog
+          open={showDetails}
+          onOpenChange={setShowDetails}
+          level={level}
+          conflicts={conflicts}
+          onModifyDates={onModifyDates}
+        />
+      </>
     );
   }
 
@@ -128,16 +138,18 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
               Hemos detectado cierto solapamiento con {conflicts.length} campaña(s) programada(s) en fechas similares.
             </p>
             <p>
-              No es bloqueante, pero podríamos revisar la estrategia para optimizar resultados y evitar competir contra nosotros mismos.
+              No es bloqueante, pero podríamos revisar la estrategia para optimizar resultados y evitar competir contra nosotros mismos. Nuestro equipo te contactará por cualquier posible conflicto.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDetails(true)}
-              className="mt-2"
-            >
-              Ver detalles y opciones
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDetails(true)}
+                className="mt-2"
+              >
+                Ver detalles y opciones
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -147,8 +159,7 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
           level={level}
           conflicts={conflicts}
           onModifyDates={onModifyDates}
-          onModifyAudience={onModifyAudience}
-          onContactTeam={onContactTeam}
+
         />
       </>
     );
@@ -181,7 +192,7 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
         </div>
         <AlertDescription className="text-red-400 space-y-3">
           <p className="font-semibold">
-            Ya tenemos otra campaña activa en las mismas fechas con una audiencia muy similar.
+            Ya tenemos otra campaña activa en las mismas fechas.
           </p>
           <p>
             Esto reduciría la efectividad de ambas campañas y podría disparar los costes al competir contra nosotros mismos.
@@ -189,33 +200,22 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
           <div className="space-y-2 pt-2">
             <p className="font-cinema text-yellow-400">¿Qué puedes hacer?</p>
             <div className="flex flex-wrap gap-2">
-              {onModifyDates && (
-                <Button onClick={onModifyDates} size="sm" className="cinema-glow">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Cambiar fechas
-                </Button>
-              )}
-              {onModifyAudience && (
-                <Button onClick={onModifyAudience} size="sm" variant="outline">
-                  <Users className="mr-2 h-4 w-4" />
-                  Ajustar audiencia
-                </Button>
-              )}
-              {onContactTeam && (
-                <Button onClick={onContactTeam} size="sm" variant="outline">
-                  Hablar con el equipo
-                </Button>
-              )}
+              <div className="inline-flex items-center px-3 py-1 rounded bg-cinema-yellow/20 text-cinema-yellow border border-cinema-yellow/30 text-sm font-medium cursor-default">
+                <Calendar className="mr-2 h-4 w-4" />
+                Cambiar fechas
+              </div>
             </div>
           </div>
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => setShowDetails(true)}
-            className="p-0 h-auto text-yellow-400 hover:text-yellow-300"
-          >
-            Ver detalles del conflicto →
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => setShowDetails(true)}
+              className="p-0 h-auto text-yellow-400 hover:text-yellow-300"
+            >
+              Ver detalles del conflicto → (Admin)
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
 
@@ -225,8 +225,6 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
         level={level}
         conflicts={conflicts}
         onModifyDates={onModifyDates}
-        onModifyAudience={onModifyAudience}
-        onContactTeam={onContactTeam}
       />
     </>
   );
@@ -238,20 +236,16 @@ const ConflictDetailsDialog = ({
   level,
   conflicts,
   onModifyDates,
-  onModifyAudience,
-  onContactTeam,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   level: string;
   conflicts: ConflictAlertProps['conflicts'];
   onModifyDates?: () => void;
-  onModifyAudience?: () => void;
-  onContactTeam?: () => void;
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-cinema text-2xl flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-yellow-400" />
@@ -301,30 +295,17 @@ const ConflictDetailsDialog = ({
           {level === 'high' && (
             <div className="border-t border-border/40 pt-4 space-y-3">
               <p className="text-sm font-semibold">Opciones para resolver el conflicto:</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                {onModifyDates && (
-                  <Button onClick={onModifyDates} className="cinema-glow">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Cambiar fechas
-                  </Button>
-                )}
-                {onModifyAudience && (
-                  <Button onClick={onModifyAudience} variant="outline">
-                    <Users className="mr-2 h-4 w-4" />
-                    Ajustar audiencia
-                  </Button>
-                )}
-                {onContactTeam && (
-                  <Button onClick={onContactTeam} variant="outline">
-                    Hablar con imfilms
-                  </Button>
-                )}
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex items-center px-3 py-1 rounded bg-cinema-yellow/20 text-cinema-yellow border border-cinema-yellow/30 text-sm font-medium cursor-default">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Cambiar fechas
+                </div>
               </div>
             </div>
           )}
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 };
 

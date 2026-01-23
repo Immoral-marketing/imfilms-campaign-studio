@@ -106,10 +106,29 @@ const Wizard = () => {
   const [hasDraft, setHasDraft] = useState(false);
   const [isDistributor, setIsDistributor] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Onboarding
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .single();
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
 
   // Conflict detection
   const { checkConflicts, isChecking: isCheckingConflicts, lastResult: conflictResult } = useConflictDetection();
@@ -183,6 +202,7 @@ const Wizard = () => {
   // Check for conflicts when key data changes (Step 2 onwards)
   useEffect(() => {
     if (currentStep >= 2 && releaseDate && filmData.genre) {
+      setHasCheckedConflicts(false); // Reset status on change
       const delayCheck = setTimeout(async () => {
         const dates = calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate);
         await checkConflicts({
@@ -198,17 +218,8 @@ const Wizard = () => {
 
       return () => clearTimeout(delayCheck);
     }
-  }, [
-    currentStep,
-    releaseDate,
-    filmData.genre,
-    filmData.otherGenre,
-    filmData.targetAudience,
-    filmData.country,
-    campaignEndDate,
-    selectedPlatforms,
-    selectedAddons.adaptacion,
-  ]);
+  }, [releaseDate, filmData.genre, filmData.otherGenre, filmData.targetAudience, filmData.country, currentStep]);
+
 
   // Check for saved draft on mount
   useEffect(() => {
@@ -975,19 +986,12 @@ const Wizard = () => {
                   <ConflictAlert
                     level={conflictResult.level}
                     conflicts={conflictResult.conflicts}
+                    isAdmin={isAdmin}
                     onModifyDates={() => {
                       setReleaseDate(undefined);
                       setCampaignEndDate(undefined);
                       setHasCheckedConflicts(false);
                       toast.info("Modifica la fecha de estreno para revisar conflictos");
-                    }}
-                    onModifyAudience={() => {
-                      setCurrentStep(1);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                      toast.info("Ajusta la audiencia objetivo en el paso 1");
-                    }}
-                    onContactTeam={() => {
-                      toast.info("Puedes contactar con nuestro equipo una vez creada la campaña");
                     }}
                   />
                 </div>
