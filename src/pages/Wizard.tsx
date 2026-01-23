@@ -65,6 +65,7 @@ interface WizardDraft {
   filmData: {
     title: string;
     genre: string;
+    secondaryGenre: string;
     otherGenre: string;
     country: string;
     distributorName: string;
@@ -138,8 +139,9 @@ const Wizard = () => {
   const [filmData, setFilmData] = useState({
     title: "",
     genre: "",
+    secondaryGenre: "",
     otherGenre: "",
-    country: "",
+    country: "España",
     distributorName: "",
     targetAudience: "",
     goals: [] as string[],
@@ -328,7 +330,7 @@ const Wizard = () => {
     try {
       const draft: WizardDraft = JSON.parse(savedDraft);
       setCurrentStep(draft.currentStep);
-      setFilmData(draft.filmData);
+      setFilmData({ ...draft.filmData, secondaryGenre: draft.filmData.secondaryGenre || "" });
       setReleaseDate(draft.releaseDate ? new Date(draft.releaseDate) : undefined);
       setCampaignEndDate(draft.campaignEndDate ? new Date(draft.campaignEndDate) : undefined);
       setManualEndDateMode(draft.manualEndDateMode || false);
@@ -373,8 +375,9 @@ const Wizard = () => {
     setFilmData({
       title: "",
       genre: "",
+      secondaryGenre: "",
       otherGenre: "",
-      country: "",
+      country: "España",
       distributorName: "",
       targetAudience: "",
       goals: [],
@@ -602,6 +605,7 @@ const Wizard = () => {
           distributor_id: distributorId,
           title: filmData.title,
           genre: filmData.genre,
+          secondary_genre: filmData.secondaryGenre || null,
           country: filmData.country,
           distributor_name: filmData.distributorName,
           target_audience_text: filmData.targetAudience,
@@ -829,25 +833,44 @@ const Wizard = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
-                    <HelpTooltip
-                      fieldId="film_genre"
-                      title="¿Por qué te preguntamos el género?"
-                      content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 h-6">
+                      <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
+                      <HelpTooltip
+                        fieldId="film_genre"
+                        title="¿Por qué te preguntamos el género?"
+                        content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                      />
+                    </div>
+                    <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
+                      <SelectTrigger className="bg-muted border-border text-foreground">
+                        <SelectValue placeholder="Selecciona género" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENRES.map((g) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
-                    <SelectTrigger className="bg-muted border-border text-foreground">
-                      <SelectValue placeholder="Selecciona género" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GENRES.map((g) => (
-                        <SelectItem key={g} value={g}>{g}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 h-6"> {/* Fixed height wrapper for alignment */}
+                      <Label htmlFor="secondaryGenre" className="text-cinema-ivory">Género secundario</Label>
+                    </div>
+                    <Select value={filmData.secondaryGenre} onValueChange={(v) => setFilmData({ ...filmData, secondaryGenre: v })}>
+                      <SelectTrigger className="bg-muted border-border text-foreground">
+                        <SelectValue placeholder="Opcional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Ninguno</SelectItem>
+                        {GENRES.map((g) => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {filmData.genre === "Otro" && (
