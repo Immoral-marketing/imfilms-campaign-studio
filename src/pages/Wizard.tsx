@@ -864,7 +864,7 @@ const Wizard = () => {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="country" className="text-cinema-ivory">País de producción *</Label>
+                  <Label htmlFor="country" className="text-cinema-ivory">País de estreno *</Label>
                   <Input
                     id="country"
                     value={filmData.country}
