@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 interface AuthModalProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface AuthModalProps {
 const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
   const [mode, setMode] = useState<"register" | "login" | "resetPassword">("register");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -208,15 +210,24 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
                   </button>
                 )}
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="bg-background/50 border-border"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={6}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="bg-background/50 border-border pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -257,7 +268,7 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
                 if (mode === "resetPassword") setMode("login");
                 else setMode(mode === "register" ? "login" : "register");
               }}
-              className="w-full text-cinema-ivory hover:text-primary"
+              className="w-full text-cinema-ivory hover:bg-cinema-yellow hover:text-black"
             >
               {mode === "register"
                 ? "Ya tengo cuenta, iniciar sesión"
