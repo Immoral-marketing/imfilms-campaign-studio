@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -62,9 +62,41 @@ serve(async (req) => {
         const targetUser = users.find(u => u.email === email)
 
         if (!targetUser) {
+            // User doesn't exist, invite them
+            console.log(`User ${email} not found. Sending invitation...`);
+
+            const { data: inviteData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
+                // Optional: Redirect to admin panel after setting password
+                redirectTo: "https://estrenos.imfilms.es/reset-password"
+            });
+
+            if (inviteError) {
+                return new Response(
+                    JSON.stringify({ error: 'Invite failed', message: inviteError.message }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+
+            // The user is created immediately upon invitation
+            const newUserId = inviteData.user.id;
+            console.log(`User invited with ID: ${newUserId}. Assigning admin role...`);
+
+            // Assign role to the new user
+            const { error: insertError } = await supabaseClient
+                .from("user_roles")
+                .insert({
+                    user_id: newUserId,
+                    role: "admin"
+                })
+
+            if (insertError) throw insertError
+
             return new Response(
-                JSON.stringify({ error: 'User not found', message: 'No se encontró un usuario con ese email.' }),
-                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                JSON.stringify({ success: true, message: `Invitación enviada a ${email} y permisos de administrador asignados.` }),
+                {
+                    status: 200,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                }
             )
         }
 
