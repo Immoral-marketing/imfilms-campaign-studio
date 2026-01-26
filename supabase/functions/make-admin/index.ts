@@ -53,13 +53,13 @@ serve(async (req) => {
         console.log('Promoting user to admin:', email);
 
         // Find user by email
-        const { data: { users }, error: listError } = await supabaseClient.auth.admin.listUsers()
+        const { data: { users }, error: listError } = await supabaseClient.auth.admin.listUsers({ perPage: 1000 })
 
         if (listError) {
             throw new Error('Error listing users')
         }
 
-        const targetUser = users.find(u => u.email === email)
+        const targetUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
         if (!targetUser) {
             // User doesn't exist, invite them
