@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2 } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -173,6 +173,29 @@ const CampaignsHistory = () => {
       console.error("Error updating status:", error);
       toast.error("Error al actualizar el estado");
       setCampaigns(oldCampaigns); // Rollback
+    }
+  };
+
+  const handleDeleteCampaign = async (campaignId: string, campaignTitle: string) => {
+    if (!isAdmin) return;
+
+    if (!window.confirm(`⚠️ ESTA ACCIÓN ES IR REVERSIBLE\n\n¿Estás seguro de que quieres eliminar la campaña "${campaignTitle}"?\n\nSe borrará todo el historial y no se podrá recuperar.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', campaignId);
+
+      if (error) throw error;
+
+      toast.success("Campaña eliminada correctamente");
+      setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+    } catch (error: any) {
+      console.error("Error deleting campaign:", error);
+      toast.error("Error al eliminar la campaña");
     }
   };
 
@@ -693,6 +716,18 @@ const CampaignsHistory = () => {
                           <h3 className="font-cinema text-2xl text-primary">
                             {campaign.films?.title || "Sin título"}
                           </h3>
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCampaign(campaign.id, campaign.films?.title);
+                              }}
+                              className="ml-2 text-muted-foreground hover:text-red-500 transition-colors p-1"
+                              title="Eliminar campaña"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                         <div className="flex flex-col gap-1">
                           {isAdmin && campaign.distributors && (
