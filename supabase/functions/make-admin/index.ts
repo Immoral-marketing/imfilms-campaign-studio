@@ -69,7 +69,7 @@ serve(async (req) => {
                 // Optional: Redirect to admin panel after setting password
                 redirectTo: "https://estrenos.imfilms.es/reset-password",
                 data: {
-                    company_name: 'Imfilms Admin',
+                    company_name: `Imfilms Admin (${email})`,
                     contact_name: 'Admin',
                     contact_phone: '',
                     is_admin_invite: true
