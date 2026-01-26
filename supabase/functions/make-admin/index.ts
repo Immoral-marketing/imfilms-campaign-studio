@@ -71,13 +71,25 @@ serve(async (req) => {
             });
 
             if (inviteError) {
+                console.error("Invite error:", inviteError);
+                // Return 200 with error to bypass client-side 400 exception
                 return new Response(
-                    JSON.stringify({ error: 'Invite failed', message: inviteError.message }),
-                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    JSON.stringify({
+                        error: 'Invite Failed',
+                        message: `Error de Supabase: ${inviteError.message}. Código: ${inviteError.cause || 'N/A'}`
+                    }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 )
             }
 
             // The user is created immediately upon invitation
+            if (!inviteData.user) {
+                return new Response(
+                    JSON.stringify({ error: 'No User', message: 'La invitación no devolvió datos de usuario.' }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+
             const newUserId = inviteData.user.id;
             console.log(`User invited with ID: ${newUserId}. Assigning admin role...`);
 
@@ -89,7 +101,12 @@ serve(async (req) => {
                     role: "admin"
                 })
 
-            if (insertError) throw insertError
+            if (insertError) {
+                return new Response(
+                    JSON.stringify({ error: 'Role Assignment Failed', message: insertError.message }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
 
             return new Response(
                 JSON.stringify({ success: true, message: `Invitación enviada a ${email} y permisos de administrador asignados.` }),
@@ -111,7 +128,7 @@ serve(async (req) => {
         if (existingRole) {
             return new Response(
                 JSON.stringify({ error: 'Already admin', message: 'Este usuario ya es administrador.' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
@@ -136,9 +153,9 @@ serve(async (req) => {
     } catch (error) {
         console.error('Error:', error)
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: 'Internal Error', message: error.message }),
             {
-                status: 500,
+                status: 200, // Return 200 to show message in UI
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             }
         )
