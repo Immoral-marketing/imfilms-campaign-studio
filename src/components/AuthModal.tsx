@@ -102,7 +102,7 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: window.location.origin + "/reset-password",
+        redirectTo: (import.meta.env.VITE_SITE_URL || window.location.origin) + "/reset-password",
       });
 
       if (error) throw error;
