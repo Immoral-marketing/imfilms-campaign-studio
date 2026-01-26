@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <h1>Nueva Campaña Creada</h1>
                 <p>El distribuidor <strong>${payload.distributorName}</strong> ha creado una nueva campaña.</p>
                 <p><strong>Película:</strong> ${payload.campaignTitle}</p>
-                <p><a href="https://imfilms-campaign-studio.vercel.app/admin">Ver en el Dashboard</a></p>
+                <p><a href="https://estrenos.imfilms.es/admin">Ver en el Dashboard</a></p>
                 `
                 });
             } else {
@@ -103,7 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p>Tu campaña para <strong>${payload.campaignTitle}</strong> ha sido creada correctamente.</p>
                 <p>Nuestro equipo la revisará pronto y te notificaremos cualquier novedad.</p>
                 <p>Puedes consultar el estado en cualquier momento en tu dashboard.</p>
-                <p><a href="https://imfilms-campaign-studio.vercel.app/campaigns/${payload.campaignId}">Ir a mi Dashboard</a></p>
+                <p><a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}">Ir a mi Dashboard</a></p>
                 `
                 });
             }
@@ -120,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p>El estado de tu campaña para <strong>${payload.campaignTitle}</strong> ha cambiado a:</p>
                 <h2>${payload.newStatus?.toUpperCase().replace('_', ' ')}</h2>
                 <p>Entra a tu dashboard para ver más detalles.</p>
-                <p><a href="https://imfilms-campaign-studio.vercel.app/campaigns/${payload.campaignId}">Ir a mi Dashboard</a></p>
+                <p><a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}">Ir a mi Dashboard</a></p>
                 `
                 });
             }
