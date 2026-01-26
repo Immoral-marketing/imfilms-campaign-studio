@@ -16,6 +16,7 @@ import CampaignDetail from "./pages/CampaignDetail";
 import CasosExito from "./pages/CasosExito";
 import DemoWizard from "./pages/DemoWizard";
 import TeamManagement from "./pages/TeamManagement";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { performCompleteReset, isTestingMode } from "./utils/testingUtils";
 import SmoothScroll from "./components/SmoothScroll";
@@ -41,7 +42,7 @@ const App = () => {
       toast.success("Reset completo ejecutado. Recargando...", {
         duration: 2000,
       });
-      
+
       // Recargar la página después de 2 segundos
       setTimeout(() => {
         window.location.href = "/";
@@ -54,7 +55,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        
+
         {/* Botón temporal de reset solo visible en modo testing */}
         {showTestingButton && (
           <div className="fixed bottom-4 right-4 z-50">
@@ -69,7 +70,7 @@ const App = () => {
             </Button>
           </div>
         )}
-        
+
         <SmoothScroll>
           <BrowserRouter>
             <Routes>
@@ -83,6 +84,7 @@ const App = () => {
               <Route path="/team" element={<TeamManagement />} />
               <Route path="/casos-exito" element={<CasosExito />} />
               <Route path="/demo" element={<DemoWizard />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
