@@ -67,7 +67,13 @@ serve(async (req) => {
 
             const { data: inviteData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
                 // Optional: Redirect to admin panel after setting password
-                redirectTo: "https://estrenos.imfilms.es/reset-password"
+                redirectTo: "https://estrenos.imfilms.es/reset-password",
+                data: {
+                    company_name: 'Imfilms Admin',
+                    contact_name: 'Admin',
+                    contact_phone: '',
+                    is_admin_invite: true
+                }
             });
 
             if (inviteError) {
