@@ -38,6 +38,9 @@ const CampaignsHistory = () => {
   const [inviteAdminEmail, setInviteAdminEmail] = useState("");
   const [invitingAdmin, setInvitingAdmin] = useState(false);
 
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -213,6 +216,31 @@ const CampaignsHistory = () => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginData.email) {
+      toast.error("Por favor, introduce tu email");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(loginData.email, {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+
+      if (error) throw error;
+
+      toast.success("Correo de recuperación enviado. Revisa tu bandeja de entrada.");
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      toast.error(error.message || "Error al enviar el correo de recuperación");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInviteAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteAdminEmail) return;
@@ -329,13 +357,18 @@ const CampaignsHistory = () => {
                 className="w-48 cursor-pointer hover:opacity-80 transition-opacity"
               />
             </button>
-            <h2 className="font-cinema text-3xl text-primary">Mis Estrenos</h2>
+            <h2 className="font-cinema text-3xl text-primary">
+              {showForgotPassword ? "Recuperar contraseña" : "Mis Estrenos"}
+            </h2>
             <p className="text-muted-foreground">
-              Inicia sesión para ver tu historial
+              {showForgotPassword
+                ? "Te enviaremos las instrucciones a tu correo"
+                : "Inicia sesión para ver tu historial"
+              }
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={showForgotPassword ? handleResetPassword : handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-cinema-ivory">Email</Label>
               <Input
@@ -349,27 +382,54 @@ const CampaignsHistory = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-cinema-ivory">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                onKeyDown={(e) => e.key === "Enter" && !loading && handleLogin(e as any)}
-                className="bg-muted border-border text-foreground"
-                disabled={loading}
-                required
-              />
-            </div>
+            {!showForgotPassword && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-cinema-ivory">Contraseña</Label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs text-muted-foreground hover:text-primary underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  onKeyDown={(e) => e.key === "Enter" && !loading && handleLogin(e as any)}
+                  className="bg-muted border-border text-foreground"
+                  disabled={loading}
+                  required
+                />
+              </div>
+            )}
 
             <Button
               type="submit"
               className="w-full bg-primary text-primary-foreground hover:bg-secondary"
               disabled={loading}
             >
-              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+              {loading
+                ? "Procesando..."
+                : showForgotPassword
+                  ? "Enviar correo de recuperación"
+                  : "Iniciar sesión"
+              }
             </Button>
+
+            {showForgotPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowForgotPassword(false)}
+                className="w-full text-cinema-ivory hover:text-primary mt-2"
+              >
+                Volver a iniciar sesión
+              </Button>
+            )}
           </form>
 
           <div className="text-center">

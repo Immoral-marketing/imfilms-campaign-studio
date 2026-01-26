@@ -13,7 +13,7 @@ interface AuthModalProps {
 }
 
 const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
-  const [mode, setMode] = useState<"register" | "login">("register");
+  const [mode, setMode] = useState<"register" | "login" | "resetPassword">("register");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -45,12 +45,6 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("No se pudo crear el usuario");
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("No se pudo crear el usuario");
-
-      // El trigger en Supabase se encarga de crear el registro en distributors
-      // usando los metadatos proporcionados en signUp opciones.
 
       toast({
         title: "¡Cuenta creada con éxito!",
@@ -100,21 +94,60 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Correo enviado",
+        description: "Revisa tu bandeja de entrada para restablecer tu contraseña.",
+      });
+
+      setMode("login");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error al enviar correo",
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] bg-background border-primary/20">
         <DialogHeader>
           <DialogTitle className="font-cinema text-3xl text-primary">
-            {mode === "register" ? "Crea tu cuenta de distribuidora" : "Iniciar sesión"}
+            {mode === "register" && "Crea tu cuenta de distribuidora"}
+            {mode === "login" && "Iniciar sesión"}
+            {mode === "resetPassword" && "Recuperar contraseña"}
           </DialogTitle>
           <DialogDescription className="text-cinema-ivory">
             {mode === "register"
-              ? "Solo te pedimos los datos imprescindibles para mostrarte el presupuesto estimado de tu campaña. El resto lo podremos completar juntos más adelante."
-              : "Accede a tu cuenta para ver el presupuesto de tu campaña."}
+              ? "Solo te pedimos los datos imprescindibles para mostrarte el presupuesto estimado de tu campaña."
+              : mode === "login"
+                ? "Accede a tu cuenta para ver el presupuesto de tu campaña."
+                : "Ingresa tu email para recibir instrucciones de recuperación."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={mode === "register" ? handleRegister : handleLogin} className="space-y-4">
+        <form
+          onSubmit={
+            mode === "register" ? handleRegister :
+              mode === "login" ? handleLogin :
+                handleResetPassword
+          }
+          className="space-y-4"
+        >
           {mode === "register" && (
             <>
               <div className="space-y-2">
@@ -159,20 +192,33 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-cinema-ivory">
-              Contraseña *
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              minLength={6}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="bg-background/50 border-border"
-            />
-          </div>
+          {mode !== "resetPassword" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-cinema-ivory">
+                  Contraseña *
+                </Label>
+                {mode === "login" && (
+                  <button
+                    type="button"
+                    onClick={() => setMode("resetPassword")}
+                    className="text-xs text-muted-foreground hover:text-primary underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                )}
+              </div>
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="bg-background/50 border-border"
+              />
+            </div>
+          )}
 
           {mode === "register" && (
             <div className="space-y-2">
@@ -199,16 +245,25 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
                 ? "Procesando..."
                 : mode === "register"
                   ? "Crear cuenta y ver presupuesto"
-                  : "Entrar y ver presupuesto"}
+                  : mode === "login"
+                    ? "Entrar y ver presupuesto"
+                    : "Enviar correo de recuperación"}
             </Button>
 
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setMode(mode === "register" ? "login" : "register")}
+              onClick={() => {
+                if (mode === "resetPassword") setMode("login");
+                else setMode(mode === "register" ? "login" : "register");
+              }}
               className="w-full text-cinema-ivory hover:text-primary"
             >
-              {mode === "register" ? "Ya tengo cuenta, iniciar sesión" : "No tengo cuenta, registrarme"}
+              {mode === "register"
+                ? "Ya tengo cuenta, iniciar sesión"
+                : mode === "login"
+                  ? "No tengo cuenta, registrarme"
+                  : "Volver a iniciar sesión"}
             </Button>
           </div>
         </form>
