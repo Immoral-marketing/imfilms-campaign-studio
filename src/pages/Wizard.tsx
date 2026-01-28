@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
+import { Day } from "react-day-picker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { useCampaignCalculator, validateInvestment, FeeMode } from "@/hooks/useCampaignCalculator";
 import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { calculateCampaignDates, formatDateEs, formatDateShort } from "@/utils/dateUtils";
+import { isSameDay } from "date-fns";
 import { z } from "zod";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import tiktokLogo from "@/assets/tiktok-logo.png";
@@ -978,28 +981,51 @@ const Wizard = () => {
                 <p className="text-sm text-muted-foreground">
                   El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
                 </p>
+
                 <div className="flex justify-center">
-                  <Calendar
-                    mode="single"
-                    selected={releaseDate}
-                    onSelect={setReleaseDate}
-                    className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
-                    weekStartsOn={1}
-                    modifiers={{
-                      creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
-                      preCampaign: campaignDates ? [
-                        { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
-                      ] : [],
-                      premiereWeekend: campaignDates ? [
-                        { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
-                      ] : [],
-                    }}
-                    modifiersClassNames={{
-                      creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
-                      preCampaign: "bg-primary/20 text-primary-foreground",
-                      premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                    }}
-                  />
+                  <TooltipProvider>
+                    <Calendar
+                      mode="single"
+                      selected={releaseDate}
+                      onSelect={setReleaseDate}
+                      className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
+                      weekStartsOn={1}
+                      modifiers={{
+                        creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                        preCampaign: campaignDates ? [
+                          { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                        ] : [],
+                        premiereWeekend: campaignDates ? [
+                          { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                        ] : [],
+                      }}
+                      modifiersClassNames={{
+                        creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                        preCampaign: "bg-primary/20 text-primary-foreground",
+                        premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                      }}
+                      components={{
+                        Day: (props) => {
+                          const isDeadline = campaignDates && isSameDay(props.date, campaignDates.creativesDeadline);
+                          if (isDeadline) {
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <Day {...props} />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Deadline para enviar las creatividades</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+                          return <Day {...props} />;
+                        }
+                      }}
+                    />
+                  </TooltipProvider>
                 </div>
               </div>
 
