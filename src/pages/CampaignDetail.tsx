@@ -9,7 +9,7 @@ import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText 
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CreativeAssets from '@/components/CreativeAssets';
-import { formatDateShort } from '@/utils/dateUtils';
+import { formatDateShort, getRelativeTime } from '@/utils/dateUtils';
 import logoImfilms from '@/assets/logo-imfilms.png';
 
 const CampaignDetail = () => {
@@ -71,6 +71,10 @@ const CampaignDetail = () => {
             country,
             target_audience_text,
             main_goals
+          ),
+          campaign_platforms (
+            platform_name,
+            budget_percent
           )
         `)
         .eq('id', campaignId)
@@ -277,6 +281,24 @@ const CampaignDetail = () => {
                 </div>
               </div>
 
+              {campaign.campaign_platforms && campaign.campaign_platforms.length > 0 && (
+                <div>
+                  <h3 className="font-cinema text-xl text-primary mb-3">Plataformas y Distribución</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {campaign.campaign_platforms.map((platform: any, index: number) => (
+                      <Card key={index} className="p-4 bg-muted/30 border-muted">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-foreground">{platform.platform_name}</span>
+                          <span className="text-primary font-bold">
+                            {platform.budget_percent ? `${platform.budget_percent}%` : 'N/A'}
+                          </span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {film.target_audience_text && (
                 <div>
                   <h3 className="font-cinema text-xl text-primary mb-3">Audiencia Objetivo</h3>
@@ -300,27 +322,31 @@ const CampaignDetail = () => {
 
               <div>
                 <h3 className="font-cinema text-xl text-primary mb-3">Fechas Clave</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Deadline Creativos</p>
-                    <p className="text-foreground">{formatDateShort(new Date(campaign.creatives_deadline))}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pre-campaña</p>
-                    <p className="text-foreground">
-                      {formatDateShort(new Date(campaign.pre_start_date))} - {formatDateShort(new Date(campaign.pre_end_date))}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fin de semana de estreno</p>
-                    <p className="text-foreground">
-                      {formatDateShort(new Date(campaign.premiere_weekend_start))} - {formatDateShort(new Date(campaign.premiere_weekend_end))}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Reporte final</p>
-                    <p className="text-foreground">{formatDateShort(new Date(campaign.final_report_date))}</p>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(() => {
+                    const dates = [
+                      { label: "Deadline Creativos", date: new Date(campaign.creatives_deadline) },
+                      { label: "Pre-campaña (Inicio)", date: new Date(campaign.pre_start_date) },
+                      { label: "Estreno", date: new Date(campaign.premiere_weekend_start) },
+                      { label: "Reporte final", date: new Date(campaign.final_report_date) },
+                    ];
+
+                    return dates.map((item, index) => {
+                      const relative = getRelativeTime(item.date);
+                      return (
+                        <div key={index} className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <p className="text-sm text-muted-foreground">{item.label}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(item.date)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'
+                              }`}>
+                              {relative.text}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import { addDays, subDays, startOfDay, format, addBusinessDays } from "date-fns";
+import { addDays, subDays, startOfDay, format, addBusinessDays, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 
 export interface CampaignDates {
@@ -15,10 +15,10 @@ export interface CampaignDates {
 // Helper function to get the Friday of the week for any given date
 const getFridayOfWeek = (date: Date): Date => {
   const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
-  
+
   // Calculate days to the Friday of that week
   let daysToFriday = 0;
-  
+
   if (dayOfWeek === 0) { // Sunday
     // Go back 2 days to Friday of the same weekend
     daysToFriday = -2;
@@ -30,7 +30,7 @@ const getFridayOfWeek = (date: Date): Date => {
     // Days until next Friday: 5 - dayOfWeek
     daysToFriday = 5 - dayOfWeek;
   }
-  
+
   return addDays(date, daysToFriday);
 };
 
@@ -78,3 +78,23 @@ export const formatDateEs = (date: Date): string => {
 export const formatDateShort = (date: Date): string => {
   return format(date, "dd/MM/yyyy");
 };
+
+export const getRelativeTime = (date: Date): { text: string; isPast: boolean; days: number } => {
+  const today = startOfDay(new Date());
+  const target = startOfDay(date);
+  const diff = differenceInDays(target, today);
+  const absDiff = Math.abs(diff);
+
+  if (diff === 0) {
+    return { text: "Hoy", isPast: false, days: 0 };
+  } else if (diff === 1) {
+    return { text: "Mañana", isPast: false, days: 1 };
+  } else if (diff === -1) {
+    return { text: "Ayer", isPast: true, days: 1 };
+  } else if (diff > 0) {
+    return { text: `Faltan ${absDiff} días`, isPast: false, days: absDiff };
+  } else {
+    return { text: `Hace ${absDiff} días`, isPast: true, days: absDiff };
+  }
+};
+
