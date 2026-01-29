@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
+import { Day } from "react-day-picker";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { useCampaignCalculator, validateInvestment, FeeMode } from "@/hooks/useCampaignCalculator";
 import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { calculateCampaignDates, formatDateEs, formatDateShort } from "@/utils/dateUtils";
+import { isSameDay } from "date-fns";
 import { z } from "zod";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import tiktokLogo from "@/assets/tiktok-logo.png";
@@ -60,6 +63,12 @@ const filmSchema = z.object({
   distributorName: z.string().trim().min(1, "La distribuidora es obligatoria").max(200),
 });
 
+const validatePercentages = (percentages: Record<string, number>, platforms: string[]) => {
+  if (Object.keys(percentages).length === 0 && platforms.length > 0) return true; // Si es equitativo, no hay validación manual
+  const total = Object.values(percentages).reduce((a, b) => a + b, 0);
+  return Math.abs(total - 100) < 0.1; // Margen de error pequeño por decimales
+};
+
 interface WizardDraft {
   currentStep: number;
   filmData: {
@@ -79,6 +88,8 @@ interface WizardDraft {
   otherPlatform: string;
   adInvestment: string;
   feeMode: FeeMode;
+  distributeEqually: boolean;
+  platformPercentages: Record<string, number>;
   selectedAddons: {
     adaptacion: boolean;
     microsite: boolean;
@@ -157,6 +168,8 @@ const Wizard = () => {
   const [otherPlatform, setOtherPlatform] = useState("");
   const [adInvestment, setAdInvestment] = useState("");
   const [feeMode, setFeeMode] = useState<FeeMode>('additional');
+  const [distributeEqually, setDistributeEqually] = useState(true);
+  const [platformPercentages, setPlatformPercentages] = useState<Record<string, number>>({});
 
   // Step 4: Add-ons
   const [selectedAddons, setSelectedAddons] = useState({
@@ -271,6 +284,8 @@ const Wizard = () => {
       otherPlatform,
       adInvestment,
       feeMode,
+      distributeEqually,
+      platformPercentages,
       selectedAddons,
       contactData: signupData,
       isFirstRelease,
@@ -287,6 +302,8 @@ const Wizard = () => {
     otherPlatform,
     adInvestment,
     feeMode,
+    distributeEqually,
+    platformPercentages,
     selectedAddons,
     signupData,
     isFirstRelease,
@@ -338,6 +355,8 @@ const Wizard = () => {
       setOtherPlatform(draft.otherPlatform);
       setAdInvestment(draft.adInvestment);
       setFeeMode(draft.feeMode || 'additional');
+      setDistributeEqually(draft.distributeEqually ?? true);
+      setPlatformPercentages(draft.platformPercentages || {});
       setSelectedAddons(draft.selectedAddons);
       setSignupData(draft.contactData);
       toast.success("Borrador recuperado correctamente");
@@ -389,6 +408,8 @@ const Wizard = () => {
     setOtherPlatform("");
     setAdInvestment("");
     setFeeMode('additional');
+    setDistributeEqually(true);
+    setPlatformPercentages({});
     setSelectedAddons({
       adaptacion: false,
       microsite: false,
@@ -418,9 +439,43 @@ const Wizard = () => {
   };
 
   const handlePlatformToggle = (platform: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
-    );
+    setSelectedPlatforms((prev) => {
+      const newPlatforms = prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform];
+
+      // Reset percentages if toggling platforms while in manual mode to avoid inconsistency
+      if (!distributeEqually) {
+        const count = newPlatforms.length;
+        if (count > 0) {
+          const equalShare = parseFloat((100 / count).toFixed(2));
+          const newPercentages: Record<string, number> = {};
+          newPlatforms.forEach(p => {
+            newPercentages[p] = equalShare;
+          });
+          // Fix rounding error on last item
+          if (count > 0) {
+            const currentSum = Object.values(newPercentages).reduce((a, b) => a + b, 0);
+            const diff = 100 - currentSum;
+            if (diff !== 0) {
+              newPercentages[newPlatforms[newPlatforms.length - 1]] += diff;
+            }
+          }
+          setPlatformPercentages(newPercentages);
+        } else {
+          setPlatformPercentages({});
+        }
+      }
+      return newPlatforms;
+    });
+  };
+
+  const handlePercentageChange = (platform: string, value: string) => {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0 || numValue > 100) return;
+
+    setPlatformPercentages(prev => ({
+      ...prev,
+      [platform]: numValue
+    }));
   };
 
   const handleNext = () => {
@@ -453,6 +508,21 @@ const Wizard = () => {
       if (selectedPlatforms.length === 0) {
         toast.error("Por favor selecciona al menos una plataforma");
         return;
+      }
+      if (!distributeEqually) {
+        // Filtrar porcentajes solo de las plataformas seleccionadas
+        const relevantPercentages: Record<string, number> = {};
+        let total = 0;
+        selectedPlatforms.forEach(p => {
+          const val = platformPercentages[p] || 0;
+          relevantPercentages[p] = val;
+          total += val;
+        });
+
+        if (Math.abs(total - 100) > 0.5) { // Un poco de tolerancia
+          toast.error(`La suma de porcentajes debe ser 100%. Actual: ${total.toFixed(2)}%`);
+          return;
+        }
       }
       const validation = validateInvestment(
         parseFloat(adInvestment) || 0,
@@ -640,7 +710,7 @@ const Wizard = () => {
           contact_email: signupData.contactEmail || distributor?.contact_email || "",
           contact_phone: signupData.contactPhone || distributor?.contact_phone || "",
           additional_comments: signupData.comments,
-          status: "nuevo",
+          status: "en_revision",
         })
         .select()
         .single();
@@ -649,12 +719,47 @@ const Wizard = () => {
 
       // Add platforms
       const platformsToInsert = [...selectedPlatforms];
-      if (otherPlatform) platformsToInsert.push(otherPlatform);
+
+      // Note: otherPlatform is just a string, simpler to handle separately or treat as platform logic
+
+      // Calculate percentages for insert
+      const finalPercentages: Record<string, number> = {};
+      const allPlatforms = [...selectedPlatforms];
+      if (otherPlatform) allPlatforms.push(otherPlatform);
+
+      if (distributeEqually) {
+        const count = allPlatforms.length;
+        const share = 100 / count;
+        allPlatforms.forEach(p => finalPercentages[p] = share);
+      } else {
+        allPlatforms.forEach(p => {
+          finalPercentages[p] = platformPercentages[p] || 0;
+          // Si added 'otherPlatform' y no estaba en el estado, darle 0 o manejarlo?
+          // Asumimos que si no está en percentages es 0, pero debería estar validado.
+          // Para 'otherPlatform' es un caso especial si no tiene input.
+          // Vamos a simplificar: si hay 'otherPlatform', le asignamos el resto si falta o 0.
+        });
+        // If other platform exists and wasn't in the explicit list logic (since it's a separate input),
+        // we might have an issue. Let's assume for now user only percents the main list.
+        // Wait, the requirement says "divide equally" or "user defines".
+        // If user defines, we should probably include 'otherPlatform' in the inputs?
+        // The current UI has 'otherPlatform' as a separate input field below the cards.
+        // Logic adjustment: add 'otherPlatform' to the percentage distribution UI if it has a value.
+      }
 
       for (const platform of platformsToInsert) {
         await supabase.from("campaign_platforms").insert({
           campaign_id: campaignRecord.id,
           platform_name: platform,
+          budget_percent: finalPercentages[platform] || 0
+        });
+      }
+
+      if (otherPlatform) {
+        await supabase.from("campaign_platforms").insert({
+          campaign_id: campaignRecord.id,
+          platform_name: otherPlatform,
+          budget_percent: finalPercentages[otherPlatform] || 0
         });
       }
 
@@ -978,28 +1083,51 @@ const Wizard = () => {
                 <p className="text-sm text-muted-foreground">
                   El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
                 </p>
+
                 <div className="flex justify-center">
-                  <Calendar
-                    mode="single"
-                    selected={releaseDate}
-                    onSelect={setReleaseDate}
-                    className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
-                    weekStartsOn={1}
-                    modifiers={{
-                      creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
-                      preCampaign: campaignDates ? [
-                        { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
-                      ] : [],
-                      premiereWeekend: campaignDates ? [
-                        { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
-                      ] : [],
-                    }}
-                    modifiersClassNames={{
-                      creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
-                      preCampaign: "bg-primary/20 text-primary-foreground",
-                      premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                    }}
-                  />
+                  <TooltipProvider>
+                    <Calendar
+                      mode="single"
+                      selected={releaseDate}
+                      onSelect={setReleaseDate}
+                      className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
+                      weekStartsOn={1}
+                      modifiers={{
+                        creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                        preCampaign: campaignDates ? [
+                          { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                        ] : [],
+                        premiereWeekend: campaignDates ? [
+                          { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                        ] : [],
+                      }}
+                      modifiersClassNames={{
+                        creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                        preCampaign: "bg-primary/20 text-primary-foreground",
+                        premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                      }}
+                      components={{
+                        Day: (props) => {
+                          const isDeadline = campaignDates && isSameDay(props.date, campaignDates.creativesDeadline);
+                          if (isDeadline) {
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <Day {...props} />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Deadline para enviar las creatividades</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+                          return <Day {...props} />;
+                        }
+                      }}
+                    />
+                  </TooltipProvider>
                 </div>
               </div>
 
@@ -1176,6 +1304,82 @@ const Wizard = () => {
                     placeholder="Especifica otras plataformas"
                   />
                 </div>
+
+                {/* Percentage Distribution */}
+                {(selectedPlatforms.length > 0 || otherPlatform) && (
+                  <div className="mt-8 p-6 rounded-lg border border-border bg-card/50 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-lg text-cinema-ivory">Distribución del presupuesto</Label>
+                        <HelpTooltip
+                          fieldId="budget_dist"
+                          title="Distribución"
+                          content="Decide cuánto peso quieres dar a cada plataforma. Si no lo tienes claro, déjalo en automático y nosotros lo equilibraremos."
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="distribute-equally"
+                          checked={distributeEqually}
+                          onCheckedChange={(checked) => {
+                            setDistributeEqually(checked as boolean);
+                            if (!checked) {
+                              // Initialize percentages when switching to manual
+                              const all = [...selectedPlatforms];
+                              if (otherPlatform) all.push(otherPlatform);
+                              const count = all.length;
+                              const newPercentages: Record<string, number> = {};
+                              if (count > 0) {
+                                const share = parseFloat((100 / count).toFixed(2));
+                                all.forEach(p => newPercentages[p] = share);
+                                // Adjust last to match 100
+                                const currentSum = Object.values(newPercentages).reduce((a, b) => a + b, 0);
+                                if (currentSum !== 100) {
+                                  newPercentages[all[all.length - 1]] += (100 - currentSum);
+                                }
+                              }
+                              setPlatformPercentages(newPercentages);
+                            }
+                          }}
+                        />
+                        <Label htmlFor="distribute-equally" className="cursor-pointer">Distribuir equitativamente</Label>
+                      </div>
+                    </div>
+
+                    {!distributeEqually && (
+                      <div className="grid gap-4 pt-2">
+                        {[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].map(p => (
+                          <div key={p} className="flex items-center gap-4">
+                            <span className="w-32 text-sm font-medium">{p}</span>
+                            <div className="relative flex-1">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={platformPercentages[p] || 0}
+                                onChange={(e) => handlePercentageChange(p, e.target.value)}
+                                className="pr-8"
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex justify-end pt-2">
+                          <span className={`text-sm font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => a + b, 0)) - 100) < 0.5 ? 'text-green-500' : 'text-red-500'}`}>
+                            Total: {Object.values(platformPercentages).reduce((a, b) => a + b, 0).toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {distributeEqually && (
+                      <div className="pt-2 text-sm text-muted-foreground">
+                        Se asignará un <strong>{((100 / ([...selectedPlatforms, ...(otherPlatform ? [1] : [])].length || 1))).toFixed(0)}%</strong> del presupuesto a cada plataforma seleccionada.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -1390,7 +1594,24 @@ const Wizard = () => {
 
                   <div>
                     <h3 className="font-cinema text-xl text-primary mb-2">Plataformas</h3>
-                    <p className="text-cinema-ivory">{selectedPlatforms.join(", ")}{otherPlatform && `, ${otherPlatform}`}</p>
+                    <div className="space-y-1">
+                      {(() => {
+                        const all = [...selectedPlatforms];
+                        if (otherPlatform) all.push(otherPlatform);
+
+                        // Calculate display percentages
+                        const displayPercentages = distributeEqually
+                          ? all.reduce((acc, p) => ({ ...acc, [p]: 100 / all.length }), {} as Record<string, number>)
+                          : platformPercentages;
+
+                        return all.map(p => (
+                          <div key={p} className="flex justify-between text-sm text-cinema-ivory border-b border-white/10 py-1 last:border-0">
+                            <span>{p}</span>
+                            <span className="text-muted-foreground">{displayPercentages[p]?.toFixed(0)}%</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
                   </div>
 
                   <div>

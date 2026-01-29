@@ -27,7 +27,7 @@ const Admin = () => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session?.user) {
           // Check if user has admin role
           const { data: roles, error } = await supabase
@@ -262,94 +262,97 @@ const Admin = () => {
 
           <TabsContent value="campaigns" className="space-y-4">
             <div className="space-y-4">
-          {campaigns.map((campaign) => (
-            <Card key={campaign.id} className="cinema-card p-6 space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <h3 className="font-cinema text-2xl text-primary">
-                    {campaign.films?.title || "Sin título"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {campaign.films?.distributor_name} | {campaign.films?.distributors?.company_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Creado: {formatDateShort(new Date(campaign.created_at))}
-                  </p>
-                </div>
+              {campaigns.map((campaign) => (
+                <Card key={campaign.id} className="cinema-card p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <h3 className="font-cinema text-2xl text-primary">
+                        {campaign.films?.title || "Sin título"}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {campaign.films?.distributor_name} | {campaign.films?.distributors?.company_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Creado: {formatDateShort(new Date(campaign.created_at))}
+                      </p>
+                    </div>
 
-                <div className="flex gap-2 items-center">
-                  <Select
-                    value={campaign.status}
-                    onValueChange={(newStatus) => updateCampaignStatus(campaign.id, newStatus)}
-                  >
-                    <SelectTrigger className="w-40 bg-muted border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nuevo">Nuevo</SelectItem>
-                      <SelectItem value="revisando">Revisando</SelectItem>
-                      <SelectItem value="aprobado">Aprobado</SelectItem>
-                      <SelectItem value="rechazado">Rechazado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <div className="flex gap-2 items-center">
+                      <Select
+                        value={campaign.status}
+                        onValueChange={(newStatus) => updateCampaignStatus(campaign.id, newStatus)}
+                      >
+                        <SelectTrigger className="w-48 bg-muted border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="borrador">Borrador</SelectItem>
+                          <SelectItem value="en_revision">En revisión</SelectItem>
+                          <SelectItem value="aprobada">Aprobada</SelectItem>
+                          <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
+                          <SelectItem value="activa">Activa</SelectItem>
+                          <SelectItem value="finalizada">Finalizada</SelectItem>
+                          <SelectItem value="pausada">Pausada</SelectItem>
+                          <SelectItem value="rechazada">Rechazada</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      campaign.status === "nuevo"
-                        ? "bg-primary"
-                        : campaign.status === "revisando"
-                        ? "bg-blue-500"
-                        : campaign.status === "aprobado"
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-4 h-4 cinema-icon-decorative" />
-                    <p className="text-muted-foreground">Estreno:</p>
+                      <div
+                        className={`w-3 h-3 rounded-full ${['activa', 'aprobada', 'aprobado'].includes(campaign.status)
+                          ? "bg-green-500"
+                          : ['en_revision', 'revisando', 'creativos_en_revision'].includes(campaign.status)
+                            ? "bg-blue-500"
+                            : ['borrador', 'nuevo'].includes(campaign.status)
+                              ? "bg-muted-foreground"
+                              : "bg-red-500"
+                          }`}
+                      />
+                    </div>
                   </div>
-                  <p className="text-cinema-ivory font-semibold">
-                    {formatDateShort(new Date(campaign.premiere_weekend_start))}
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <DollarSign className="w-4 h-4 cinema-icon-decorative" />
-                    <p className="text-muted-foreground">Inversión:</p>
-                  </div>
-                  <p className="text-cinema-yellow font-semibold">
-                    {campaign.ad_investment_amount.toLocaleString("es-ES")}€
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <BarChart className="w-4 h-4 cinema-icon-decorative" />
-                    <p className="text-muted-foreground">Total estimado:</p>
-                  </div>
-                  <p className="text-primary font-semibold">
-                    {campaign.total_estimated_amount.toLocaleString("es-ES")}€
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Contacto:</p>
-                  <p className="text-cinema-ivory">{campaign.contact_name}</p>
-                  <p className="text-xs text-muted-foreground">{campaign.contact_email}</p>
-                </div>
-              </div>
 
-              {campaign.additional_comments && (
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Comentarios:</p>
-                  <p className="text-sm text-cinema-ivory italic">{campaign.additional_comments}</p>
-                </div>
-              )}
-            </Card>
-          ))}
+                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 cinema-icon-decorative" />
+                        <p className="text-muted-foreground">Estreno:</p>
+                      </div>
+                      <p className="text-cinema-ivory font-semibold">
+                        {formatDateShort(new Date(campaign.premiere_weekend_start))}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="w-4 h-4 cinema-icon-decorative" />
+                        <p className="text-muted-foreground">Inversión:</p>
+                      </div>
+                      <p className="text-cinema-yellow font-semibold">
+                        {campaign.ad_investment_amount.toLocaleString("es-ES")}€
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <BarChart className="w-4 h-4 cinema-icon-decorative" />
+                        <p className="text-muted-foreground">Total estimado:</p>
+                      </div>
+                      <p className="text-primary font-semibold">
+                        {campaign.total_estimated_amount.toLocaleString("es-ES")}€
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Contacto:</p>
+                      <p className="text-cinema-ivory">{campaign.contact_name}</p>
+                      <p className="text-xs text-muted-foreground">{campaign.contact_email}</p>
+                    </div>
+                  </div>
+
+                  {campaign.additional_comments && (
+                    <div className="pt-3 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Comentarios:</p>
+                      <p className="text-sm text-cinema-ivory italic">{campaign.additional_comments}</p>
+                    </div>
+                  )}
+                </Card>
+              ))}
 
               {campaigns.length === 0 && !loading && (
                 <Card className="cinema-card p-12 text-center">

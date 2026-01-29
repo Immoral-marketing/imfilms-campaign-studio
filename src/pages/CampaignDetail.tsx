@@ -4,21 +4,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CreativeAssets from '@/components/CreativeAssets';
+import { formatDateShort, getRelativeTime } from '@/utils/dateUtils';
 import EditFilmInfoDialog from '@/components/EditFilmInfoDialog';
 import PendingEditBanner from '@/components/PendingEditBanner';
 import ProposalReviewPanel from '@/components/ProposalReviewPanel';
 import { usePendingFilmProposal } from '@/hooks/useFilmEditProposals';
-import { formatDateShort } from '@/utils/dateUtils';
 import logoImfilms from '@/assets/logo-imfilms.png';
 
 const CampaignDetail = () => {
   const { id: campaignId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("timeline");
   const [campaign, setCampaign] = useState<any>(null);
   const [film, setFilm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,10 @@ const CampaignDetail = () => {
             country,
             target_audience_text,
             main_goals
+          ),
+          campaign_platforms (
+            platform_name,
+            budget_percent
           )
         `)
         .eq('id', campaignId)
@@ -93,6 +99,25 @@ const CampaignDetail = () => {
       navigate('/campaigns');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateCampaignStatus = async (newStatus: string) => {
+    if (!campaignId) return;
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ status: newStatus })
+        .eq('id', campaignId);
+
+      if (error) throw error;
+
+      toast.success('Estado actualizado correctamente');
+      loadCampaign(); // Reload campaign to get updated status
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast.error('Error al actualizar el estado');
     }
   };
 
@@ -186,9 +211,30 @@ const CampaignDetail = () => {
             </div>
             <div className="text-right space-y-1">
               <p className="text-sm text-muted-foreground">Estado actual</p>
-              <p className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`}>
-                {getStatusLabel(campaign.status)}
-              </p>
+              {userRole === 'admin' ? (
+                <Select
+                  value={campaign.status}
+                  onValueChange={updateCampaignStatus}
+                >
+                  <SelectTrigger className="w-[200px] h-auto py-1 border-none bg-transparent">
+                    <SelectValue className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="borrador">Borrador</SelectItem>
+                    <SelectItem value="en_revision">En revisión</SelectItem>
+                    <SelectItem value="aprobada">Aprobada</SelectItem>
+                    <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
+                    <SelectItem value="activa">Activa</SelectItem>
+                    <SelectItem value="finalizada">Finalizada</SelectItem>
+                    <SelectItem value="pausada">Pausada</SelectItem>
+                    <SelectItem value="rechazada">Rechazada</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`}>
+                  {getStatusLabel(campaign.status)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -237,7 +283,7 @@ const CampaignDetail = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="timeline" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="details">Detalles</TabsTrigger>
@@ -250,14 +296,17 @@ const CampaignDetail = () => {
             <Card className="p-6">
               <h2 className="font-cinema text-2xl mb-6">Estado de tu campaña</h2>
               <CampaignTimeline
+                campaignId={campaign.id}
                 status={campaign.status}
                 createdAt={campaign.created_at}
                 creativesDeadline={campaign.creatives_deadline}
                 premiereStart={campaign.premiere_weekend_start}
                 finalReportDate={campaign.final_report_date}
+                onNavigateToCreatives={() => setActiveTab('assets')}
               />
             </Card>
           </TabsContent>
+
 
           {/* Details Tab */}
           <TabsContent value="details" className="space-y-4">
@@ -303,6 +352,24 @@ const CampaignDetail = () => {
                 </div>
               </div>
 
+              {campaign.campaign_platforms && campaign.campaign_platforms.length > 0 && (
+                <div>
+                  <h3 className="font-cinema text-xl text-primary mb-3">Plataformas y Distribución</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {campaign.campaign_platforms.map((platform: any, index: number) => (
+                      <Card key={index} className="p-4 bg-muted/30 border-muted">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-foreground">{platform.platform_name}</span>
+                          <span className="text-primary font-bold">
+                            {platform.budget_percent ? `${platform.budget_percent}%` : 'N/A'}
+                          </span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {film.target_audience_text && (
                 <div>
                   <h3 className="font-cinema text-xl text-primary mb-3">Audiencia Objetivo</h3>
@@ -326,27 +393,31 @@ const CampaignDetail = () => {
 
               <div>
                 <h3 className="font-cinema text-xl text-primary mb-3">Fechas Clave</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Deadline Creativos</p>
-                    <p className="text-foreground">{formatDateShort(new Date(campaign.creatives_deadline))}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pre-campaña</p>
-                    <p className="text-foreground">
-                      {formatDateShort(new Date(campaign.pre_start_date))} - {formatDateShort(new Date(campaign.pre_end_date))}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fin de semana de estreno</p>
-                    <p className="text-foreground">
-                      {formatDateShort(new Date(campaign.premiere_weekend_start))} - {formatDateShort(new Date(campaign.premiere_weekend_end))}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Reporte final</p>
-                    <p className="text-foreground">{formatDateShort(new Date(campaign.final_report_date))}</p>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(() => {
+                    const dates = [
+                      { label: "Deadline Creativos", date: new Date(campaign.creatives_deadline) },
+                      { label: "Pre-campaña (Inicio)", date: new Date(campaign.pre_start_date) },
+                      { label: "Estreno", date: new Date(campaign.premiere_weekend_start) },
+                      { label: "Reporte final", date: new Date(campaign.final_report_date) },
+                    ];
+
+                    return dates.map((item, index) => {
+                      const relative = getRelativeTime(item.date);
+                      return (
+                        <div key={index} className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <p className="text-sm text-muted-foreground">{item.label}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(item.date)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'
+                              }`}>
+                              {relative.text}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -432,8 +503,8 @@ const CampaignDetail = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 
