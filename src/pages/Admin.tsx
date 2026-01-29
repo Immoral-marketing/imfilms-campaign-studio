@@ -299,12 +299,12 @@ const Admin = () => {
 
                       <div
                         className={`w-3 h-3 rounded-full ${['activa', 'aprobada', 'aprobado'].includes(campaign.status)
-                            ? "bg-green-500"
-                            : ['en_revision', 'revisando', 'creativos_en_revision'].includes(campaign.status)
-                              ? "bg-blue-500"
-                              : ['borrador', 'nuevo'].includes(campaign.status)
-                                ? "bg-muted-foreground"
-                                : "bg-red-500"
+                          ? "bg-green-500"
+                          : ['en_revision', 'revisando', 'creativos_en_revision'].includes(campaign.status)
+                            ? "bg-blue-500"
+                            : ['borrador', 'nuevo'].includes(campaign.status)
+                              ? "bg-muted-foreground"
+                              : "bg-red-500"
                           }`}
                       />
                     </div>

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
@@ -91,6 +92,25 @@ const CampaignDetail = () => {
       navigate('/campaigns');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateCampaignStatus = async (newStatus: string) => {
+    if (!campaignId) return;
+
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ status: newStatus })
+        .eq('id', campaignId);
+
+      if (error) throw error;
+
+      toast.success('Estado actualizado correctamente');
+      loadCampaign(); // Reload campaign to get updated status
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast.error('Error al actualizar el estado');
     }
   };
 
@@ -184,9 +204,30 @@ const CampaignDetail = () => {
             </div>
             <div className="text-right space-y-1">
               <p className="text-sm text-muted-foreground">Estado actual</p>
-              <p className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`}>
-                {getStatusLabel(campaign.status)}
-              </p>
+              {userRole === 'admin' ? (
+                <Select
+                  value={campaign.status}
+                  onValueChange={updateCampaignStatus}
+                >
+                  <SelectTrigger className="w-[200px] h-auto py-1 border-none bg-transparent">
+                    <SelectValue className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="borrador">Borrador</SelectItem>
+                    <SelectItem value="en_revision">En revisión</SelectItem>
+                    <SelectItem value="aprobada">Aprobada</SelectItem>
+                    <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
+                    <SelectItem value="activa">Activa</SelectItem>
+                    <SelectItem value="finalizada">Finalizada</SelectItem>
+                    <SelectItem value="pausada">Pausada</SelectItem>
+                    <SelectItem value="rechazada">Rechazada</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`}>
+                  {getStatusLabel(campaign.status)}
+                </p>
+              )}
             </div>
           </div>
 
@@ -248,6 +289,7 @@ const CampaignDetail = () => {
             <Card className="p-6">
               <h2 className="font-cinema text-2xl mb-6">Estado de tu campaña</h2>
               <CampaignTimeline
+                campaignId={campaign.id}
                 status={campaign.status}
                 createdAt={campaign.created_at}
                 creativesDeadline={campaign.creatives_deadline}

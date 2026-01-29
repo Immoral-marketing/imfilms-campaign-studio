@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { CheckCircle, Clock, AlertCircle, Calendar, FileText, Play, TrendingUp } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TimelineStep {
   status: string;
@@ -13,6 +15,7 @@ interface TimelineStep {
 }
 
 interface CampaignTimelineProps {
+  campaignId: string;
   status: string;
   createdAt: string;
   creativesDeadline?: string;
@@ -22,6 +25,7 @@ interface CampaignTimelineProps {
 }
 
 const CampaignTimeline = ({
+  campaignId,
   status,
   createdAt,
   creativesDeadline,
@@ -29,6 +33,30 @@ const CampaignTimeline = ({
   finalReportDate,
   onNavigateToCreatives,
 }: CampaignTimelineProps) => {
+  const [assets, setAssets] = useState<any[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState(true);
+
+  // Load creative assets for this campaign
+  useEffect(() => {
+    const loadAssets = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('campaign_assets')
+          .select('status')
+          .eq('campaign_id', campaignId);
+
+        if (!error && data) {
+          setAssets(data);
+        }
+      } catch (error) {
+        console.error('Error loading assets:', error);
+      } finally {
+        setLoadingAssets(false);
+      }
+    };
+
+    loadAssets();
+  }, [campaignId]);
   // Normalize status for backward compatibility
   const normalizeStatus = (s: string) => {
     if (s === 'aprobado') return 'aprobada';
@@ -183,7 +211,7 @@ const CampaignTimeline = ({
                 {step.active && (
                   <div className="mt-2 rounded-md border border-yellow-400/20 bg-yellow-400/5 p-3">
                     <div className="text-sm text-yellow-400/90">
-                      {getActiveStepMessage(normalizedStatus, creativesDeadline, onNavigateToCreatives)}
+                      {getActiveStepMessage(normalizedStatus, creativesDeadline, onNavigateToCreatives, assets, loadingAssets)}
                     </div>
                   </div>
                 )}
@@ -196,7 +224,13 @@ const CampaignTimeline = ({
   );
 };
 
-const getActiveStepMessage = (status: string, deadline?: string, onNavigate?: () => void): React.ReactNode => {
+const getActiveStepMessage = (
+  status: string,
+  deadline?: string,
+  onNavigate?: () => void,
+  assets?: any[],
+  loadingAssets?: boolean
+): React.ReactNode => {
   let daysLeft = 0;
   if (deadline) {
     const today = new Date();
@@ -205,21 +239,64 @@ const getActiveStepMessage = (status: string, deadline?: string, onNavigate?: ()
     if (daysLeft < 0) daysLeft = 0;
   }
 
+  // Analyze assets for 'aprobada' status
+  if (status === 'aprobada' && !loadingAssets) {
+    if (!assets || assets.length === 0) {
+      // No assets uploaded yet
+      return (
+        <span>
+          Tienes {daysLeft} días para subir las creatividades en la pestaña de{' '}
+          <button
+            onClick={onNavigate}
+            className="underline hover:text-yellow-200 font-medium cursor-pointer"
+          >
+            Creativos
+          </button>
+        </span>
+      );
+    }
+
+    // Check asset statuses
+    const rejectedCount = assets.filter(a => a.status === 'rechazado').length;
+    const approvedCount = assets.filter(a => a.status === 'aprobado').length;
+    const pendingCount = assets.filter(a => a.status === 'pendiente_revision').length;
+
+    if (rejectedCount > 0) {
+      return (
+        <span className="text-red-400">
+          Tienes {rejectedCount} creatividad{rejectedCount > 1 ? 'es' : ''} rechazada{rejectedCount > 1 ? 's' : ''}.
+          Revísala{rejectedCount > 1 ? 's' : ''} en la pestaña de{' '}
+          <button
+            onClick={onNavigate}
+            className="underline hover:text-red-300 font-medium cursor-pointer"
+          >
+            Creativos
+          </button>
+          {' '}para dar continuidad a la campaña.
+        </span>
+      );
+    }
+
+    if (approvedCount === assets.length) {
+      return (
+        <span className="text-green-400">
+          ¡Todas tus creatividades han sido aprobadas! La campaña estará activa pronto.
+        </span>
+      );
+    }
+
+    // Some pending review
+    return (
+      <span>
+        Tus creatividades están siendo revisadas por nuestro equipo. Te notificaremos cuando estén listas.
+      </span>
+    );
+  }
+
   const messages: Record<string, React.ReactNode> = {
     borrador: 'Revisa y envía tu campaña cuando estés lista.',
     en_revision:
       'Nuestro equipo está analizando tu campaña. Te responderemos en 24-48h con feedback o aprobación.',
-    aprobada: (
-      <span>
-        Tienes {daysLeft} días para subir las creatividades en la pestaña de{' '}
-        <button
-          onClick={onNavigate}
-          className="underline hover:text-yellow-200 font-medium cursor-pointer"
-        >
-          Creativos
-        </button>
-      </span>
-    ),
     creativos_en_revision:
       'Has subido tus creativos. Nuestro equipo los está revisando para asegurar que cumplen con los requisitos.',
     activa:
