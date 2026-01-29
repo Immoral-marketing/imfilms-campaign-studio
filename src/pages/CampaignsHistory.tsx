@@ -349,21 +349,35 @@ const CampaignsHistory = () => {
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
-      nuevo: "bg-primary/20 text-primary",
       borrador: "bg-muted text-muted-foreground",
+      nuevo: "bg-muted text-muted-foreground",
       en_revision: "bg-blue-500/20 text-blue-400",
+      revisando: "bg-blue-500/20 text-blue-400",
+      aprobada: "bg-green-500/20 text-green-400",
       aprobado: "bg-green-500/20 text-green-400",
+      activa: "bg-green-500/20 text-green-400 animate-pulse",
+      creativos_en_revision: "bg-yellow-500/20 text-yellow-400",
+      finalizada: "bg-primary/20 text-primary",
+      pausada: "bg-muted text-muted-foreground",
+      rechazada: "bg-red-500/20 text-red-400",
       rechazado: "bg-red-500/20 text-red-400",
     };
     const labels: any = {
-      nuevo: "Nuevo",
       borrador: "Borrador",
+      nuevo: "Borrador",
       en_revision: "En revisión",
-      aprobado: "Aprobado",
-      rechazado: "Rechazado",
+      revisando: "En revisión",
+      aprobada: "Aprobada",
+      aprobado: "Aprobada",
+      activa: "Activa",
+      creativos_en_revision: "Creativos en revisión",
+      finalizada: "Finalizada",
+      pausada: "Pausada",
+      rechazada: "Rechazada",
+      rechazado: "Rechazada",
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || styles.nuevo}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || styles.borrador}`}>
         {labels[status] || status}
       </span>
     );
@@ -759,11 +773,14 @@ const CampaignsHistory = () => {
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="nuevo">Nuevo</SelectItem>
-                              <SelectItem value="en_revision">En revisión</SelectItem>
-                              <SelectItem value="aprobado">Aprobado</SelectItem>
-                              <SelectItem value="rechazado">Rechazado</SelectItem>
                               <SelectItem value="borrador">Borrador</SelectItem>
+                              <SelectItem value="en_revision">En revisión</SelectItem>
+                              <SelectItem value="aprobada">Aprobada</SelectItem>
+                              <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
+                              <SelectItem value="activa">Activa</SelectItem>
+                              <SelectItem value="finalizada">Finalizada</SelectItem>
+                              <SelectItem value="pausada">Pausada</SelectItem>
+                              <SelectItem value="rechazada">Rechazada</SelectItem>
                             </SelectContent>
                           </Select>
                         ) : (

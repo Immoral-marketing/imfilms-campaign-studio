@@ -15,6 +15,7 @@ import logoImfilms from '@/assets/logo-imfilms.png';
 const CampaignDetail = () => {
   const { id: campaignId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("timeline");
   const [campaign, setCampaign] = useState<any>(null);
   const [film, setFilm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -234,7 +235,7 @@ const CampaignDetail = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="timeline" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="details">Detalles</TabsTrigger>
@@ -252,9 +253,11 @@ const CampaignDetail = () => {
                 creativesDeadline={campaign.creatives_deadline}
                 premiereStart={campaign.premiere_weekend_start}
                 finalReportDate={campaign.final_report_date}
+                onNavigateToCreatives={() => setActiveTab('assets')}
               />
             </Card>
           </TabsContent>
+
 
           {/* Details Tab */}
           <TabsContent value="details" className="space-y-4">
@@ -422,8 +425,8 @@ const CampaignDetail = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 };
 

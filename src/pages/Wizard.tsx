@@ -710,7 +710,7 @@ const Wizard = () => {
           contact_email: signupData.contactEmail || distributor?.contact_email || "",
           contact_phone: signupData.contactPhone || distributor?.contact_phone || "",
           additional_comments: signupData.comments,
-          status: "nuevo",
+          status: "en_revision",
         })
         .select()
         .single();
