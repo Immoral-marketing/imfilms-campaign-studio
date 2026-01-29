@@ -5,10 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CreativeAssets from '@/components/CreativeAssets';
+import EditFilmInfoDialog from '@/components/EditFilmInfoDialog';
+import PendingEditBanner from '@/components/PendingEditBanner';
+import ProposalReviewPanel from '@/components/ProposalReviewPanel';
+import { usePendingFilmProposal } from '@/hooks/useFilmEditProposals';
 import { formatDateShort } from '@/utils/dateUtils';
 import logoImfilms from '@/assets/logo-imfilms.png';
 
@@ -20,6 +24,9 @@ const CampaignDetail = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'distributor'>('distributor');
+
+  // Get pending film edit proposal
+  const { data: pendingProposal } = usePendingFilmProposal(film?.id);
 
   useEffect(() => {
     checkAuthAndLoadCampaign();
@@ -256,7 +263,26 @@ const CampaignDetail = () => {
           <TabsContent value="details" className="space-y-4">
             <Card className="p-6 space-y-6">
               <div>
-                <h3 className="font-cinema text-xl text-primary mb-3">Información de la Película</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-cinema text-xl text-primary">Información de la Película</h3>
+                  <EditFilmInfoDialog
+                    film={film}
+                    campaignId={campaign.id}
+                    disabled={!!pendingProposal}
+                  >
+                    <Button variant="outline" size="sm" disabled={!!pendingProposal}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                  </EditFilmInfoDialog>
+                </div>
+
+                {/* Pending Edit Banner */}
+                {pendingProposal && (
+                  <div className="mb-4">
+                    <PendingEditBanner proposal={pendingProposal} currentFilm={film} />
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Título</p>
@@ -375,6 +401,16 @@ const CampaignDetail = () => {
                 </div>
               )}
             </Card>
+
+            {/* Admin Review Panel */}
+            {userRole === 'admin' && pendingProposal && (
+              <ProposalReviewPanel
+                proposal={pendingProposal}
+                currentFilm={film}
+                onApproved={() => loadCampaign()}
+                onRejected={() => loadCampaign()}
+              />
+            )}
           </TabsContent>
 
           {/* Chat Tab */}
