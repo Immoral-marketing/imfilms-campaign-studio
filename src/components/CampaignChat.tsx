@@ -10,6 +10,7 @@ import { es } from 'date-fns/locale';
 interface Message {
   id: string;
   sender_role: 'admin' | 'distributor';
+  sender_name?: string;
   message: string;
   created_at: string;
 }
@@ -25,6 +26,42 @@ const CampaignChat = ({ campaignId, userRole }: CampaignChatProps) => {
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userName, setUserName] = useState<string>('');
+
+  useEffect(() => {
+    fetchUserName();
+  }, []);
+
+  const fetchUserName = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Try metadata
+      const metaName = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.contact_name;
+      if (metaName) {
+        setUserName(metaName);
+        return;
+      }
+
+      // 2. Try profiles table
+      const { data: profile } = await supabase
+        .from('profiles' as any)
+        .select('contact_name')
+        .eq('id', user.id)
+        .maybeSingle() as any;
+
+      if (profile?.contact_name) {
+        setUserName(profile.contact_name);
+        return;
+      }
+
+      // 3. Fallback
+      setUserName(user.email?.split('@')[0] || 'Usuario');
+    } catch (error) {
+      console.error('Error fetching user name:', error);
+    }
+  };
 
   useEffect(() => {
     loadMessages();
@@ -90,8 +127,9 @@ const CampaignChat = ({ campaignId, userRole }: CampaignChatProps) => {
         campaign_id: campaignId,
         sender_id: user.id,
         sender_role: userRole,
+        sender_name: userName || 'Usuario',
         message: newMessage.trim(),
-      });
+      } as any);
 
       if (error) throw error;
 
@@ -148,15 +186,14 @@ const CampaignChat = ({ campaignId, userRole }: CampaignChatProps) => {
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    isOwn
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border/40'
-                  }`}
+                  className={`max-w-[80%] rounded-lg p-3 ${isOwn
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background border border-border/40'
+                    }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-semibold">
-                      {msg.sender_role === 'admin' ? 'imfilms' : 'Tú'}
+                      {isOwn ? 'Tú' : (msg.sender_name || (msg.sender_role === 'admin' ? 'imfilms' : 'Distribuidora'))}
                     </span>
                     <span className="text-xs opacity-70">
                       {format(new Date(msg.created_at), "HH:mm", { locale: es })}
