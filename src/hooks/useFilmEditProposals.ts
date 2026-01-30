@@ -11,8 +11,13 @@ export interface FilmEditProposal {
         title?: string;
         country?: string;
         genre?: string;
+        secondary_genre?: string;
         target_audience_text?: string;
         main_goals?: string[];
+        platforms?: {
+            platform_name: string;
+            budget_percent: number;
+        }[];
     };
     status: 'pending' | 'approved' | 'rejected';
     created_by: string;
@@ -29,8 +34,13 @@ export interface CreateProposalInput {
         title: string;
         country: string;
         genre: string;
+        secondary_genre?: string;
         target_audience_text?: string;
         main_goals?: string[];
+        platforms?: {
+            platform_name: string;
+            budget_percent: number;
+        }[];
     };
 }
 

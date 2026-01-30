@@ -13,7 +13,6 @@ import CreativeAssets from '@/components/CreativeAssets';
 import { formatDateShort, getRelativeTime } from '@/utils/dateUtils';
 import EditFilmInfoDialog from '@/components/EditFilmInfoDialog';
 import PendingEditBanner from '@/components/PendingEditBanner';
-import ProposalReviewPanel from '@/components/ProposalReviewPanel';
 import { usePendingFilmProposal } from '@/hooks/useFilmEditProposals';
 import logoImfilms from '@/assets/logo-imfilms.png';
 
@@ -77,6 +76,7 @@ const CampaignDetail = () => {
             id,
             title,
             genre,
+            secondary_genre,
             country,
             target_audience_text,
             main_goals
@@ -206,7 +206,7 @@ const CampaignDetail = () => {
                 <h1 className="font-cinema text-4xl text-foreground">{film.title}</h1>
               </div>
               <p className="text-muted-foreground">
-                {film.genre} • {film.country}
+                {film.genre}{film.secondary_genre ? ` / ${film.secondary_genre}` : ''} • {film.country}
               </p>
             </div>
             <div className="text-right space-y-1">
@@ -316,6 +316,7 @@ const CampaignDetail = () => {
                   <h3 className="font-cinema text-xl text-primary">Información de la Película</h3>
                   <EditFilmInfoDialog
                     film={film}
+                    platforms={campaign.campaign_platforms}
                     campaignId={campaign.id}
                     disabled={!!pendingProposal}
                   >
@@ -329,7 +330,14 @@ const CampaignDetail = () => {
                 {/* Pending Edit Banner */}
                 {pendingProposal && (
                   <div className="mb-4">
-                    <PendingEditBanner proposal={pendingProposal} currentFilm={film} />
+                    <PendingEditBanner
+                      proposal={pendingProposal}
+                      currentFilm={film}
+                      currentPlatforms={campaign.campaign_platforms}
+                      isAdmin={userRole === 'admin'}
+                      onApproved={() => loadCampaign()}
+                      onRejected={() => loadCampaign()}
+                    />
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -339,7 +347,7 @@ const CampaignDetail = () => {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Género</p>
-                    <p className="text-foreground">{film.genre}</p>
+                    <p className="text-foreground">{film.genre}{film.secondary_genre ? ` / ${film.secondary_genre}` : ''}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">País</p>
@@ -472,16 +480,6 @@ const CampaignDetail = () => {
                 </div>
               )}
             </Card>
-
-            {/* Admin Review Panel */}
-            {userRole === 'admin' && pendingProposal && (
-              <ProposalReviewPanel
-                proposal={pendingProposal}
-                currentFilm={film}
-                onApproved={() => loadCampaign()}
-                onRejected={() => loadCampaign()}
-              />
-            )}
           </TabsContent>
 
           {/* Chat Tab */}
