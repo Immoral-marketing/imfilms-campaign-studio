@@ -45,6 +45,9 @@ const AdminDistributors = () => {
   const [selectedDistributor, setSelectedDistributor] = useState<Distributor | null>(null);
   const [distributorCampaigns, setDistributorCampaigns] = useState<Campaign[]>([]);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Distributor>>({});
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadDistributors = async () => {
     setLoading(true);
@@ -125,7 +128,7 @@ const AdminDistributors = () => {
 
       toast.success(`Distribuidora ${!currentStatus ? "activada" : "desactivada"}`);
       loadDistributors();
-      
+
       if (selectedDistributor?.id === distributorId) {
         setSelectedDistributor({ ...selectedDistributor, is_active: !currentStatus });
       }
@@ -154,8 +157,78 @@ const AdminDistributors = () => {
     }
   };
 
+  const handleEditSave = async () => {
+    if (!selectedDistributor || !editForm) return;
+
+    try {
+      const { error } = await supabase
+        .from("distributors")
+        .update({
+          company_name: editForm.company_name,
+          contact_name: editForm.contact_name,
+          contact_email: editForm.contact_email,
+          contact_phone: editForm.contact_phone,
+        })
+        .eq("id", selectedDistributor.id);
+
+      if (error) throw error;
+
+      toast.success("Distribuidora actualizada corréctamente");
+      setSelectedDistributor({ ...selectedDistributor, ...editForm } as Distributor);
+      setIsEditing(false);
+      loadDistributors();
+    } catch (error: any) {
+      console.error("Error updating distributor:", error);
+      toast.error("Error al actualizar distribuidora");
+    }
+  };
+
+  const handleDeleteDistributor = async () => {
+    if (!selectedDistributor) return;
+
+    if (!window.confirm("¿Estás seguro? ESTA ACCIÓN ES IRREVERSIBLE. Se borrarán TODAS las campañas, datos y el usuario perderá el acceso.")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // 1. Find the user associated with this distributor to delete auth account
+      // We'll query distributor_users to find the owner or first user
+      const { data: distUsers, error: userError } = await supabase
+        .from("distributor_users")
+        .select("user_id")
+        .eq("distributor_id", selectedDistributor.id)
+        .limit(1);
+
+      const userId = distUsers && distUsers.length > 0 ? distUsers[0].user_id : null;
+
+      // 2. Call Edge Function
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: userId, // Can be null, function handles it or we handle it? Function expects userId. 
+          // If no user found (maybe partial delete before?), we might just want to delete DB record.
+          // Let's pass what we have.
+          distributorId: selectedDistributor.id
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success("Distribuidora y usuario eliminados correctamente");
+      setShowDetailDialog(false);
+      loadDistributors();
+    } catch (error: any) {
+      console.error("Error deleting distributor:", error);
+      toast.error("Error al eliminar distribuidora: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const openDistributorDetail = (distributor: Distributor) => {
     setSelectedDistributor(distributor);
+    setEditForm(distributor);
+    setIsEditing(false);
     loadDistributorCampaigns(distributor.id);
     setShowDetailDialog(true);
   };
@@ -167,14 +240,14 @@ const AdminDistributors = () => {
   // Filter and sort distributors
   const filteredAndSortedDistributors = distributors
     .filter((dist) => {
-      const matchesSearch = 
+      const matchesSearch =
         dist.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dist.contact_email.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesFilter = 
+
+      const matchesFilter =
         filterActive === "all" ? true :
-        filterActive === "active" ? dist.is_active :
-        !dist.is_active;
+          filterActive === "active" ? dist.is_active :
+            !dist.is_active;
 
       return matchesSearch && matchesFilter;
     })
@@ -349,35 +422,101 @@ const AdminDistributors = () => {
               {/* Distributor Info */}
               <Card className="cinema-card p-6 space-y-4">
                 <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Contacto</p>
-                      <p className="text-cinema-ivory font-semibold">{selectedDistributor.contact_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="text-cinema-ivory">{selectedDistributor.contact_email}</p>
-                    </div>
-                    {selectedDistributor.contact_phone && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Teléfono</p>
-                        <p className="text-cinema-ivory">{selectedDistributor.contact_phone}</p>
+                  <div className="space-y-4 flex-1">
+                    {isEditing ? (
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="company_name" className="text-right">Empresa</Label>
+                          <Input
+                            id="company_name"
+                            value={editForm.company_name || ''}
+                            onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                            className="col-span-3 bg-muted border-border"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="contact_name" className="text-right">Nombre</Label>
+                          <Input
+                            id="contact_name"
+                            value={editForm.contact_name || ''}
+                            onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })}
+                            className="col-span-3 bg-muted border-border"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="contact_email" className="text-right">Email</Label>
+                          <Input
+                            id="contact_email"
+                            value={editForm.contact_email || ''}
+                            onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })}
+                            className="col-span-3 bg-muted border-border"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="contact_phone" className="text-right">Teléfono</Label>
+                          <Input
+                            id="contact_phone"
+                            value={editForm.contact_phone || ''}
+                            onChange={(e) => setEditForm({ ...editForm, contact_phone: e.target.value })}
+                            className="col-span-3 bg-muted border-border"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Contacto</p>
+                          <p className="text-cinema-ivory font-semibold">{selectedDistributor.contact_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Email</p>
+                          <p className="text-cinema-ivory">{selectedDistributor.contact_email}</p>
+                        </div>
+                        {selectedDistributor.contact_phone && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">Teléfono</p>
+                            <p className="text-cinema-ivory">{selectedDistributor.contact_phone}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs text-muted-foreground">Registrado</p>
+                          <p className="text-cinema-ivory">{formatDateShort(new Date(selectedDistributor.created_at))}</p>
+                        </div>
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs text-muted-foreground">Registrado</p>
-                      <p className="text-cinema-ivory">{formatDateShort(new Date(selectedDistributor.created_at))}</p>
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Label className="text-cinema-ivory">
-                      {selectedDistributor.is_active ? "Activa" : "Inactiva"}
-                    </Label>
-                    <Switch
-                      checked={selectedDistributor.is_active}
-                      onCheckedChange={() => toggleDistributorActive(selectedDistributor.id, selectedDistributor.is_active)}
-                    />
+                  <div className="flex flex-col gap-4 items-end">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-cinema-ivory">
+                        {selectedDistributor.is_active ? "Activa" : "Inactiva"}
+                      </Label>
+                      <Switch
+                        checked={selectedDistributor.is_active}
+                        onCheckedChange={() => toggleDistributorActive(selectedDistributor.id, selectedDistributor.is_active)}
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      {isEditing ? (
+                        <>
+                          <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                          <Button onClick={handleEditSave} disabled={loading}>Guardar</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="outline" onClick={() => setIsEditing(true)}>Editar</Button>
+                          <Button
+                            variant="destructive"
+                            className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20"
+                            onClick={handleDeleteDistributor}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Borrando..." : "Eliminar Usuario"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </Card>

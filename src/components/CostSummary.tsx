@@ -21,7 +21,9 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
     }).format(amount);
   };
 
-  const variableFeePercentage = costs.effectiveAdInvestment >= 100000 ? '6%' : '10%';
+  const variableFeePercentage = costs.variableFeeRate
+    ? `${(costs.variableFeeRate * 100).toLocaleString('es-ES')}%`
+    : (costs.effectiveAdInvestment >= 100000 ? '6%' : '10%'); // Fallback if rate missing
 
   if (compact) {
     if (!showPrices) {
@@ -145,7 +147,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       <div className="pt-4 space-y-2">
         {costs.setupFee > 0 && (
           <p className="text-xs text-primary bg-primary/10 p-3 rounded border border-primary/30">
-            ℹ️ Aplicamos un fee de setup de 150€ por plataforma seleccionada para la configuración de la campaña.
+            ℹ️ Aplicamos un fee de setup de 200€ por plataforma seleccionada para la configuración de la campaña.
           </p>
         )}
 
