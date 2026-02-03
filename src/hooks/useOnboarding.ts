@@ -14,7 +14,7 @@ export const useOnboarding = () => {
 
   const checkOnboardingStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (user) {
       // Check Supabase for distributor's onboarding status
       const { data: distributor } = await supabase
@@ -30,41 +30,45 @@ export const useOnboarding = () => {
       const completed = localStorage.getItem(ONBOARDING_KEY);
       setShowOnboarding(completed !== 'true');
     }
-    
+
     setIsLoading(false);
   };
 
-  const completeOnboarding = async () => {
+  const completeOnboarding = async (persist: boolean = true) => {
     trackEvent('onboarding_tour_completed');
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      await supabase
-        .from('distributors')
-        .update({ has_completed_onboarding: true })
-        .eq('id', user.id);
-    } else {
-      localStorage.setItem(ONBOARDING_KEY, 'true');
+
+    if (persist) {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from('distributors')
+          .update({ has_completed_onboarding: true })
+          .eq('id', user.id);
+      } else {
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+      }
     }
-    
+
     setShowOnboarding(false);
   };
 
-  const skipOnboarding = async () => {
+  const skipOnboarding = async (persist: boolean = true) => {
     trackEvent('onboarding_tour_skipped');
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-      await supabase
-        .from('distributors')
-        .update({ has_completed_onboarding: true })
-        .eq('id', user.id);
-    } else {
-      localStorage.setItem(ONBOARDING_KEY, 'true');
+
+    if (persist) {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        await supabase
+          .from('distributors')
+          .update({ has_completed_onboarding: true })
+          .eq('id', user.id);
+      } else {
+        localStorage.setItem(ONBOARDING_KEY, 'true');
+      }
     }
-    
+
     setShowOnboarding(false);
   };
 

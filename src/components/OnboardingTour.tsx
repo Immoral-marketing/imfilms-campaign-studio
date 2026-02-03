@@ -8,12 +8,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Clapperboard, LayoutDashboard, MessageSquare, Calendar, HelpCircle } from 'lucide-react';
 import HelpTooltip from '@/components/HelpTooltip';
 
 interface OnboardingTourProps {
-  onComplete: () => void;
-  onSkip: () => void;
+  onComplete: (persist: boolean) => void;
+  onSkip: (persist: boolean) => void;
 }
 
 const tourSteps = [
@@ -82,6 +84,7 @@ const tourSteps = [
 const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [open, setOpen] = useState(true);
+  const [dontShowAgain, setDontShowAgain] = useState(true);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -93,12 +96,12 @@ const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
 
   const handleComplete = () => {
     setOpen(false);
-    onComplete();
+    onComplete(dontShowAgain);
   };
 
   const handleSkip = () => {
     setOpen(false);
-    onSkip();
+    onSkip(dontShowAgain);
   };
 
   const step = tourSteps[currentStep];
@@ -133,7 +136,7 @@ const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
               </div>
               <p className="text-sm text-foreground/80 flex-1">{highlight}</p>
               {step.highlightTooltips && step.highlightTooltips[index] && (
-                <HelpTooltip 
+                <HelpTooltip
                   content={step.highlightTooltips[index]!}
                   title="Política de conflictos"
                 />
@@ -147,13 +150,12 @@ const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
           {tourSteps.map((_, index) => (
             <div
               key={index}
-              className={`h-2 rounded-full transition-all ${
-                index === currentStep
-                  ? 'w-8 bg-primary'
-                  : index < currentStep
+              className={`h-2 rounded-full transition-all ${index === currentStep
+                ? 'w-8 bg-primary'
+                : index < currentStep
                   ? 'w-2 bg-primary/40'
                   : 'w-2 bg-muted'
-              }`}
+                }`}
             />
           ))}
         </div>
@@ -166,6 +168,21 @@ const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
             {isLastStep ? '¡Empezar!' : 'Siguiente'}
           </Button>
         </DialogFooter>
+
+        <div className="flex items-center justify-center space-x-2 pt-4 mt-2 border-t border-border/40">
+          <Checkbox
+            id="dontShowAgain"
+            checked={dontShowAgain}
+            onCheckedChange={(checked) => setDontShowAgain(!!checked)}
+            className="border-muted-foreground/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+          <Label
+            htmlFor="dontShowAgain"
+            className="text-sm font-medium leading-none cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+          >
+            No volver a mostrar este tour
+          </Label>
+        </div>
       </DialogContent>
     </Dialog>
   );

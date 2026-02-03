@@ -337,6 +337,14 @@ const Wizard = () => {
         password: "",
         comments: "",
       });
+
+      // Auto-fill distributor name in Step 1 if user is logged in and field is empty
+      setFilmData(prev => {
+        if (!prev.distributorName && data.company_name) {
+          return { ...prev, distributorName: data.company_name };
+        }
+        return prev;
+      });
     }
   };
 
@@ -1812,8 +1820,8 @@ const Wizard = () => {
       {/* Onboarding Tour */}
       {showOnboarding && (
         <OnboardingTour
-          onComplete={completeOnboarding}
-          onSkip={skipOnboarding}
+          onComplete={(persist) => completeOnboarding(persist)}
+          onSkip={(persist) => skipOnboarding(persist)}
         />
       )}
 

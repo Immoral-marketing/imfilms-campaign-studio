@@ -267,14 +267,39 @@ const AdminDistributors = () => {
     });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { label: string; className: string }> = {
-      nuevo: { label: "Nuevo", className: "bg-primary/20 text-primary" },
-      revisando: { label: "Revisando", className: "bg-blue-500/20 text-blue-400" },
-      aprobado: { label: "Aprobado", className: "bg-green-500/20 text-green-400" },
-      rechazado: { label: "Rechazado", className: "bg-red-500/20 text-red-400" },
+    const styles: any = {
+      borrador: "bg-muted text-muted-foreground",
+      nuevo: "bg-muted text-muted-foreground",
+      en_revision: "bg-blue-500/20 text-blue-400",
+      revisando: "bg-blue-500/20 text-blue-400",
+      aprobada: "bg-green-500/20 text-green-400",
+      aprobado: "bg-green-500/20 text-green-400",
+      activa: "bg-green-500/20 text-green-400 animate-pulse",
+      creativos_en_revision: "bg-yellow-500/20 text-yellow-400",
+      finalizada: "bg-primary/20 text-primary",
+      pausada: "bg-muted text-muted-foreground",
+      rechazada: "bg-red-500/20 text-red-400",
+      rechazado: "bg-red-500/20 text-red-400",
     };
-    const variant = variants[status] || variants.nuevo;
-    return <Badge className={variant.className}>{variant.label}</Badge>;
+    const labels: any = {
+      borrador: "Borrador",
+      nuevo: "Borrador",
+      en_revision: "En revisión",
+      revisando: "En revisión",
+      aprobada: "Aprobada",
+      aprobado: "Aprobada",
+      activa: "Activa",
+      creativos_en_revision: "Creativos en revisión",
+      finalizada: "Finalizada",
+      pausada: "Pausada",
+      rechazada: "Rechazada",
+      rechazado: "Rechazada",
+    };
+    return (
+      <Badge className={styles[status] || styles.borrador}>
+        {labels[status] || status}
+      </Badge>
+    );
   };
 
   return (
@@ -561,20 +586,6 @@ const AdminDistributors = () => {
 
                           <div className="flex flex-col gap-2 items-end">
                             {getStatusBadge(campaign.status)}
-                            <Select
-                              value={campaign.status}
-                              onValueChange={(newStatus) => updateCampaignStatus(campaign.id, newStatus)}
-                            >
-                              <SelectTrigger className="w-36 h-8 text-xs bg-muted border-border">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="nuevo">Nuevo</SelectItem>
-                                <SelectItem value="revisando">Revisando</SelectItem>
-                                <SelectItem value="aprobado">Aprobado</SelectItem>
-                                <SelectItem value="rechazado">Rechazado</SelectItem>
-                              </SelectContent>
-                            </Select>
                           </div>
                         </div>
                       </Card>
