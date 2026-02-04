@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
-import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw } from "lucide-react";
+import DistributorAnalytics from "@/components/distributors/DistributorAnalytics";
+import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw, Activity } from "lucide-react";
 
 interface Distributor {
   id: string;
@@ -23,6 +24,7 @@ interface Distributor {
   created_at: string;
   campaigns_count?: number;
   last_campaign_date?: string;
+  access_count?: number;
 }
 
 interface Campaign {
@@ -63,21 +65,44 @@ const AdminDistributors = () => {
       // For each distributor, get campaign count and last campaign date
       const distributorsWithStats = await Promise.all(
         (distributorsData || []).map(async (dist) => {
+          // 1. Get campaigns stats
           const { data: campaigns, error: campError } = await supabase
             .from("campaigns")
             .select("created_at")
             .eq("distributor_id", dist.id)
             .order("created_at", { ascending: false });
 
+          // 2. Get access stats (via associated users)
+          // First get users for this distributor
+          const { data: distUsers, error: userError } = await supabase
+            .from("distributor_users")
+            .select("user_id")
+            .eq("distributor_id", dist.id);
+
+          let accessCount = 0;
+
+          if (distUsers && distUsers.length > 0) {
+            const userIds = distUsers.map(u => u.user_id);
+            const { count, error: accessError } = await supabase
+              .from("access_logs")
+              .select("*", { count: 'exact', head: true })
+              .in("user_id", userIds);
+
+            if (!accessError) {
+              accessCount = count || 0;
+            }
+          }
+
           if (campError) {
             console.error("Error loading campaigns for distributor:", campError);
-            return { ...dist, campaigns_count: 0, last_campaign_date: null };
+            return { ...dist, campaigns_count: 0, last_campaign_date: null, access_count: 0 };
           }
 
           return {
             ...dist,
             campaigns_count: campaigns?.length || 0,
             last_campaign_date: campaigns?.[0]?.created_at || null,
+            access_count: accessCount,
           };
         })
       );
@@ -361,6 +386,7 @@ const AdminDistributors = () => {
               <TableHead className="text-cinema-ivory">Email</TableHead>
               <TableHead className="text-cinema-ivory">Teléfono</TableHead>
               <TableHead className="text-cinema-ivory text-center">Campañas</TableHead>
+              <TableHead className="text-cinema-ivory text-center">Accesos</TableHead>
               <TableHead className="text-cinema-ivory">Última campaña</TableHead>
               <TableHead className="text-cinema-ivory text-center">Estado</TableHead>
             </TableRow>
@@ -400,6 +426,12 @@ const AdminDistributors = () => {
                     {distributor.campaigns_count || 0}
                   </Badge>
                 </TableCell>
+                <TableCell className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-cinema-ivory font-mono text-sm">
+                    <Activity className="w-3 h-3 text-muted-foreground" />
+                    {distributor.access_count || 0}
+                  </div>
+                </TableCell>
                 <TableCell className="text-cinema-ivory text-sm">
                   {distributor.last_campaign_date ? (
                     <div className="flex items-center gap-2">
@@ -435,7 +467,7 @@ const AdminDistributors = () => {
 
       {/* Distributor Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-background border-border">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-border">
           <DialogHeader>
             <DialogTitle className="font-cinema text-3xl text-primary">
               {selectedDistributor?.company_name}
@@ -444,6 +476,9 @@ const AdminDistributors = () => {
 
           {selectedDistributor && (
             <div className="space-y-6">
+              {/* Analytics */}
+              <DistributorAnalytics distributorId={selectedDistributor.id} />
+
               {/* Distributor Info */}
               <Card className="cinema-card p-6 space-y-4">
                 <div className="flex justify-between items-start">

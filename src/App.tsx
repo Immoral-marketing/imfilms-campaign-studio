@@ -21,10 +21,15 @@ import NotFound from "./pages/NotFound";
 import { performCompleteReset, isTestingMode } from "./utils/testingUtils";
 import SmoothScroll from "./components/SmoothScroll";
 import GlobalChatWidget from "./components/chat/GlobalChatWidget";
+import { useAccessLogger } from "./hooks/useAccessLogger";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+// Create a wrapper component to use the hook inside the provider context (if needed)
+// or just to keep the main App clean.
+const AppContent = () => {
+  useAccessLogger(); // Log access on mount/session start
+
   const showTestingButton = isTestingMode();
 
   const handleCompleteReset = async () => {
@@ -52,46 +57,52 @@ const App = () => {
   };
 
   return (
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+
+      {/* Botón temporal de reset solo visible en modo testing */}
+      {showTestingButton && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Button
+            onClick={handleCompleteReset}
+            variant="outline"
+            size="sm"
+            className="bg-destructive/10 border-destructive/50 text-destructive hover:bg-destructive/20 shadow-lg"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reset completo de pruebas
+          </Button>
+        </div>
+      )}
+
+      <SmoothScroll>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/wizard" element={<Wizard />} />
+            <Route path="/campaigns" element={<CampaignsHistory />} />
+            <Route path="/campaigns/:id" element={<CampaignDetail />} />
+            <Route path="/confirmation" element={<Confirmation />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/distributors" element={<AdminDistributors />} />
+            <Route path="/team" element={<TeamManagement />} />
+            <Route path="/casos-exito" element={<CasosExito />} />
+            <Route path="/demo" element={<DemoWizard />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <GlobalChatWidget />
+      </SmoothScroll>
+    </TooltipProvider>
+  );
+};
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-
-        {/* Botón temporal de reset solo visible en modo testing */}
-        {showTestingButton && (
-          <div className="fixed bottom-4 right-4 z-50">
-            <Button
-              onClick={handleCompleteReset}
-              variant="outline"
-              size="sm"
-              className="bg-destructive/10 border-destructive/50 text-destructive hover:bg-destructive/20 shadow-lg"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset completo de pruebas
-            </Button>
-          </div>
-        )}
-
-        <SmoothScroll>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/wizard" element={<Wizard />} />
-              <Route path="/campaigns" element={<CampaignsHistory />} />
-              <Route path="/campaigns/:id" element={<CampaignDetail />} />
-              <Route path="/confirmation" element={<Confirmation />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin/distributors" element={<AdminDistributors />} />
-              <Route path="/team" element={<TeamManagement />} />
-              <Route path="/casos-exito" element={<CasosExito />} />
-              <Route path="/demo" element={<DemoWizard />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-          <GlobalChatWidget />
-        </SmoothScroll>
-      </TooltipProvider>
+      <AppContent />
     </QueryClientProvider>
   );
 };
