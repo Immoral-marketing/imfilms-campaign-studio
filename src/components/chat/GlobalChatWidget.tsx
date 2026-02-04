@@ -97,7 +97,7 @@ const GlobalChatWidget = () => {
                 .select(`
                 id,
                 created_at,
-                films (
+                films!inner (
                     title
                 )
             `)
