@@ -1210,8 +1210,23 @@ const Wizard = () => {
                             selected={campaignEndDate}
                             onSelect={setCampaignEndDate}
                             disabled={(date) => date < campaignDates.premiereWeekendEnd}
+                            defaultMonth={releaseDate}
                             className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
                             weekStartsOn={1}
+                            modifiers={{
+                              creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                              preCampaign: campaignDates ? [
+                                { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                              ] : [],
+                              premiereWeekend: campaignDates ? [
+                                { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                              ] : [],
+                            }}
+                            modifiersClassNames={{
+                              creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                              preCampaign: "bg-primary/20 text-primary-foreground",
+                              premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                            }}
                           />
                         </div>
                       </div>

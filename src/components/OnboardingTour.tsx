@@ -84,7 +84,7 @@ const tourSteps = [
 const OnboardingTour = ({ onComplete, onSkip }: OnboardingTourProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [open, setOpen] = useState(true);
-  const [dontShowAgain, setDontShowAgain] = useState(true);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
