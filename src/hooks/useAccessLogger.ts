@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const LOG_INTERVAL = 1000 * 60 * 60; // 1 hour cooldown for logging
+const LOG_INTERVAL = 1000 * 60 * 30; // 30 minutes cooldown for logging
 
 export const useAccessLogger = () => {
     const [userId, setUserId] = useState<string | null>(null);
