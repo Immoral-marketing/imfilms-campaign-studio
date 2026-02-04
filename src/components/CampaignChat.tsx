@@ -18,9 +18,10 @@ interface Message {
 interface CampaignChatProps {
   campaignId: string;
   userRole: 'admin' | 'distributor';
+  minimal?: boolean;
 }
 
-const CampaignChat = ({ campaignId, userRole }: CampaignChatProps) => {
+const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -150,17 +151,19 @@ const CampaignChat = ({ campaignId, userRole }: CampaignChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full border border-border/40 rounded-lg overflow-hidden bg-muted/20">
+    <div className={`flex flex-col h-full overflow-hidden ${minimal ? '' : 'border border-border/40 rounded-lg bg-muted/20'}`}>
       {/* Header */}
-      <div className="border-b border-border/40 p-4 bg-background/50">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h3 className="font-cinema text-lg">Chat de campaña</h3>
+      {!minimal && (
+        <div className="border-b border-border/40 p-4 bg-background/50">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <h3 className="font-cinema text-lg">Chat de campaña</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Comunícate directamente con el equipo de imfilms
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Comunícate directamente con el equipo de imfilms
-        </p>
-      </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

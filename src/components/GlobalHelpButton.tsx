@@ -18,12 +18,12 @@ const GlobalHelpButton = ({ context }: GlobalHelpButtonProps) => {
         variant="outline"
         size="sm"
         onClick={() => setShowHelpCenter(true)}
-        className="gap-2 fixed bottom-6 right-6 z-50 shadow-lg cinema-glow pointer-events-auto"
+        className="gap-2 fixed bottom-6 left-6 z-50 shadow-lg cinema-glow pointer-events-auto"
       >
         <HelpCircle className="h-4 w-4" />
         Ayuda
       </Button>
-      
+
       <HelpCenterEnhanced
         open={showHelpCenter}
         onOpenChange={setShowHelpCenter}

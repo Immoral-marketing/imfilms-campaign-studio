@@ -20,6 +20,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { performCompleteReset, isTestingMode } from "./utils/testingUtils";
 import SmoothScroll from "./components/SmoothScroll";
+import GlobalChatWidget from "./components/chat/GlobalChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          <GlobalChatWidget />
         </SmoothScroll>
       </TooltipProvider>
     </QueryClientProvider>
