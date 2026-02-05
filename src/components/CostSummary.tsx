@@ -106,7 +106,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
 
           {costs.setupFee > 0 && (
             <div className="flex justify-between items-center py-1">
-              <span className="text-cinema-ivory text-sm">Fee setup (por plataforma):</span>
+              <span className="text-cinema-ivory text-sm">Fee setup (plataformas adicionales):</span>
               <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.setupFee)}</span>
             </div>
           )}
@@ -147,7 +147,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       <div className="pt-4 space-y-2">
         {costs.setupFee > 0 && (
           <p className="text-xs text-primary bg-primary/10 p-3 rounded border border-primary/30">
-            ℹ️ Aplicamos un fee de setup de 200€ por plataforma seleccionada para la configuración de la campaña.
+            ℹ️ Aplicamos un fee de setup de 200€ por cada plataforma adicional seleccionada (el primer canal es bonificado).
           </p>
         )}
 

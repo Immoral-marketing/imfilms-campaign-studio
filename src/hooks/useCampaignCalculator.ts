@@ -64,11 +64,11 @@ const getApplicableFees = (investment: number, numPlatforms: number) => {
   if (investment < 10000) {
     // Tier 1 (1k - 9999): Fixed + Setup + Variable
     if (numPlatforms > 0) fixedFee = FIXED_FEE;
-    setupFee = numPlatforms * PLATFORM_SETUP_FEE;
+    setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
   } else if (investment < 30000) {
     // Tier 2 (10k - 29999): Setup + Variable (No Fixed)
     fixedFee = 0;
-    setupFee = numPlatforms * PLATFORM_SETUP_FEE;
+    setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
   } else {
     // Tier 3 (30k+): Variable only (No Fixed, No Setup)
     fixedFee = 0;
@@ -88,7 +88,7 @@ const calculateEffectiveInvestmentFromBudget = (
   // Strategy: Try tiers from highest to lowest.
   // E = (B - F - S) / (1 + R)
 
-  const setupFeeForTier12 = numPlatforms * PLATFORM_SETUP_FEE;
+  const setupFeeForTier12 = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
   const fixedFeeForTier1 = FIXED_FEE;
 
   let effectiveInvestment: number;
