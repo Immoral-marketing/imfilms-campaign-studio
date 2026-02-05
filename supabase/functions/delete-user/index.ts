@@ -46,32 +46,52 @@ serve(async (req) => {
         // Proceeding with deletion requests
         const { userId, distributorId } = await req.json();
 
-        if (!userId) {
-            throw new Error("userId is required");
+        console.log(`Processing deletion for user: ${userId || 'N/A'} and distributor: ${distributorId || 'N/A'}`);
+
+        // 2. Delete the user from auth.users (if userId provided)
+        if (userId) {
+            const { error: deleteUserError } = await supabaseClient.auth.admin.deleteUser(
+                userId
+            );
+
+            if (deleteUserError) {
+                // If user doesn't exist, we don't want to block distributor deletion
+                if (deleteUserError.message?.includes('User not found')) {
+                    console.log("Auth user already gone, proceeding with cleanup.");
+                } else {
+                    console.error("Error deleting auth user:", deleteUserError);
+                    throw deleteUserError;
+                }
+            } else {
+                console.log("Auth user deleted successfully.");
+            }
         }
 
-        console.log(`Deleting user: ${userId} and distributor: ${distributorId}`);
-
-        // 2. Delete the user from auth.users (This is the critical part that requires Service Role)
-        const { error: deleteUserError } = await supabaseClient.auth.admin.deleteUser(
-            userId
-        );
-
-        if (deleteUserError) {
-            console.error("Error deleting auth user:", deleteUserError);
-            throw deleteUserError;
-        }
-
-        // 3. If distributorId provided, explicitly delete associated data if needed 
-        // (Cascade should handle most, but sometimes explicit cleanup is safer or required if cascade is missing)
+        // 3. If distributorId provided, explicitly delete associated data
         if (distributorId) {
-            // Delete campaigns explicitly (just in case cascade is missing on one level)
+            // Delete campaigns explicitly
             const { error: deleteCampaignsError } = await supabaseClient
                 .from('campaigns')
                 .delete()
                 .eq('distributor_id', distributorId);
 
             if (deleteCampaignsError) console.error("Error deleting campaigns:", deleteCampaignsError);
+
+            // Delete films explicitly (old table)
+            const { error: deleteFilmsError } = await supabaseClient
+                .from('films')
+                .delete()
+                .eq('distributor_id', distributorId);
+
+            if (deleteFilmsError) console.error("Error deleting films:", deleteFilmsError);
+
+            // Delete titles explicitly (new table)
+            const { error: deleteTitlesError } = await supabaseClient
+                .from('titles')
+                .delete()
+                .eq('distributor_id', distributorId);
+
+            if (deleteTitlesError) console.error("Error deleting titles:", deleteTitlesError);
 
             // Delete distributor record
             const { error: deleteDistError } = await supabaseClient
@@ -81,8 +101,9 @@ serve(async (req) => {
 
             if (deleteDistError) {
                 console.error("Error deleting distributor:", deleteDistError);
-                // We generally don't throw here if the user was already deleted, as the main goal involves freeing the email
+                throw deleteDistError; // Throw here because this is the primary record deletion
             }
+            console.log("Distributor record deleted successfully.");
         }
 
         return new Response(
