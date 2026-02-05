@@ -9,6 +9,7 @@ import CampaignChat from '@/components/CampaignChat';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useLocation } from 'react-router-dom';
 
 interface ChatCampaign {
     id: string;
@@ -26,8 +27,28 @@ const GlobalChatWidget = () => {
     const [userRole, setUserRole] = useState<'admin' | 'distributor' | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
 
+    const location = useLocation();
+
     useEffect(() => {
         checkUser();
+
+        // Listen for auth changes (login/logout)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUserId(session.user.id);
+                fetchUserRole(session.user.id);
+            } else {
+                setUserId(null);
+                setUserRole(null);
+                setCampaigns([]);
+                setIsOpen(false);
+                setActiveCampaignId(null);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     useEffect(() => {
@@ -74,16 +95,19 @@ const GlobalChatWidget = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             setUserId(user.id);
-            // Check if admin
-            const { data: adminRole } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', user.id)
-                .eq('role', 'admin')
-                .maybeSingle();
-
-            setUserRole(adminRole ? 'admin' : 'distributor');
+            fetchUserRole(user.id);
         }
+    };
+
+    const fetchUserRole = async (uid: string) => {
+        const { data: adminRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', uid)
+            .eq('role', 'admin')
+            .maybeSingle();
+
+        setUserRole(adminRole ? 'admin' : 'distributor');
     };
 
     const fetchCampaigns = async () => {
@@ -205,7 +229,13 @@ const GlobalChatWidget = () => {
         markMessagesAsRead(campaignId);
     };
 
-    if (!userRole) return null; // Don't show if not logged in
+    // Only show on dashboard-related pages
+    const isDashboardPage =
+        location.pathname.startsWith('/campaigns') ||
+        location.pathname.startsWith('/admin') ||
+        location.pathname.startsWith('/team');
+
+    if (!userRole || !isDashboardPage) return null;
 
     const totalUnread = campaigns.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
 
