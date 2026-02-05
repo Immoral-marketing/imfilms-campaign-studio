@@ -12,8 +12,9 @@ import { Day } from "react-day-picker";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText } from "lucide-react";
+import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff } from "lucide-react";
 import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
@@ -120,6 +121,13 @@ const Wizard = () => {
   const [justRegistered, setJustRegistered] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Step 5 Email Verification
+  const [step5VerificationState, setStep5VerificationState] = useState<"form" | "code" | "verified">("form");
+  const [step5VerificationCode, setStep5VerificationCode] = useState("");
+  const [step5VerificationLoading, setStep5VerificationLoading] = useState(false);
+  const [showStep5Password, setShowStep5Password] = useState(false);
+  const [countryCode, setCountryCode] = useState("+34");
 
   // Onboarding
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
@@ -556,10 +564,73 @@ const Wizard = () => {
     }
   };
 
+  // Step 5: Send verification code
+  const handleStep5SendVerification = async () => {
+    if (!signupData.contactEmail) {
+      toast.error("Por favor introduce tu email");
+      return;
+    }
+
+    setStep5VerificationLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          type: "verification_code",
+          recipientEmail: signupData.contactEmail,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Error al enviar código");
+
+      toast.success(`Código enviado a ${signupData.contactEmail}`);
+      setStep5VerificationState("code");
+    } catch (error: any) {
+      toast.error(error.message || "Error al enviar código");
+    } finally {
+      setStep5VerificationLoading(false);
+    }
+  };
+
+  // Step 5: Verify code
+  const handleStep5VerifyCode = async () => {
+    if (step5VerificationCode.length !== 4) {
+      toast.error("El código debe tener 4 dígitos");
+      return;
+    }
+
+    setStep5VerificationLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          type: "verify_code",
+          recipientEmail: signupData.contactEmail,
+          code: step5VerificationCode,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Código inválido");
+
+      toast.success("¡Email verificado correctamente!");
+      setStep5VerificationState("verified");
+    } catch (error: any) {
+      toast.error(error.message || "Código incorrecto o expirado");
+    } finally {
+      setStep5VerificationLoading(false);
+    }
+  };
+
   const handleCreateAccount = async () => {
     // Validate signup data
     if (!signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password) {
       toast.error("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    // REQUIRED: Email must be verified
+    if (step5VerificationState !== "verified") {
+      toast.error("Por favor verifica tu email antes de continuar");
       return;
     }
 
@@ -577,7 +648,7 @@ const Wizard = () => {
           data: {
             company_name: signupData.companyName,
             contact_name: signupData.contactName,
-            contact_phone: signupData.contactPhone,
+            contact_phone: `${countryCode} ${signupData.contactPhone}`,
           },
           emailRedirectTo: redirectUrl,
         },
@@ -620,7 +691,7 @@ const Wizard = () => {
         addons: Object.entries(selectedAddons)
           .filter(([_, selected]) => selected)
           .map(([type]) => type),
-        contactData: signupData,
+        contactData: { ...signupData, contactPhone: `${countryCode} ${signupData.contactPhone}` },
         notifyAdmin: true
       };
 
@@ -1692,39 +1763,130 @@ const Wizard = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="contact-email" className="text-cinema-ivory">Email *</Label>
-                      <Input
-                        id="contact-email"
-                        type="email"
-                        value={signupData.contactEmail}
-                        onChange={(e) => setSignupData({ ...signupData, contactEmail: e.target.value })}
-                        className="bg-muted border-border text-foreground"
-                        required
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          value={signupData.contactEmail}
+                          onChange={(e) => {
+                            setSignupData({ ...signupData, contactEmail: e.target.value });
+                            // Reset verification if email changes after being verified
+                            if (step5VerificationState !== "form") {
+                              setStep5VerificationState("form");
+                              setStep5VerificationCode("");
+                            }
+                          }}
+                          className="bg-muted border-border text-foreground flex-1"
+                          placeholder="tu@email.com"
+                          required
+                          disabled={step5VerificationState === "verified"}
+                        />
+                        {step5VerificationState === "verified" ? (
+                          <div className="flex items-center gap-2 px-4 py-2 bg-green-900/30 border border-green-600/50 rounded-md text-green-400 text-sm">
+                            <Check className="w-4 h-4" /> Verificado
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleStep5SendVerification}
+                            disabled={!signupData.contactEmail || step5VerificationLoading}
+                            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground whitespace-nowrap"
+                          >
+                            {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                              step5VerificationState === "code" ? "Reenviar" : "Verificar email"}
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* OTP Code Input */}
+                      {step5VerificationState === "code" && (
+                        <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border space-y-4 animate-in fade-in slide-in-from-top-2">
+                          <p className="text-sm text-cinema-ivory">
+                            Introduce el código de 4 dígitos enviado a <span className="text-primary">{signupData.contactEmail}</span>
+                          </p>
+                          <div className="flex items-center gap-4">
+                            <InputOTP
+                              maxLength={4}
+                              value={step5VerificationCode}
+                              onChange={setStep5VerificationCode}
+                            >
+                              <InputOTPGroup className="gap-2">
+                                <InputOTPSlot index={0} className="w-12 h-12 text-xl border-primary/50" />
+                                <InputOTPSlot index={1} className="w-12 h-12 text-xl border-primary/50" />
+                                <InputOTPSlot index={2} className="w-12 h-12 text-xl border-primary/50" />
+                                <InputOTPSlot index={3} className="w-12 h-12 text-xl border-primary/50" />
+                              </InputOTPGroup>
+                            </InputOTP>
+                            <Button
+                              type="button"
+                              onClick={handleStep5VerifyCode}
+                              disabled={step5VerificationCode.length !== 4 || step5VerificationLoading}
+                              className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-black"
+                            >
+                              {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="contact-phone" className="text-cinema-ivory">Teléfono *</Label>
-                      <Input
-                        id="contact-phone"
-                        type="tel"
-                        value={signupData.contactPhone}
-                        onChange={(e) => setSignupData({ ...signupData, contactPhone: e.target.value })}
-                        className="bg-muted border-border text-foreground"
-                        required
-                      />
+                      <div className="flex gap-2">
+                        <Select value={countryCode} onValueChange={setCountryCode}>
+                          <SelectTrigger className="w-[100px] bg-muted border-border text-foreground">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                            <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                            <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                            <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                            <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                            <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                            <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                            <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                            <SelectItem value="+54">🇦🇷 +54</SelectItem>
+                            <SelectItem value="+55">🇧🇷 +55</SelectItem>
+                            <SelectItem value="+56">🇨🇱 +56</SelectItem>
+                            <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                            <SelectItem value="+58">🇻🇪 +58</SelectItem>
+                            <SelectItem value="+51">🇵🇪 +51</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          id="contact-phone"
+                          type="tel"
+                          value={signupData.contactPhone}
+                          onChange={(e) => setSignupData({ ...signupData, contactPhone: e.target.value })}
+                          className="bg-muted border-border text-foreground flex-1"
+                          placeholder="612 345 678"
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="password" className="text-cinema-ivory">Contraseña *</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={signupData.password}
-                        onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                        className="bg-muted border-border text-foreground"
-                        placeholder="Mínimo 6 caracteres"
-                        required
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showStep5Password ? "text" : "password"}
+                          value={signupData.password}
+                          onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                          className="bg-muted border-border text-foreground pr-10"
+                          placeholder="Mínimo 6 caracteres"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStep5Password(!showStep5Password)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                        >
+                          {showStep5Password ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1802,10 +1964,10 @@ const Wizard = () => {
                 {!isDistributor ? (
                   <Button
                     onClick={handleCreateAccount}
-                    disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password}
+                    disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password || step5VerificationState !== "verified"}
                     className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
                   >
-                    {loading ? "Creando cuenta..." : "Crear cuenta y ver mi presupuesto"}
+                    {loading ? "Creando cuenta..." : step5VerificationState !== "verified" ? "Verifica tu email para continuar" : "Crear cuenta y ver mi presupuesto"}
                   </Button>
                 ) : (
                   <Button
