@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,6 +26,7 @@ const GlobalChatWidget = () => {
     const [loading, setLoading] = useState(false);
     const [userRole, setUserRole] = useState<'admin' | 'distributor' | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
+    const widgetRef = useRef<HTMLDivElement>(null);
 
     const location = useLocation();
 
@@ -50,6 +51,23 @@ const GlobalChatWidget = () => {
             subscription.unsubscribe();
         };
     }, []);
+
+    // Handle click outside to close
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (widgetRef.current && !widgetRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         if (userId) {
@@ -241,110 +259,114 @@ const GlobalChatWidget = () => {
 
     if (!isOpen) {
         return (
-            <Button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-50 cinema-glow p-0"
-            >
-                <MessageSquare className="h-6 w-6" />
-                {totalUnread > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full border-2 border-background flex items-center justify-center">
-                        {totalUnread > 9 ? '9+' : totalUnread}
-                    </span>
-                )}
-            </Button>
+            <div ref={widgetRef}>
+                <Button
+                    onClick={() => setIsOpen(true)}
+                    className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl z-50 cinema-glow p-0"
+                >
+                    <MessageSquare className="h-6 w-6" />
+                    {totalUnread > 0 && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs font-bold rounded-full border-2 border-background flex items-center justify-center">
+                            {totalUnread > 9 ? '9+' : totalUnread}
+                        </span>
+                    )}
+                </Button>
+            </div>
         );
     }
 
     return (
-        <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-2xl z-50 flex flex-col overflow-hidden border-cinema-gold/30 bg-background/95 backdrop-blur-sm animate-in slide-in-from-bottom-10 fade-in duration-200">
-            {/* Header */}
-            <div className="p-3 border-b border-border/40 flex items-center justify-between bg-muted/30">
-                <div className="flex items-center gap-2">
-                    {activeCampaignId && (
+        <div ref={widgetRef}>
+            <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-2xl z-50 flex flex-col overflow-hidden border-cinema-gold/30 bg-background/95 backdrop-blur-sm animate-in slide-in-from-bottom-10 fade-in duration-200">
+                {/* Header */}
+                <div className="p-3 border-b border-border/40 flex items-center justify-between bg-muted/30">
+                    <div className="flex items-center gap-2">
+                        {activeCampaignId && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 -ml-1"
+                                onClick={() => setActiveCampaignId(null)}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                        )}
+                        <span className="font-cinema text-lg">
+                            {activeCampaignId ? 'Chat' : 'Mensajes'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 -ml-1"
-                            onClick={() => setActiveCampaignId(null)}
+                            className="h-8 w-8"
+                            onClick={() => setIsOpen(false)}
                         >
-                            <ChevronLeft className="h-4 w-4" />
+                            <Minimize2 className="h-4 w-4" />
                         </Button>
-                    )}
-                    <span className="font-cinema text-lg">
-                        {activeCampaignId ? 'Chat' : 'Mensajes'}
-                    </span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setIsOpen(false)}
-                    >
-                        <Minimize2 className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-hidden">
-                {activeCampaignId ? (
-                    <CampaignChat
-                        campaignId={activeCampaignId}
-                        userRole={userRole}
-                        minimal={true}
-                    />
-                ) : (
-                    <ScrollArea className="h-full">
-                        {loading ? (
-                            <div className="flex justify-center items-center h-40">
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
-                        ) : campaigns.length === 0 ? (
-                            <div className="p-6 text-center text-muted-foreground text-sm">
-                                No tienes campañas activas.
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-border/20">
-                                {campaigns.map((campaign) => (
-                                    <button
-                                        key={campaign.id}
-                                        onClick={() => handleCampaignClick(campaign.id)}
-                                        className="w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-start gap-3 relative group"
-                                    >
-                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 relative">
-                                            <MessageSquare className="h-5 w-5 text-primary" />
-                                            {campaign.unread_count ? (
-                                                <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
-                                                    {campaign.unread_count > 9 ? '9+' : campaign.unread_count}
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                    {activeCampaignId ? (
+                        <CampaignChat
+                            campaignId={activeCampaignId}
+                            userRole={userRole}
+                            minimal={true}
+                        />
+                    ) : (
+                        <ScrollArea className="h-full">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-40">
+                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                </div>
+                            ) : campaigns.length === 0 ? (
+                                <div className="p-6 text-center text-muted-foreground text-sm">
+                                    No tienes campañas activas.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border/20">
+                                    {campaigns.map((campaign) => (
+                                        <button
+                                            key={campaign.id}
+                                            onClick={() => handleCampaignClick(campaign.id)}
+                                            className="w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-start gap-3 relative group"
+                                        >
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 relative">
+                                                <MessageSquare className="h-5 w-5 text-primary" />
+                                                {campaign.unread_count ? (
+                                                    <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+                                                        {campaign.unread_count > 9 ? '9+' : campaign.unread_count}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <p className={`font-medium text-sm truncate pr-2 ${campaign.unread_count ? 'text-foreground font-bold' : 'text-foreground/90'}`}>
+                                                        {campaign.film_title}
+                                                    </p>
+                                                    {campaign.last_message_at && (
+                                                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                            {format(new Date(campaign.last_message_at), "d MMM", { locale: es })}
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            ) : null}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start">
-                                                <p className={`font-medium text-sm truncate pr-2 ${campaign.unread_count ? 'text-foreground font-bold' : 'text-foreground/90'}`}>
-                                                    {campaign.film_title}
-                                                </p>
-                                                {campaign.last_message_at && (
-                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                                        {format(new Date(campaign.last_message_at), "d MMM", { locale: es })}
-                                                    </span>
-                                                )}
+                                                <div className="flex justify-between items-center mt-1">
+                                                    <p className={`text-xs truncate max-w-[220px] ${campaign.unread_count ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                                        {campaign.last_message_preview || 'Haz clic para ver la conversación'}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="flex justify-between items-center mt-1">
-                                                <p className={`text-xs truncate max-w-[220px] ${campaign.unread_count ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                                                    {campaign.last_message_preview || 'Haz clic para ver la conversación'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </ScrollArea>
-                )}
-            </div>
-        </Card>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    )}
+                </div>
+            </Card>
+        </div>
     );
 };
 
