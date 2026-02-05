@@ -31,21 +31,17 @@ serve(async (req) => {
             throw new Error("Invalid token");
         }
 
-        // Check if user has admin role (you might want to adjust this check based on your specific admin logic)
-        // For now, we trust the client to only call this if they are admin, but ideally we check the admin_users table or metadata
-        const { data: adminUser } = await supabaseClient
-            .from("admin_users")
-            .select("id")
-            .eq("id", user.id) // Assuming admin_users table links to auth.users.id via some mechanism or we check metadata
-        // If admin_users stores a separate username/password validation, we might rely on the fact that ONLY admins can see the button in the UI
-        // But for better security, let's check if the caller has the 'admin' role in app_role or similar if applicable.
-        // In this project, `admin_users` table seems to be for login credentials separation.
-        // A better check is if the USER calling this is authenticated. We already did that.
-        // Let's add a basic check if the user is in the admin_users table (if linking exists) or just proceed if they are authenticated 
-        // and we rely on RLS policies for the UI visibility. 
-        // Ideally: 
-        // const { data: isAdmin } = await supabaseClient.rpc('is_admin', { user_id: user.id });
-        // if (!isAdmin) throw new Error("Unauthorized");
+        // Check if user has admin role
+        const { data: role, error: roleError } = await supabaseClient
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("role", "admin")
+            .single();
+
+        if (roleError || !role) {
+            throw new Error("You do not have permission to perform this action");
+        }
 
         // Proceeding with deletion requests
         const { userId, distributorId } = await req.json();
