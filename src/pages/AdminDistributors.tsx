@@ -12,7 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import DistributorAnalytics from "@/components/distributors/DistributorAnalytics";
-import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw, Activity } from "lucide-react";
+import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw, Activity, StickyNote } from "lucide-react";
+import CampaignNotesModal from "@/components/CampaignNotesModal";
 
 interface Distributor {
   id: string;
@@ -50,6 +51,9 @@ const AdminDistributors = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Distributor>>({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedCampaignForNotes, setSelectedCampaignForNotes] = useState<any>(null);
+  const [pendingNotesCounts, setPendingNotesCounts] = useState<Record<string, number>>({});
 
   const loadDistributors = async () => {
     setLoading(true);
@@ -83,7 +87,7 @@ const AdminDistributors = () => {
 
           if (distUsers && distUsers.length > 0) {
             const userIds = distUsers.map(u => u.user_id);
-            const { count, error: accessError } = await supabase
+            const { count, error: accessError } = await (supabase as any)
               .from("access_logs")
               .select("*", { count: 'exact', head: true })
               .in("user_id", userIds);
@@ -108,6 +112,7 @@ const AdminDistributors = () => {
       );
 
       setDistributors(distributorsWithStats);
+      await fetchPendingNotesCounts();
     } catch (error: any) {
       console.error("Error loading distributors:", error);
       toast.error("Error al cargar distribuidoras");
@@ -139,6 +144,25 @@ const AdminDistributors = () => {
     } catch (error: any) {
       console.error("Error loading distributor campaigns:", error);
       toast.error("Error al cargar campañas de la distribuidora");
+    }
+  };
+
+  const fetchPendingNotesCounts = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('campaign_notes')
+        .select('campaign_id')
+        .eq('is_done', false);
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      data?.forEach((note: any) => {
+        counts[note.campaign_id] = (counts[note.campaign_id] || 0) + 1;
+      });
+      setPendingNotesCounts(counts);
+    } catch (error) {
+      console.error("Error fetching pending notes counts:", error);
     }
   };
 
@@ -620,7 +644,25 @@ const AdminDistributors = () => {
                           </div>
 
                           <div className="flex flex-col gap-2 items-end">
-                            {getStatusBadge(campaign.status)}
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCampaignForNotes(campaign);
+                                  setShowNotesModal(true);
+                                }}
+                                className="text-muted-foreground hover:text-primary transition-colors p-1 relative"
+                                title="Notas internas"
+                              >
+                                <StickyNote className="w-4 h-4" />
+                                {pendingNotesCounts[campaign.id] > 0 && (
+                                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-background flex items-center justify-center">
+                                    {pendingNotesCounts[campaign.id] > 9 ? '9+' : pendingNotesCounts[campaign.id]}
+                                  </span>
+                                )}
+                              </button>
+                              {getStatusBadge(campaign.status)}
+                            </div>
                           </div>
                         </div>
                       </Card>
@@ -632,6 +674,15 @@ const AdminDistributors = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Notes Modal */}
+      <CampaignNotesModal
+        open={showNotesModal}
+        onOpenChange={setShowNotesModal}
+        campaignId={selectedCampaignForNotes?.id || null}
+        campaignTitle={selectedCampaignForNotes?.films?.title || ""}
+        onNotesChange={fetchPendingNotesCounts}
+      />
     </div>
   );
 };

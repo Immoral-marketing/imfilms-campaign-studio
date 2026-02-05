@@ -10,12 +10,13 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminDistributors from "./AdminDistributors";
+import CampaignNotesModal from "@/components/CampaignNotesModal";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -43,6 +44,11 @@ const CampaignsHistory = () => {
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Notes Modal State
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedCampaignForNotes, setSelectedCampaignForNotes] = useState<any>(null);
+  const [pendingNotesCounts, setPendingNotesCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     checkAuth();
@@ -111,11 +117,34 @@ const CampaignsHistory = () => {
 
       if (campaignsError) throw campaignsError;
       setCampaigns(campaignsData || []);
+
+      if (isUserAdmin) {
+        await fetchPendingNotesCounts();
+      }
     } catch (error: any) {
       console.error("Error loading data:", error);
       toast.error("Error al cargar tus campañas");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingNotesCounts = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('campaign_notes')
+        .select('campaign_id')
+        .eq('is_done', false);
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      data?.forEach((note: any) => {
+        counts[note.campaign_id] = (counts[note.campaign_id] || 0) + 1;
+      });
+      setPendingNotesCounts(counts);
+    } catch (error) {
+      console.error("Error fetching pending notes counts:", error);
     }
   };
 
@@ -748,16 +777,34 @@ const CampaignsHistory = () => {
                                 {campaign.films?.title || "Sin título"}
                               </h3>
                               {isAdmin && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteCampaign(campaign.id, campaign.films?.title);
-                                  }}
-                                  className="ml-2 text-muted-foreground hover:text-red-500 transition-colors p-1"
-                                  title="Eliminar campaña"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedCampaignForNotes(campaign);
+                                      setShowNotesModal(true);
+                                    }}
+                                    className="text-muted-foreground hover:text-primary transition-colors p-1 relative"
+                                    title="Notas internas"
+                                  >
+                                    <StickyNote className="w-4 h-4" />
+                                    {pendingNotesCounts[campaign.id] > 0 && (
+                                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-background flex items-center justify-center">
+                                        {pendingNotesCounts[campaign.id] > 9 ? '9+' : pendingNotesCounts[campaign.id]}
+                                      </span>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCampaign(campaign.id, campaign.films?.title);
+                                    }}
+                                    className="text-muted-foreground hover:text-red-500 transition-colors p-1"
+                                    title="Eliminar campaña"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                             <div className="flex flex-col gap-1">
@@ -928,6 +975,14 @@ const CampaignsHistory = () => {
         </div>
       )}
 
+      {/* Notes Modal */}
+      <CampaignNotesModal
+        open={showNotesModal}
+        onOpenChange={setShowNotesModal}
+        campaignId={selectedCampaignForNotes?.id || null}
+        campaignTitle={selectedCampaignForNotes?.films?.title || ""}
+        onNotesChange={fetchPendingNotesCounts}
+      />
     </div>
   );
 };
