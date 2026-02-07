@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface Message {
@@ -150,6 +150,30 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
     }
   };
 
+  // Helper to group messages by date
+  const groupMessagesByDate = (msgs: Message[]) => {
+    const groups: { date: string; messages: Message[] }[] = [];
+    msgs.forEach((msg) => {
+      const date = startOfDay(new Date(msg.created_at)).toISOString();
+      let group = groups.find((g) => g.date === date);
+      if (!group) {
+        group = { date, messages: [] };
+        groups.push(group);
+      }
+      group.messages.push(msg);
+    });
+    return groups;
+  };
+
+  const getRelativeDateLabel = (dateIso: string) => {
+    const d = new Date(dateIso);
+    if (isToday(d)) return 'Hoy';
+    if (isYesterday(d)) return 'Ayer';
+    return format(d, "d 'de' MMMM", { locale: es });
+  };
+
+  const messageGroups = groupMessagesByDate(messages);
+
   return (
     <div className={`flex flex-col h-full overflow-hidden ${minimal ? '' : 'border border-border/40 rounded-lg bg-muted/20'}`}>
       {/* Header */}
@@ -171,7 +195,7 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">Cargando mensajes...</p>
           </div>
-        ) : messages.length === 0 ? (
+        ) : messageGroups.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-2">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
@@ -181,32 +205,41 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
             </div>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isOwn = msg.sender_role === userRole;
-            return (
-              <div
-                key={msg.id}
-                className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-3 ${isOwn
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-background border border-border/40'
-                    }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold">
-                      {isOwn ? 'Tú' : (msg.sender_name || (msg.sender_role === 'admin' ? 'imfilms' : 'Distribuidora'))}
-                    </span>
-                    <span className="text-xs opacity-70">
-                      {format(new Date(msg.created_at), "HH:mm", { locale: es })}
-                    </span>
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                </div>
+          messageGroups.map((group) => (
+            <div key={group.date} className="space-y-4">
+              <div className="flex justify-center my-4">
+                <span className="text-[10px] uppercase tracking-wider font-semibold bg-muted/50 px-2 py-1 rounded text-muted-foreground border border-border/20">
+                  {getRelativeDateLabel(group.date)}
+                </span>
               </div>
-            );
-          })
+              {group.messages.map((msg) => {
+                const isOwn = msg.sender_role === userRole;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${isOwn
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background border border-border/40'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold">
+                          {isOwn ? 'Tú' : (msg.sender_name || (msg.sender_role === 'admin' ? 'imfilms' : 'Distribuidora'))}
+                        </span>
+                        <span className="text-xs opacity-70">
+                          {format(new Date(msg.created_at), "d MMM, HH:mm", { locale: es })}
+                        </span>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>

@@ -161,8 +161,8 @@ const EditFilmInfoDialog = ({ film, platforms = [], campaignId, disabled, childr
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto cinema-scrollbar">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto cinema-scrollbar p-6">
+                <DialogHeader className="mb-6">
                     <DialogTitle className="font-cinema text-2xl">Editar Información de la Campaña</DialogTitle>
                     <DialogDescription>
                         Los cambios que propongas serán revisados por un administrador antes de aplicarse.
