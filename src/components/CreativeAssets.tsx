@@ -41,6 +41,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const loadAssets = async () => {
     setLoading(true);
@@ -66,6 +67,9 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
 
   useEffect(() => {
     loadAssets();
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id || null);
+    });
   }, [campaignId]);
 
   const handleRename = async (assetId: string) => {
@@ -227,12 +231,17 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
         }
       }
 
-      const { error: dbError } = await supabase
+      const { data, error: dbError } = await supabase
         .from("campaign_assets")
         .delete()
-        .eq("id", asset.id);
+        .eq("id", asset.id)
+        .select();
 
       if (dbError) throw dbError;
+
+      if (!data || data.length === 0) {
+        throw new Error("No se ha podido eliminar el registro de la base de datos. Es posible que no tengas permisos suficientes.");
+      }
 
       toast({
         title: "Archivo eliminado",
@@ -435,7 +444,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
                             <p className="font-medium text-cinema-ivory text-lg">
                               {asset.name || asset.original_filename || "Sin nombre"}
                             </p>
-                            {(isAdmin || asset.uploaded_by === (supabase.auth.getUser() as any)?.id) && (
+                            {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
                               <button
                                 onClick={() => startEditing(asset)}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity text-cinema-ivory/40 hover:text-cinema-yellow"
@@ -469,7 +478,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
 
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
-                          {(isAdmin || asset.uploaded_by === (supabase.auth.getUser() as any)?.id) && (
+                          {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
                             <Button
                               variant="ghost"
                               size="icon"
