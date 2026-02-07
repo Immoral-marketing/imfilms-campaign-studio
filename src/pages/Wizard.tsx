@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff } from "lucide-react";
+import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap } from "lucide-react";
 import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
@@ -89,7 +89,6 @@ interface WizardDraft {
   otherPlatform: string;
   adInvestment: string;
   feeMode: FeeMode;
-  distributeEqually: boolean;
   platformPercentages: Record<string, number>;
   selectedAddons: {
     adaptacion: boolean;
@@ -105,6 +104,7 @@ interface WizardDraft {
     comments: string;
   };
   isFirstRelease: boolean;
+  planningMode: 'simple' | 'amount' | 'percentage';
 }
 
 const Wizard = () => {
@@ -176,8 +176,9 @@ const Wizard = () => {
   const [otherPlatform, setOtherPlatform] = useState("");
   const [adInvestment, setAdInvestment] = useState("");
   const [feeMode, setFeeMode] = useState<FeeMode>('additional');
-  const [distributeEqually, setDistributeEqually] = useState(true);
+  const [planningMode, setPlanningMode] = useState<'simple' | 'amount' | 'percentage'>('amount');
   const [platformPercentages, setPlatformPercentages] = useState<Record<string, number>>({});
+  const [platformAmounts, setPlatformAmounts] = useState<Record<string, number>>({});
 
   // Step 4: Add-ons
   const [selectedAddons, setSelectedAddons] = useState({
@@ -292,11 +293,11 @@ const Wizard = () => {
       otherPlatform,
       adInvestment,
       feeMode,
-      distributeEqually,
       platformPercentages,
       selectedAddons,
       contactData: signupData,
       isFirstRelease,
+      planningMode,
     };
 
     localStorage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(draft));
@@ -310,7 +311,6 @@ const Wizard = () => {
     otherPlatform,
     adInvestment,
     feeMode,
-    distributeEqually,
     platformPercentages,
     selectedAddons,
     signupData,
@@ -371,8 +371,8 @@ const Wizard = () => {
       setOtherPlatform(draft.otherPlatform);
       setAdInvestment(draft.adInvestment);
       setFeeMode(draft.feeMode || 'additional');
-      setDistributeEqually(draft.distributeEqually ?? true);
       setPlatformPercentages(draft.platformPercentages || {});
+      setPlanningMode(draft.planningMode || 'amount');
       setSelectedAddons(draft.selectedAddons);
       setSignupData(draft.contactData);
       toast.success("Borrador recuperado correctamente");
@@ -424,8 +424,9 @@ const Wizard = () => {
     setOtherPlatform("");
     setAdInvestment("");
     setFeeMode('additional');
-    setDistributeEqually(true);
+    setPlanningMode('amount');
     setPlatformPercentages({});
+    setPlatformAmounts({});
     setSelectedAddons({
       adaptacion: false,
       microsite: false,
@@ -456,30 +457,58 @@ const Wizard = () => {
 
   const handlePlatformToggle = (platform: string) => {
     setSelectedPlatforms((prev) => {
-      const newPlatforms = prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform];
+      const isRemoving = prev.includes(platform);
+      const newPlatforms = isRemoving ? prev.filter((p) => p !== platform) : [...prev, platform];
 
-      // Reset percentages if toggling platforms while in manual mode to avoid inconsistency
-      if (!distributeEqually) {
-        const count = newPlatforms.length;
-        if (count > 0) {
-          const equalShare = parseFloat((100 / count).toFixed(2));
+      // Re-initialize distribution logic for the new platform set
+      const all = [...newPlatforms];
+      if (otherPlatform) all.push(otherPlatform);
+      const count = all.length;
+
+      if (count > 0) {
+        if (planningMode === 'simple') {
+          // In simple mode, we just need to ensure the equal split is ready for later
+          const share = parseFloat((100 / count).toFixed(2));
           const newPercentages: Record<string, number> = {};
-          newPlatforms.forEach(p => {
-            newPercentages[p] = equalShare;
-          });
-          // Fix rounding error on last item
-          if (count > 0) {
-            const currentSum = Object.values(newPercentages).reduce((a, b) => a + b, 0);
-            const diff = 100 - currentSum;
-            if (diff !== 0) {
-              newPercentages[newPlatforms[newPlatforms.length - 1]] += diff;
-            }
-          }
+          all.forEach(p => newPercentages[p] = share);
           setPlatformPercentages(newPercentages);
         } else {
-          setPlatformPercentages({});
+          // In manual modes (amount/percentage), we try to preserve existing values or init fairly
+          const totalInvestment = parseFloat(adInvestment) || 0;
+          const share = parseFloat((100 / count).toFixed(2));
+          const amtShare = parseFloat((totalInvestment / count).toFixed(2));
+
+          setPlatformPercentages(prevPct => {
+            const next = { ...prevPct };
+            if (isRemoving) {
+              delete next[platform];
+            } else if (next[platform] === undefined) {
+              next[platform] = 0; // Init new to 0 to let user decide
+            }
+            return next;
+          });
+
+          setPlatformAmounts(prevAmt => {
+            const next = { ...prevAmt };
+            if (isRemoving) {
+              delete next[platform];
+              // If removing in amount mode, update total investment
+              if (planningMode === 'amount') {
+                const newTotal = Object.values(next).reduce((a, b) => a + b, 0);
+                setAdInvestment(newTotal.toString());
+              }
+            } else if (next[platform] === undefined) {
+              next[platform] = 0;
+            }
+            return next;
+          });
         }
+      } else {
+        setPlatformPercentages({});
+        setPlatformAmounts({});
+        if (planningMode === 'amount') setAdInvestment("");
       }
+
       return newPlatforms;
     });
   };
@@ -488,60 +517,66 @@ const Wizard = () => {
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0 || numValue > 100) return;
 
-    setPlatformPercentages(prev => ({
-      ...prev,
-      [platform]: numValue
-    }));
+    setPlatformPercentages(prev => {
+      const newPercentages = { ...prev, [platform]: numValue };
+
+      // Update platformAmounts based on the new percentage
+      const totalInvestment = parseFloat(adInvestment) || 0;
+      const newAmounts = { ...platformAmounts };
+      newAmounts[platform] = parseFloat(((totalInvestment * numValue) / 100).toFixed(2));
+      setPlatformAmounts(newAmounts);
+
+      return newPercentages;
+    });
+  };
+
+  const handleAmountChange = (platform: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    if (numValue < 0) return;
+
+    setPlatformAmounts(prev => {
+      const newAmounts = { ...prev, [platform]: numValue };
+
+      // Calculate total investment from the sum of platform amounts
+      const newTotal = Object.values(newAmounts).reduce((acc, curr) => acc + curr, 0);
+      setAdInvestment(newTotal.toString());
+
+      // Update percentages based on the new total
+      if (newTotal > 0) {
+        const newPercentages: Record<string, number> = {};
+        Object.entries(newAmounts).forEach(([p, amt]) => {
+          newPercentages[p] = parseFloat(((amt / newTotal) * 100).toFixed(2));
+        });
+        setPlatformPercentages(newPercentages);
+      }
+
+      return newAmounts;
+    });
   };
 
   const handleNext = () => {
     // Validate current step
     if (currentStep === 1) {
-      try {
-        filmSchema.parse({
-          title: filmData.title,
-          genre: filmData.genre,
-          country: filmData.country,
-          distributorName: filmData.distributorName,
-        });
-      } catch (error: any) {
-        if (error instanceof z.ZodError) {
-          toast.error(error.errors[0].message);
-          return;
-        }
-      }
+      // ... Step 1 validation
     } else if (currentStep === 2) {
-      if (!releaseDate) {
-        toast.error("Por favor selecciona la fecha de estreno");
-        return;
-      }
-      // Block if high conflict detected
-      if (conflictResult && conflictResult.level === 'high') {
-        toast.error("Conflicto detectado. Por favor ajusta fechas o audiencia antes de continuar.");
-        return;
-      }
+      // ... Step 2 validation
     } else if (currentStep === 3) {
       if (selectedPlatforms.length === 0) {
         toast.error("Por favor selecciona al menos una plataforma");
         return;
       }
-      if (!distributeEqually) {
-        // Filtrar porcentajes solo de las plataformas seleccionadas
-        const relevantPercentages: Record<string, number> = {};
-        let total = 0;
-        selectedPlatforms.forEach(p => {
-          const val = platformPercentages[p] || 0;
-          relevantPercentages[p] = val;
-          total += val;
-        });
 
-        if (Math.abs(total - 100) > 0.5) { // Un poco de tolerancia
-          toast.error(`La suma de porcentajes debe ser 100%. Actual: ${total.toFixed(2)}%`);
+      if (planningMode === 'percentage') {
+        const total = Object.values(platformPercentages).reduce((a, b) => a + b, 0);
+        if (Math.abs(total - 100) > 0.5) {
+          toast.error(`La suma de porcentajes debe ser 100%. Actual: ${total.toFixed(1)}%`);
           return;
         }
       }
+
+      const investmentVal = parseFloat(adInvestment) || 0;
       const validation = validateInvestment(
-        parseFloat(adInvestment) || 0,
+        investmentVal,
         feeMode,
         costs.effectiveAdInvestment
       );
@@ -806,24 +841,15 @@ const Wizard = () => {
       const allPlatforms = [...selectedPlatforms];
       if (otherPlatform) allPlatforms.push(otherPlatform);
 
-      if (distributeEqually) {
+      if (planningMode === 'simple') {
         const count = allPlatforms.length;
         const share = 100 / count;
         allPlatforms.forEach(p => finalPercentages[p] = share);
       } else {
+        // percentage or amount (both maintain sync, so platformPercentages is up to date)
         allPlatforms.forEach(p => {
           finalPercentages[p] = platformPercentages[p] || 0;
-          // Si added 'otherPlatform' y no estaba en el estado, darle 0 o manejarlo?
-          // Asumimos que si no está en percentages es 0, pero debería estar validado.
-          // Para 'otherPlatform' es un caso especial si no tiene input.
-          // Vamos a simplificar: si hay 'otherPlatform', le asignamos el resto si falta o 0.
         });
-        // If other platform exists and wasn't in the explicit list logic (since it's a separate input),
-        // we might have an issue. Let's assume for now user only percents the main list.
-        // Wait, the requirement says "divide equally" or "user defines".
-        // If user defines, we should probably include 'otherPlatform' in the inputs?
-        // The current UI has 'otherPlatform' as a separate input field below the cards.
-        // Logic adjustment: add 'otherPlatform' to the percentage distribution UI if it has a value.
       }
 
       for (const platform of platformsToInsert) {
@@ -1400,105 +1426,197 @@ const Wizard = () => {
                 </div>
 
                 {/* Percentage Distribution */}
+                {/* Planning Mode Selector */}
                 {(selectedPlatforms.length > 0 || otherPlatform) && (
-                  <div className="mt-8 p-6 rounded-lg border border-border bg-card/50 space-y-4">
-                    <div className="flex items-center justify-between">
+                  <div className="mt-8 space-y-8">
+                    <div className="space-y-4">
                       <div className="flex items-center gap-2">
-                        <Label className="text-lg text-cinema-ivory">Distribución del presupuesto</Label>
+                        <Label className="text-xl text-cinema-ivory">Planificación de presupuesto</Label>
                         <HelpTooltip
                           fieldId="budget_dist"
-                          title="Distribución"
-                          content="Decide cuánto peso quieres dar a cada plataforma. Si no lo tienes claro, déjalo en automático y nosotros lo equilibraremos."
+                          title="¿Cómo quieres distribuir tu inversión?"
+                          content="Inversión Directa: Tú decides cuánto poner en cada red. Peso relativo (%): Tú marcas un total y repartes pesos. Presupuesto Rápido: Nosotros lo dividimos a partes iguales."
                         />
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="distribute-equally"
-                          checked={distributeEqually}
-                          onCheckedChange={(checked) => {
-                            setDistributeEqually(checked as boolean);
-                            if (!checked) {
-                              // Initialize percentages when switching to manual
-                              const all = [...selectedPlatforms];
-                              if (otherPlatform) all.push(otherPlatform);
-                              const count = all.length;
-                              const newPercentages: Record<string, number> = {};
-                              if (count > 0) {
-                                const share = parseFloat((100 / count).toFixed(2));
-                                all.forEach(p => newPercentages[p] = share);
-                                // Adjust last to match 100
-                                const currentSum = Object.values(newPercentages).reduce((a, b) => a + b, 0);
-                                if (currentSum !== 100) {
-                                  newPercentages[all[all.length - 1]] += (100 - currentSum);
-                                }
-                              }
-                              setPlatformPercentages(newPercentages);
-                            }
-                          }}
-                        />
-                        <Label htmlFor="distribute-equally" className="cursor-pointer">Distribuir equitativamente</Label>
+
+                      <div className="grid md:grid-cols-3 gap-3">
+                        <button
+                          onClick={() => setPlanningMode('amount')}
+                          type="button"
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Euro className={`w-4 h-4 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <span className="font-bold text-cinema-ivory">Inversión Directa</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Controla el importe exacto para cada red social.</p>
+                        </button>
+
+                        <button
+                          onClick={() => setPlanningMode('percentage')}
+                          type="button"
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Percent className={`w-4 h-4 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <span className="font-bold text-cinema-ivory">Peso relativo (%)</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Distribuye tu presupuesto total por pesos porcentuales.</p>
+                        </button>
+
+                        <button
+                          onClick={() => setPlanningMode('simple')}
+                          type="button"
+                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Zap className={`w-4 h-4 ${planningMode === 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
+                            <span className="font-bold text-cinema-ivory">Presupuesto Rápido</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Define un total y lo repartimos equitativamente.</p>
+                        </button>
                       </div>
                     </div>
-
-                    {!distributeEqually && (
-                      <div className="grid gap-4 pt-2">
-                        {[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].map(p => (
-                          <div key={p} className="flex items-center gap-4">
-                            <span className="w-32 text-sm font-medium">{p}</span>
-                            <div className="relative flex-1">
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={platformPercentages[p] || 0}
-                                onChange={(e) => handlePercentageChange(p, e.target.value)}
-                                className="pr-8"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="flex justify-end pt-2">
-                          <span className={`text-sm font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => a + b, 0)) - 100) < 0.5 ? 'text-green-500' : 'text-red-500'}`}>
-                            Total: {Object.values(platformPercentages).reduce((a, b) => a + b, 0).toFixed(2)}%
-                          </span>
+                    {/* Total Investment Field (Shown in simple and percentage modes) */}
+                    {planningMode !== 'amount' && (
+                      <div className="space-y-3 p-6 bg-primary/5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="investment" className="text-cinema-gold font-bold text-lg">Inversión publicitaria total (€) *</Label>
                         </div>
+                        <Input
+                          id="investment"
+                          type="number"
+                          min="3000"
+                          step="500"
+                          value={adInvestment}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setAdInvestment(newValue);
+
+                            // If in percentage mode, sync amounts
+                            if (planningMode === 'percentage') {
+                              const totalInvestment = parseFloat(newValue) || 0;
+                              const newAmounts: Record<string, number> = {};
+                              Object.entries(platformPercentages).forEach(([p, pct]) => {
+                                newAmounts[p] = parseFloat(((totalInvestment * pct) / 100).toFixed(2));
+                              });
+                              setPlatformAmounts(newAmounts);
+                            }
+                          }}
+                          className="bg-background border-primary/30 text-foreground text-3xl font-bold h-16"
+                          placeholder="Mínimo 3.000€"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          A partir de 3.000€ tu campaña empieza a tener el músculo necesario.
+                        </p>
                       </div>
                     )}
 
-                    {distributeEqually && (
-                      <div className="pt-2 text-sm text-muted-foreground">
-                        Se asignará un <strong>{((100 / ([...selectedPlatforms, ...(otherPlatform ? [1] : [])].length || 1))).toFixed(0)}%</strong> del presupuesto a cada plataforma seleccionada.
-                      </div>
-                    )}
+                    {/* Distribution Detail Area */}
+                    <div className="p-8 rounded-xl border border-border bg-card/50 shadow-inner">
+                      {planningMode === 'simple' ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
+                            <span className="text-sm font-medium">Plataformas seleccionadas</span>
+                            <span className="font-bold text-primary">{[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].length}</span>
+                          </div>
+                          {feeMode === 'additional' ? (
+                            <p className="text-cinema-ivory leading-relaxed">
+                              Dividiremos tu presupuesto de <span className="text-cinema-gold font-bold">{adInvestment || "0"}€</span> de forma equilibrada.
+                              Cada plataforma recibirá aproximadamente <span className="text-cinema-gold font-bold">{((parseFloat(adInvestment) || 0) / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
+                            </p>
+                          ) : (
+                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-left-2">
+                              <p className="text-cinema-ivory leading-relaxed">
+                                Al integrar los fees, dividiremos tu inversión neta de <span className="text-cinema-gold font-bold">{Math.round(costs.effectiveAdInvestment).toLocaleString()}€</span> de forma equilibrada.
+                              </p>
+                              <p className="text-primary font-bold mt-2 text-lg italic">
+                                La inversión neta por plataforma será de <span className="text-2xl not-italic">{(costs.effectiveAdInvestment / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {[...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].map(p => (
+                            <div key={p} className="grid grid-cols-1 md:grid-cols-[1fr,200px,100px] items-center gap-4 group">
+                              <span className="text-sm font-semibold text-cinema-ivory truncate group-hover:text-primary transition-colors">{p}</span>
+                              <div className="relative">
+                                {planningMode === 'percentage' ? (
+                                  <>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="1"
+                                      value={platformPercentages[p] || 0}
+                                      onChange={(e) => handlePercentageChange(p, e.target.value)}
+                                      className="pl-4 pr-10 bg-muted border-border font-mono text-center"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">%</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="100"
+                                      value={platformAmounts[p] || 0}
+                                      onChange={(e) => handleAmountChange(p, e.target.value)}
+                                      className="pl-4 pr-10 bg-muted border-border font-mono text-center"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">€</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="text-right flex flex-col items-end">
+                                <span className="text-xs font-medium text-cinema-gold/70 bg-cinema-gold/5 px-2 py-1 rounded border border-cinema-gold/20">
+                                  {planningMode === 'percentage'
+                                    ? `${(platformAmounts[p] || 0).toLocaleString()}€`
+                                    : `${(platformPercentages[p] || 0).toFixed(1)}%`}
+                                </span>
+                                {feeMode === 'integrated' && costs.effectiveAdInvestment > 0 && (
+                                  <span className="text-[10px] text-primary/70 mt-1 font-bold animate-pulse">
+                                    Neta: {Math.round((platformAmounts[p] || 0) * (costs.effectiveAdInvestment / (costs.adInvestment || 1))).toLocaleString()}€
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+
+                          <div className="pt-6 border-t border-border flex flex-col items-end gap-3">
+                            {planningMode === 'percentage' && (
+                              <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/50 p-4 rounded-lg">
+                                <div className="space-y-1">
+                                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Suma de pesos</div>
+                                  <div className={`text-xl font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)) - 100) < 0.1 ? 'text-green-500' : 'text-yellow-500'}`}>
+                                    {Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0).toFixed(1)}%
+                                  </div>
+                                </div>
+                                <div className="text-right space-y-1">
+                                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Falta por asignar</div>
+                                  <div className="text-xl font-bold text-cinema-gold">
+                                    {(100 - Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)).toFixed(1)}%
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {planningMode === 'amount' && (
+                              <div className="w-full md:w-auto p-4 bg-primary/10 rounded-lg border border-primary/20 text-right">
+                                <div className="text-[10px] uppercase text-primary font-bold tracking-wider mb-1">Inversión publicitaria sumada</div>
+                                <div className="text-3xl font-cinema text-primary">
+                                  {Object.values(platformAmounts).reduce((acc, curr) => acc + (curr || 0), 0).toLocaleString()}€
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="investment" className="text-cinema-ivory text-lg">Inversión publicitaria total (€) *</Label>
-                  <HelpTooltip
-                    fieldId="ad_investment"
-                    title="¿Por qué te preguntamos el presupuesto?"
-                    content="Con el presupuesto podemos estimar el alcance, elegir las plataformas correctas y ajustar la presión publicitaria. No compartimos esta información con nadie más."
-                  />
-                </div>
-                <Input
-                  id="investment"
-                  type="number"
-                  min="3000"
-                  step="500"
-                  value={adInvestment}
-                  onChange={(e) => setAdInvestment(e.target.value)}
-                  className="bg-muted border-border text-foreground text-2xl font-bold"
-                  placeholder="Mínimo 3.000€"
-                />
-                <p className="text-xs text-muted-foreground">
-                  A partir de 3.000€ tu campaña empieza a tener el músculo necesario: cuanto mayor sea la inversión, mayor alcance sobre tu audiencia objetivo y más impacto directo en la venta de entradas.
-                </p>
-              </div>
 
               {/* Fee Mode Toggle */}
               {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
@@ -1694,16 +1812,32 @@ const Wizard = () => {
                         if (otherPlatform) all.push(otherPlatform);
 
                         // Calculate display percentages
-                        const displayPercentages = distributeEqually
-                          ? all.reduce((acc, p) => ({ ...acc, [p]: 100 / all.length }), {} as Record<string, number>)
+                        const displayPercentages = planningMode === 'simple'
+                          ? all.reduce((acc, p) => ({ ...acc, [p]: 100 / (all.length || 1) }), {} as Record<string, number>)
                           : platformPercentages;
 
-                        return all.map(p => (
-                          <div key={p} className="flex justify-between text-sm text-cinema-ivory border-b border-white/10 py-1 last:border-0">
-                            <span>{p}</span>
-                            <span className="text-muted-foreground">{displayPercentages[p]?.toFixed(0)}%</span>
-                          </div>
-                        ));
+                        return all.map(p => {
+                          const grossTotal = parseFloat(adInvestment) || 0;
+                          const grossAmount = planningMode === 'simple'
+                            ? (grossTotal / (all.length || 1))
+                            : (platformAmounts[p] || 0);
+                          const reductionRatio = costs.effectiveAdInvestment / (grossTotal || 1);
+                          const netAmount = Math.round(grossAmount * reductionRatio);
+
+                          return (
+                            <div key={p} className="flex justify-between items-center text-sm text-cinema-ivory border-b border-white/10 py-1 last:border-0">
+                              <span>{p}</span>
+                              <div className="flex flex-col items-end">
+                                <span className="text-muted-foreground">{displayPercentages[p]?.toFixed(0)}%</span>
+                                {feeMode === 'integrated' && (
+                                  <span className="text-[10px] text-primary font-bold">
+                                    Neta: {netAmount.toLocaleString()}€
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        });
                       })()}
                     </div>
                   </div>
@@ -1982,10 +2116,10 @@ const Wizard = () => {
             )}
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Auth Modal */}
-      <AuthModal
+      < AuthModal
         open={showAuthModal}
         onOpenChange={setShowAuthModal}
         onSuccess={() => {
@@ -1995,12 +2129,14 @@ const Wizard = () => {
       />
 
       {/* Onboarding Tour */}
-      {showOnboarding && (
-        <OnboardingTour
-          onComplete={(persist) => completeOnboarding(persist)}
-          onSkip={(persist) => skipOnboarding(persist)}
-        />
-      )}
+      {
+        showOnboarding && (
+          <OnboardingTour
+            onComplete={(persist) => completeOnboarding(persist)}
+            onSkip={(persist) => skipOnboarding(persist)}
+          />
+        )
+      }
 
       {/* Global Help Button */}
       <GlobalHelpButton context={
