@@ -146,6 +146,32 @@ All colors MUST be HSL.
     color: hsl(var(--cinema-yellow));
     opacity: 1;
   }
+
+  .cinema-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    display: block !important;
+  }
+
+  .cinema-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .cinema-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--cinema-yellow) / 0.3);
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+
+  .cinema-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--cinema-yellow) / 0.6);
+  }
+
+  /* Force visibility on Firefox */
+  .cinema-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--cinema-yellow) / 0.3) transparent;
+  }
 }
 
 /* ---break---
