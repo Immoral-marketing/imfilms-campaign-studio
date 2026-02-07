@@ -148,29 +148,32 @@ All colors MUST be HSL.
   }
 
   .cinema-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     display: block !important;
   }
 
   .cinema-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--cinema-black) / 0.5);
+    border-radius: 10px;
   }
 
   .cinema-scrollbar::-webkit-scrollbar-thumb {
-    background: hsl(var(--cinema-yellow) / 0.3);
+    background: hsl(var(--cinema-yellow) / 0.8);
     border-radius: 10px;
-    border: 1px solid transparent;
+    border: 2px solid hsl(var(--cinema-black) / 0.5);
+    background-clip: padding-box;
   }
 
   .cinema-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--cinema-yellow) / 0.6);
+    background: hsl(var(--cinema-yellow));
   }
 
   /* Force visibility on Firefox */
   .cinema-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--cinema-yellow) / 0.3) transparent;
+    scrollbar-color: hsl(var(--cinema-yellow) / 0.8) hsl(var(--cinema-black) / 0.5);
+    overflow-y: scroll !important;
   }
 }
 
