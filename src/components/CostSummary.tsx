@@ -47,6 +47,9 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
             {formatCurrency(costs.totalEstimated)}
           </span>
         </div>
+        <p className="text-sm text-cinema-yellow/90 italic text-center px-4 font-medium">
+          Los fees e inversión son una estimación inicial que ajustaremos tras revisar tu campaña. Todo se validará contigo antes de la activación.
+        </p>
       </Card>
     );
   }
