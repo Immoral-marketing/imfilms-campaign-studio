@@ -45,10 +45,10 @@ const getVariableFeeRate = (investment: number): number => {
   if (investment >= 50000) {
     return 0.08; // 8% for 50k - 100k
   }
-  if (investment >= 30000) {
-    return 0.09; // 9% for 30k - 50k
+  if (investment >= 35000) {
+    return 0.09; // 9% for 35k - 50k
   }
-  return 0.10; // 10% for < 30k
+  return 0.10; // 10% for < 35k
 };
 
 // Calculate variable fee based on investment
@@ -61,16 +61,16 @@ const getApplicableFees = (investment: number, numPlatforms: number) => {
   let fixedFee = 0;
   let setupFee = 0;
 
-  if (investment < 10000) {
-    // Tier 1 (1k - 9999): Fixed + Setup + Variable
+  if (investment < 11000) {
+    // Tier 1 (1k - 10999): Fixed + Setup + Variable
     if (numPlatforms > 0) fixedFee = FIXED_FEE;
     setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
-  } else if (investment < 30000) {
-    // Tier 2 (10k - 29999): Setup + Variable (No Fixed)
+  } else if (investment < 35000) {
+    // Tier 2 (11k - 34999): Setup + Variable (No Fixed)
     fixedFee = 0;
     setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
   } else {
-    // Tier 3 (30k+): Variable only (No Fixed, No Setup)
+    // Tier 3 (35k+): Variable only (No Fixed, No Setup)
     fixedFee = 0;
     setupFee = 0;
   }
@@ -101,15 +101,15 @@ const calculateEffectiveInvestmentFromBudget = (
   effectiveInvestment = totalBudget / (1 + 0.08);
   if (effectiveInvestment >= 50000) return effectiveInvestment;
 
-  // Try Tier 2 (Effective 30k - 49999) -> No Fixed, No Setup, 9% Variable
+  // Try Tier 2 (Effective 35k - 49999) -> No Fixed, No Setup, 9% Variable
   effectiveInvestment = totalBudget / (1 + 0.09);
-  if (effectiveInvestment >= 30000) return effectiveInvestment;
+  if (effectiveInvestment >= 35000) return effectiveInvestment;
 
-  // Try Tier 1 (Effective 10k - 29999) -> No Fixed, Setup, 10% Variable
+  // Try Tier 1 (Effective 11k - 34999) -> No Fixed, Setup, 10% Variable
   effectiveInvestment = (totalBudget - setupFeeForTier12) / (1 + 0.10);
-  if (effectiveInvestment >= 10000) return Math.max(0, effectiveInvestment);
+  if (effectiveInvestment >= 11000) return Math.max(0, effectiveInvestment);
 
-  // Fallback: Effective < 10k -> Fixed, Setup, 10% Variable
+  // Fallback: Effective < 11k -> Fixed, Setup, 10% Variable
   effectiveInvestment = (totalBudget - fixedFeeForTier1 - setupFeeForTier12) / (1 + 0.10);
   return Math.max(0, effectiveInvestment);
 };
