@@ -78,7 +78,7 @@ export const useOnboarding = () => {
   };
 
   return {
-    showOnboarding,
+    showOnboarding: false, // Temporarily disabled for everyone
     isLoading,
     completeOnboarding,
     skipOnboarding,

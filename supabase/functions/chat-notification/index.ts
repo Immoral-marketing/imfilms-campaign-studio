@@ -5,7 +5,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-const COOLDOWN_MINUTES = 30;
+const COOLDOWN_MINUTES = 10;
 const WAIT_SECONDS = 120; // 2 minutes
 
 const corsHeaders = {
@@ -170,7 +170,7 @@ serve(async (req) => {
                                     <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
                                         <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                             Este es un aviso automático de Imfilms Campaign Studio.<br>
-                                            El próximo aviso para esta campaña se enviará en al menos 30 minutos si hay nuevos mensajes.
+                                            El próximo aviso para esta campaña se enviará en al menos 10 minutos si hay nuevos mensajes.
                                         </p>
                                     </td>
                                 </tr>
