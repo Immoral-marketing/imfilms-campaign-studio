@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, X, ChevronLeft, Loader2, Minimize2 } from 'lucide-react';
+import { MessageSquare, X, ChevronLeft, Loader2, Minimize2, Bell } from 'lucide-react';
 import CampaignChat from '@/components/CampaignChat';
+import CampaignNotifications from '@/components/CampaignNotifications';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -27,6 +28,8 @@ const GlobalChatWidget = () => {
     const [userRole, setUserRole] = useState<'admin' | 'distributor' | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
+    const [activeTab, setActiveTab] = useState<'chat' | 'notifications'>('chat');
+    const [notificationCount, setNotificationCount] = useState(0);
 
     const location = useLocation();
 
@@ -79,15 +82,18 @@ const GlobalChatWidget = () => {
                 .on(
                     'postgres_changes',
                     {
-                        event: 'INSERT',
+                        event: '*',
                         schema: 'public',
                         table: 'campaign_messages',
                     },
                     (payload) => {
-                        // Only update if the message is NOT from the current user
-                        if (payload.new.sender_id !== userId) {
-                            // Determine if we should increment a specific campaign or just refetch
-                            // Refetching is safer to get accurate unread counts
+                        // Handle INSERT, UPDATE, DELETE
+                        // For DELETE, payload.new is null, use payload.old
+                        const msg = (payload.new || payload.old) as any;
+
+                        // Refetch if message involves others
+                        // Or if it's a system message (sender_id is null)
+                        if (msg && msg.sender_id !== userId) {
                             fetchCampaigns();
                         }
                     }
@@ -192,7 +198,7 @@ const GlobalChatWidget = () => {
                             }
 
                             // Count unread
-                            // Unread if: read_at is null AND sender is not me
+                            // Unread if: read_at is null AND sender is not me (includes system messages where sender_id is null)
                             if (!msg.read_at && msg.sender_id !== userId) {
                                 camp.unread_count = (camp.unread_count || 0) + 1;
                             }
@@ -223,20 +229,19 @@ const GlobalChatWidget = () => {
     const markMessagesAsRead = async (campaignId: string) => {
         if (!userId) return;
 
-        // Optimistic update: remove badge immediately
-        setCampaigns(prev => prev.map(c =>
-            c.id === campaignId ? { ...c, unread_count: 0 } : c
-        ));
-
         try {
+            // Mark CHAT messages from other users as read (exclude system messages)
+            // System messages are marked read in the CampaignNotifications component
             await supabase
                 .from('campaign_messages')
                 .update({ read_at: new Date().toISOString() } as any)
                 .eq('campaign_id', campaignId)
-                .neq('sender_id', userId)
-                .is('read_at', null);
+                .is('read_at', null)
+                .neq('sender_role', 'system')
+                .neq('sender_id', userId);
 
-            // No need to refetch, optimistic update covers it
+            // Refetch campaigns to update unread count (in case there are still unread system messages)
+            fetchCampaigns();
         } catch (error) {
             console.error('Error marking messages as read:', error);
         }
@@ -244,7 +249,26 @@ const GlobalChatWidget = () => {
 
     const handleCampaignClick = (campaignId: string) => {
         setActiveCampaignId(campaignId);
+        setActiveTab('chat');
         markMessagesAsRead(campaignId);
+        fetchNotificationCount(campaignId);
+    };
+
+    const fetchNotificationCount = async (campId: string) => {
+        try {
+            const { count, error } = await supabase
+                .from('campaign_messages')
+                .select('*', { count: 'exact', head: true })
+                .eq('campaign_id', campId)
+                .eq('sender_role', 'system')
+                .is('read_at', null);
+
+            if (!error && count !== null) {
+                setNotificationCount(count);
+            }
+        } catch (err) {
+            console.error('Error fetching notification count:', err);
+        }
     };
 
     // Only show on dashboard-related pages
@@ -277,7 +301,7 @@ const GlobalChatWidget = () => {
 
     return (
         <div ref={widgetRef}>
-            <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-2xl z-50 flex flex-col overflow-hidden border-cinema-gold/30 bg-background/95 backdrop-blur-sm animate-in slide-in-from-bottom-10 fade-in duration-200">
+            <Card className="fixed bottom-6 right-6 w-[380px] h-[500px] shadow-2xl z-[100] flex flex-col border-cinema-gold/30 bg-background/95 backdrop-blur-sm">
                 {/* Header */}
                 <div className="p-3 border-b border-border/40 flex items-center justify-between bg-muted/30">
                     <div className="flex items-center gap-2">
@@ -286,7 +310,10 @@ const GlobalChatWidget = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 -ml-1"
-                                onClick={() => setActiveCampaignId(null)}
+                                onClick={() => {
+                                    if (activeCampaignId) markMessagesAsRead(activeCampaignId);
+                                    setActiveCampaignId(null);
+                                }}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
@@ -308,13 +335,50 @@ const GlobalChatWidget = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col">
                     {activeCampaignId ? (
-                        <CampaignChat
-                            campaignId={activeCampaignId}
-                            userRole={userRole}
-                            minimal={true}
-                        />
+                        <>
+                            {/* Tabs */}
+                            <div className="flex border-b border-border/30 bg-muted/10 flex-shrink-0">
+                                <button
+                                    onClick={() => setActiveTab('chat')}
+                                    className={`flex-1 text-xs font-medium py-2.5 px-3 flex items-center justify-center gap-1.5 transition-colors border-b-2 ${activeTab === 'chat'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    <MessageSquare className="h-3.5 w-3.5" />
+                                    Conversación
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('notifications'); setNotificationCount(0); }}
+                                    className={`flex-1 text-xs font-medium py-2.5 px-3 flex items-center justify-center gap-1.5 transition-colors border-b-2 ${activeTab === 'notifications'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    <Bell className="h-3.5 w-3.5" />
+                                    Notificaciones
+                                    {notificationCount > 0 && (
+                                        <span className="ml-1 h-4 min-w-[16px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                            {notificationCount > 9 ? '9+' : notificationCount}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                            {/* Tab Content */}
+                            <div className="flex-1 min-h-0">
+                                {activeTab === 'chat' ? (
+                                    <CampaignChat
+                                        campaignId={activeCampaignId}
+                                        userRole={userRole}
+                                        minimal={true}
+                                    />
+                                ) : (
+                                    <CampaignNotifications campaignId={activeCampaignId} />
+                                )}
+                            </div>
+                        </>
                     ) : (
                         <ScrollArea className="h-full">
                             {loading ? (

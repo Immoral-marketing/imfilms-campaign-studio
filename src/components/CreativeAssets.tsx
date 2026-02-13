@@ -11,6 +11,7 @@ import { Badge } from "./ui/badge";
 import { FileVideo, FileImage, FileText, Download, Upload, Film, Trash2 } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { isAfter, isSameDay, parseISO, startOfDay } from "date-fns";
 
 const ASSET_TYPES = [
   { value: "trailer", label: "Tráiler" },
@@ -125,6 +126,25 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
+      // Check for duplicate files
+      const fileNames = selectedFiles.map((f) => f.name);
+      const { data: existingAssets } = await supabase
+        .from("campaign_assets")
+        .select("original_filename")
+        .eq("campaign_id", campaignId)
+        .in("original_filename", fileNames);
+
+      if (existingAssets && existingAssets.length > 0) {
+        const dupes = existingAssets.map((a: any) => a.original_filename);
+        toast({
+          title: "Archivos duplicados detectados",
+          description: `Los siguientes archivos ya existen: ${dupes.join(", ")}. Renómbralos o elimínalos antes de subir.`,
+          variant: "destructive",
+        });
+        setUploading(false);
+        return;
+      }
+
       let completed = 0;
       const total = selectedFiles.length;
 
@@ -170,6 +190,56 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
         title: "¡Subida completada!",
         description: `Se han subido ${total} archivos correctamente.`,
       });
+
+      // Insert system notification message directly into campaign_messages
+      // (more reliable than depending on Edge Function for in-app notifications)
+      try {
+        const uploaderName = user.user_metadata?.full_name
+          || user.user_metadata?.name
+          || user.user_metadata?.contact_name
+          || user.email?.split("@")[0]
+          || "Un usuario";
+
+        const fileNames = selectedFiles.map((f) => f.name);
+        const chatMessage = `📎 ${uploaderName} ha subido ${total} creatividad(es): ${fileNames.join(", ")}`;
+
+        await supabase
+          .from("campaign_messages")
+          .insert({
+            campaign_id: campaignId,
+            sender_role: "system",
+            sender_name: "Sistema",
+            message: chatMessage,
+          } as any);
+      } catch (sysErr) {
+        console.error("System message insert error (non-fatal):", sysErr);
+      }
+
+      // Call Edge Function for email notifications only
+      try {
+        const uploaderName = user.user_metadata?.full_name
+          || user.user_metadata?.name
+          || user.user_metadata?.contact_name
+          || user.email?.split("@")[0]
+          || "Un usuario";
+
+        const fileNames = selectedFiles.map((f) => f.name);
+
+        const { error: funcError } = await supabase.functions.invoke("creative-upload-notification", {
+          body: {
+            campaignId,
+            uploaderName,
+            fileCount: total,
+            fileNames,
+          },
+        });
+
+        if (funcError) {
+          console.error("Edge Function invocation error:", funcError);
+        }
+      } catch (notifError) {
+        console.error("Notification error (non-fatal):", notifError);
+      }
 
       setSelectedFiles([]);
       setNotes("");
@@ -307,6 +377,14 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
   const deadlineDate = creativesDeadline ? new Date(creativesDeadline) : null;
   const isDeadlineClose = deadlineDate && deadlineDate.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
 
+  const isSubmissionLate = (createdAt: string) => {
+    if (!creativesDeadline) return false;
+    const createdDate = startOfDay(parseISO(createdAt));
+    const deadline = startOfDay(parseISO(creativesDeadline));
+    // User requested: "mismo día límite o posterior" -> Late
+    return isAfter(createdDate, deadline) || isSameDay(createdDate, deadline);
+  };
+
   return (
     <div className="space-y-8">
       {/* Deadline warning */}
@@ -408,120 +486,138 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
           </Card>
         ) : (
           <div className="grid gap-4">
-            {assets.map((asset) => (
-              <Card key={asset.id} className="bg-cinema-charcoal/60 border-cinema-yellow/20 transition-all hover:bg-cinema-charcoal/80">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="mt-1 flex-shrink-0">
-                        {isImage(asset.original_filename || asset.file_url) ? (
-                          <img
-                            src={asset.file_url}
-                            alt={asset.name}
-                            className="w-16 h-16 object-cover rounded-md border border-cinema-yellow/20 cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setPreviewUrl(asset.file_url)}
-                          />
-                        ) : (
-                          <div className="w-16 h-16 flex items-center justify-center bg-cinema-charcoal border border-cinema-yellow/20 rounded-md text-cinema-yellow">
-                            {getIcon(asset.type)}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0 space-y-1">
-                        {editingId === asset.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                              className="h-8 bg-zinc-900 border-cinema-yellow/20 text-cinema-ivory focus-visible:ring-cinema-yellow/30"
+            {assets.map((asset) => {
+              const isLate = isSubmissionLate(asset.created_at);
+              return (
+                <Card
+                  key={asset.id}
+                  className={`border transition-all hover:bg-cinema-charcoal/80 ${isLate
+                    ? "bg-red-950/20 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                    : "bg-cinema-charcoal/60 border-cinema-yellow/20"
+                    }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="mt-1 flex-shrink-0">
+                          {isImage(asset.original_filename || asset.file_url) ? (
+                            <img
+                              src={asset.file_url}
+                              alt={asset.name}
+                              className={`w-16 h-16 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity ${isLate ? "border-2 border-red-500/50" : "border border-cinema-yellow/20"
+                                }`}
+                              onClick={() => setPreviewUrl(asset.file_url)}
                             />
-                            <Button size="sm" onClick={() => handleRename(asset.id)} className="h-8 bg-cinema-yellow text-black hover:bg-cinema-yellow/90">Guardar</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 text-cinema-ivory hover:text-white">Cancelar</Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group">
-                            <p className="font-medium text-cinema-ivory text-lg">
-                              {asset.name || asset.original_filename || "Sin nombre"}
-                            </p>
-                            {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
-                              <button
-                                onClick={() => startEditing(asset)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-cinema-ivory/40 hover:text-cinema-yellow"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <p className="text-xs text-cinema-ivory/60 truncate" title={asset.original_filename}>
-                          {asset.original_filename}
-                        </p>
-
-                        {asset.notes && (
-                          <p className="text-sm text-cinema-ivory/60 mt-2 italic">
-                            "{asset.notes}"
-                          </p>
-                        )}
-
-                        <div className="flex items-center gap-2 mt-2">
-                          <p className="text-xs text-cinema-ivory/40">
-                            Subido el {new Date(asset.created_at).toLocaleDateString("es-ES")}
-                          </p>
+                          ) : (
+                            <div className={`w-16 h-16 flex items-center justify-center rounded-md ${isLate
+                              ? "bg-red-950/40 border-2 border-red-500/50 text-red-400"
+                              : "bg-cinema-charcoal border border-cinema-yellow/20 text-cinema-yellow"
+                              }`}>
+                              {getIcon(asset.type)}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                      {getStatusBadge(asset.status)}
-
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(asset)}
-                              className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                              title="Eliminar archivo"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          {editingId === asset.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                className="h-8 bg-zinc-900 border-cinema-yellow/20 text-cinema-ivory focus-visible:ring-cinema-yellow/30"
+                              />
+                              <Button size="sm" onClick={() => handleRename(asset.id)} className="h-8 bg-cinema-yellow text-black hover:bg-cinema-yellow/90">Guardar</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 text-cinema-ivory hover:text-white">Cancelar</Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group">
+                              <p className={`font-medium text-lg ${isLate ? "text-red-200" : "text-cinema-ivory"}`}>
+                                {asset.name || asset.original_filename || "Sin nombre"}
+                              </p>
+                              {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
+                                <button
+                                  onClick={() => startEditing(asset)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-cinema-ivory/40 hover:text-cinema-yellow"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                </button>
+                              )}
+                              {isLate && (
+                                <Badge variant="destructive" className="ml-2 text-[10px] uppercase tracking-wider bg-red-500/80 hover:bg-red-500">
+                                  Entrega Tardía
+                                </Badge>
+                              )}
+                            </div>
                           )}
 
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDownload(asset.file_url, asset.original_filename)}
-                            className="h-8 w-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"
-                            title="Descargar"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </div>
+                          <p className="text-xs text-cinema-ivory/60 truncate" title={asset.original_filename}>
+                            {asset.original_filename}
+                          </p>
 
-                        {isAdmin && (
-                          <Select
-                            value={asset.status}
-                            onValueChange={(value) => handleStatusChange(asset.id, value)}
-                          >
-                            <SelectTrigger className="w-[130px] h-8 bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pendiente_revision">Pendiente</SelectItem>
-                              <SelectItem value="aprobado">Aprobado</SelectItem>
-                              <SelectItem value="rechazado">Rechazado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
+                          {asset.notes && (
+                            <p className="text-sm text-cinema-ivory/60 mt-2 italic">
+                              "{asset.notes}"
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 mt-2">
+                            <p className={`text-xs ${isLate ? "text-red-400 font-medium" : "text-cinema-ivory/40"}`}>
+                              Subido el {new Date(asset.created_at).toLocaleDateString("es-ES")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        {getStatusBadge(asset.status)}
+
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            {(isAdmin || (asset.uploaded_by && currentUserId && asset.uploaded_by.toLowerCase() === currentUserId.toLowerCase())) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(asset)}
+                                className="h-8 w-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                title="Eliminar archivo"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleDownload(asset.file_url, asset.original_filename)}
+                              className={`h-8 w-8 ${isLate ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"}`}
+                              title="Descargar"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          {isAdmin && (
+                            <Select
+                              value={asset.status}
+                              onValueChange={(value) => handleStatusChange(asset.id, value)}
+                            >
+                              <SelectTrigger className="w-[130px] h-8 bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pendiente_revision">Pendiente</SelectItem>
+                                <SelectItem value="aprobado">Aprobado</SelectItem>
+                                <SelectItem value="rechazado">Rechazado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
