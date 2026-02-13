@@ -32,7 +32,7 @@ const CampaignsHistory = () => {
   const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] = useState<"creation_date" | "recent_changes" | "premiere_soon" | "incomplete" | "missing_materials">("creation_date");
 
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
@@ -99,12 +99,17 @@ const CampaignsHistory = () => {
         .from("campaigns")
         .select(`
           *,
+          updated_at,
           films (
             title,
-            genre
+            genre,
+            target_audience_text
           ),
           distributors (
             company_name
+          ),
+          campaign_assets (
+            count
           )
         `);
 
@@ -366,14 +371,58 @@ const CampaignsHistory = () => {
     let filtered = [...campaigns];
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter(c => c.status === statusFilter);
+      filtered = filtered.filter(c => {
+        const status = c.status || 'nuevo';
+        if (statusFilter === 'borrador') return ['borrador', 'nuevo'].includes(status);
+        if (statusFilter === 'en_revision') return ['en_revision', 'revisando'].includes(status);
+        if (statusFilter === 'aprobada') return ['aprobada', 'aprobado'].includes(status);
+        if (statusFilter === 'rechazada') return ['rechazada', 'rechazado'].includes(status);
+        return status === statusFilter;
+      });
     }
 
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.premiere_weekend_start).getTime();
-      const dateB = new Date(b.premiere_weekend_start).getTime();
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-    });
+    // Dynamic Filters Logic
+    if (sortOrder === "premiere_soon") {
+      const today = new Date();
+      const twentyOneDaysFromNow = new Date();
+      twentyOneDaysFromNow.setDate(today.getDate() + 21);
+
+      filtered = filtered.filter(c => {
+        const premiereDate = new Date(c.premiere_weekend_start);
+        return premiereDate >= today && premiereDate <= twentyOneDaysFromNow;
+      });
+      // Sort by closest date
+      filtered.sort((a, b) => new Date(a.premiere_weekend_start).getTime() - new Date(b.premiere_weekend_start).getTime());
+    } else if (sortOrder === "incomplete") {
+      filtered = filtered.filter(c => {
+        // Check for missing compulsory fields like audience (target_audience_text)
+        // Checking in both campaign and film object as it might be joined
+        // Improve check to handle empty strings
+        const audience = c.target_audience_text || c.films?.target_audience_text;
+        const hasAudience = audience && audience.trim().length > 0;
+        return !hasAudience;
+      });
+    } else if (sortOrder === "missing_materials") {
+      filtered = filtered.filter(c => {
+        // Check if campaign_assets count is 0
+        // Supabase returns count in an object like [{ count: 0 }] or similar depending on query
+        // But here we are using the 'count' option in select, so it should be in campaign_assets[0].count if array
+        // OR simply mapped. Let's inspect the data structure in a real scenario, but standard is array of objects.
+        const assetsCount = c.campaign_assets?.[0]?.count || 0;
+        return assetsCount === 0;
+      });
+    } else if (sortOrder === "recent_changes") {
+      // Sort by updated_at DESC (Most recently modified first)
+      // Fallback to created_at if updated_at is null
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at).getTime();
+        const dateB = new Date(b.updated_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
+    } else {
+      // "creation_date" - Default: Sort by created_at DESC (Newest first)
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
 
     return filtered;
   }, [campaigns, statusFilter, sortOrder]);
@@ -722,31 +771,37 @@ const CampaignsHistory = () => {
                 {/* Filters */}
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-muted/20 p-4 rounded-lg border border-border">
                   <div className="flex gap-4 items-center flex-wrap">
-                    <Label className="text-cinema-ivory text-sm font-semibold">Filtrar:</Label>
+                    <Label className="text-cinema-ivory text-sm font-semibold">Filtrar por estado:</Label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-[180px] bg-background border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todas las campañas</SelectItem>
-                        <SelectItem value="nuevo">Nuevas</SelectItem>
-                        <SelectItem value="en_revision">En revisión</SelectItem>
-                        <SelectItem value="aprobado">Aprobadas</SelectItem>
-                        <SelectItem value="rechazado">Rechazadas</SelectItem>
                         <SelectItem value="borrador">Borradores</SelectItem>
+                        <SelectItem value="en_revision">En revisión</SelectItem>
+                        <SelectItem value="aprobada">Aprobadas</SelectItem>
+                        <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
+                        <SelectItem value="activa">Activas</SelectItem>
+                        <SelectItem value="finalizada">Finalizadas</SelectItem>
+                        <SelectItem value="pausada">Pausadas</SelectItem>
+                        <SelectItem value="rechazada">Rechazadas</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="flex gap-4 items-center">
-                    <Label className="text-cinema-ivory text-sm font-semibold">Ordenar:</Label>
-                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "asc" | "desc")}>
-                      <SelectTrigger className="w-[180px] bg-background border-border">
+                    <Label className="text-cinema-ivory text-sm font-semibold">Filtros Dinámicos:</Label>
+                    <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as any)}>
+                      <SelectTrigger className="w-[280px] bg-background border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="desc">Más recientes</SelectItem>
-                        <SelectItem value="asc">Más antiguas</SelectItem>
+                        <SelectItem value="creation_date">Fecha de creación</SelectItem>
+                        <SelectItem value="recent_changes">Cambios recientes</SelectItem>
+                        <SelectItem value="premiere_soon">Fecha de estreno cercana (&lt; 21 días)</SelectItem>
+                        <SelectItem value="incomplete">Campañas incompletas</SelectItem>
+                        <SelectItem value="missing_materials">Falta de materiales</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
