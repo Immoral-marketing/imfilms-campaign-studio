@@ -17,6 +17,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminDistributors from "./AdminDistributors";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
+import CampaignLabels from "@/components/CampaignLabels";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -103,13 +104,21 @@ const CampaignsHistory = () => {
           films (
             title,
             genre,
-            target_audience_text
+            target_audience_text,
+            country,
+            secondary_genre,
+            main_goals
           ),
           distributors (
             company_name
           ),
           campaign_assets (
             count
+          ),
+          film_edit_proposals (
+            proposed_data,
+            created_at,
+            status
           )
         `);
 
@@ -121,7 +130,74 @@ const CampaignsHistory = () => {
       const { data: campaignsData, error: campaignsError } = await query.order("created_at", { ascending: false });
 
       if (campaignsError) throw campaignsError;
-      setCampaigns(campaignsData || []);
+
+      // Helper to compare values
+      const hasChanged = (original: any, proposed: any) => {
+        if (Array.isArray(original) && Array.isArray(proposed)) {
+          return JSON.stringify(original.sort()) !== JSON.stringify(proposed.sort());
+        }
+        // Handle null/undefined vs empty string
+        const normOrig = original === null || original === undefined ? '' : original;
+        const normProp = proposed === null || proposed === undefined ? '' : proposed;
+        return normOrig != normProp;
+      };
+
+      // Process campaigns to add recent_changes_list and pending_changes_list
+      const processedCampaigns = (campaignsData || []).map(campaign => {
+        // Find recent approved proposals (last 24h)
+        const recentProposals = campaign.film_edit_proposals?.filter((p: any) => {
+          const proposalDate = new Date(p.created_at);
+          const now = new Date();
+          const isRecent = (now.getTime() - proposalDate.getTime()) < 24 * 60 * 60 * 1000;
+          return isRecent && p.status === 'approved';
+        }) || [];
+
+        // Find pending proposals
+        const pendingProposals = campaign.film_edit_proposals?.filter((p: any) =>
+          p.status === 'pending'
+        ) || [];
+
+        // Collect all changed fields from recent approved proposals
+        const recentChanges = new Set<string>();
+        recentProposals.forEach((p: any) => {
+          if (p.proposed_data) {
+            Object.keys(p.proposed_data).forEach(key => recentChanges.add(key));
+          }
+        });
+
+        // Collect ACTUAL changed fields from pending proposals
+        const pendingChanges = new Set<string>();
+        pendingProposals.forEach((p: any) => {
+          if (p.proposed_data && campaign.films) {
+            const proposed = p.proposed_data;
+            const current = campaign.films;
+
+            // Check specific fields
+            if (hasChanged(current.title, proposed.title)) pendingChanges.add('title');
+            if (hasChanged(current.country, proposed.country)) pendingChanges.add('country');
+            if (hasChanged(current.genre, proposed.genre)) pendingChanges.add('genre');
+            if (hasChanged(current.secondary_genre, proposed.secondary_genre)) pendingChanges.add('secondary_genre');
+            if (hasChanged(current.target_audience_text, proposed.target_audience_text)) pendingChanges.add('target_audience_text');
+            if (hasChanged(current.main_goals, proposed.main_goals)) pendingChanges.add('main_goals');
+
+            // Platforms check (if platforms exist in proposed)
+            if (proposed.platforms) {
+              // We assume if platforms are sent, they might be changed. 
+              // For now, simpler to just flag it if present, or we'd need to fetch current platforms too.
+              // Let's flag it if present in proposal, relying on dialog to only send if valid.
+              pendingChanges.add('platforms');
+            }
+          }
+        });
+
+        return {
+          ...campaign,
+          recent_changes_list: Array.from(recentChanges),
+          pending_changes_list: Array.from(pendingChanges)
+        };
+      });
+
+      setCampaigns(processedCampaigns);
 
       if (isUserAdmin) {
         await fetchPendingNotesCounts();
@@ -871,6 +947,7 @@ const CampaignsHistory = () => {
                               <p className="text-sm text-muted-foreground">
                                 {campaign.films?.genre}
                               </p>
+                              <CampaignLabels campaign={campaign} />
                             </div>
                             <p className="text-xs text-muted-foreground">
                               Creado: {formatDateShort(new Date(campaign.created_at))}

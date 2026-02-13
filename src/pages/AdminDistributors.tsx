@@ -14,6 +14,7 @@ import { formatDateShort } from "@/utils/dateUtils";
 import DistributorAnalytics from "@/components/distributors/DistributorAnalytics";
 import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw, Activity, StickyNote } from "lucide-react";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
+import CampaignLabels from "@/components/CampaignLabels";
 
 interface Distributor {
   id: string;
@@ -32,10 +33,14 @@ interface Campaign {
   id: string;
   status: string;
   created_at: string;
+  updated_at?: string;
+  campaign_assets?: { count: number }[] | null;
   ad_investment_amount: number;
   total_estimated_amount: number;
   films: {
     title: string;
+    target_audience_text?: string;
+    genre?: string;
   } | null;
 }
 
@@ -129,10 +134,24 @@ const AdminDistributors = () => {
           id,
           status,
           created_at,
+          updated_at,
           ad_investment_amount,
           total_estimated_amount,
+          campaign_assets (
+            count
+          ),
+          film_edit_proposals (
+            proposed_data,
+            created_at,
+            status
+          ),
           films (
-            title
+            title,
+            target_audience_text,
+            genre,
+            country,
+            secondary_genre,
+            main_goals
           )
         `)
         .eq("distributor_id", distributorId)
@@ -140,7 +159,67 @@ const AdminDistributors = () => {
 
       if (error) throw error;
 
-      setDistributorCampaigns(data || []);
+      // Helper to compare values
+      const hasChanged = (original: any, proposed: any) => {
+        if (Array.isArray(original) && Array.isArray(proposed)) {
+          return JSON.stringify(original.sort()) !== JSON.stringify(proposed.sort());
+        }
+        const normOrig = original === null || original === undefined ? '' : original;
+        const normProp = proposed === null || proposed === undefined ? '' : proposed;
+        return normOrig != normProp;
+      };
+
+      const processedData = (data || []).map(campaign => {
+        // Find recent approved proposals (last 24h)
+        const recentProposals = (campaign as any).film_edit_proposals?.filter((p: any) => {
+          const proposalDate = new Date(p.created_at);
+          const now = new Date();
+          const isRecent = (now.getTime() - proposalDate.getTime()) < 24 * 60 * 60 * 1000;
+          return isRecent && p.status === 'approved';
+        }) || [];
+
+        // Find pending proposals
+        const pendingProposals = (campaign as any).film_edit_proposals?.filter((p: any) =>
+          p.status === 'pending'
+        ) || [];
+
+        // Collect all changed fields from recent approved
+        const recentChanges = new Set<string>();
+        recentProposals.forEach((p: any) => {
+          if (p.proposed_data) {
+            Object.keys(p.proposed_data).forEach(key => recentChanges.add(key));
+          }
+        });
+
+        // Collect ACTUAL changed fields from pending
+        const pendingChanges = new Set<string>();
+        pendingProposals.forEach((p: any) => {
+          const films = (campaign as any).films;
+          if (p.proposed_data && films) {
+            const proposed = p.proposed_data;
+            const current = films;
+
+            if (hasChanged(current.title, proposed.title)) pendingChanges.add('title');
+            if (hasChanged(current.country, proposed.country)) pendingChanges.add('country');
+            if (hasChanged(current.genre, proposed.genre)) pendingChanges.add('genre');
+            if (hasChanged(current.secondary_genre, proposed.secondary_genre)) pendingChanges.add('secondary_genre');
+            if (hasChanged(current.target_audience_text, proposed.target_audience_text)) pendingChanges.add('target_audience_text');
+            if (hasChanged(current.main_goals, proposed.main_goals)) pendingChanges.add('main_goals');
+
+            if (proposed.platforms) {
+              pendingChanges.add('platforms');
+            }
+          }
+        });
+
+        return {
+          ...campaign,
+          recent_changes_list: Array.from(recentChanges),
+          pending_changes_list: Array.from(pendingChanges)
+        };
+      });
+
+      setDistributorCampaigns(processedData);
     } catch (error: any) {
       console.error("Error loading distributor campaigns:", error);
       toast.error("Error al cargar campañas de la distribuidora");
@@ -641,6 +720,7 @@ const AdminDistributors = () => {
                                 <p className="text-primary">{campaign.total_estimated_amount.toLocaleString("es-ES")}€</p>
                               </div>
                             </div>
+                            <CampaignLabels campaign={campaign} />
                           </div>
 
                           <div className="flex flex-col gap-2 items-end">
