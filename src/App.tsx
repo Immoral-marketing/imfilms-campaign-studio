@@ -63,7 +63,7 @@ const AppContent = () => {
 
       {/* Botón temporal de reset solo visible en modo testing */}
       {showTestingButton && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-24 right-6 z-50">
           <Button
             onClick={handleCompleteReset}
             variant="outline"

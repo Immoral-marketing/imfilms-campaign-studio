@@ -9,7 +9,7 @@ import { es } from 'date-fns/locale';
 
 interface Message {
   id: string;
-  sender_role: 'admin' | 'distributor';
+  sender_role: 'admin' | 'distributor' | 'system';
   sender_name?: string;
   message: string;
   created_at: string;
@@ -79,7 +79,9 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
           filter: `campaign_id=eq.${campaignId}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          if ((payload.new as any).sender_role !== 'system') {
+            setMessages((prev) => [...prev, payload.new as Message]);
+          }
         }
       )
       .subscribe();
@@ -104,6 +106,7 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
         .from('campaign_messages')
         .select('*')
         .eq('campaign_id', campaignId)
+        .neq('sender_role', 'system')
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -213,7 +216,19 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
                 </span>
               </div>
               {group.messages.map((msg) => {
-                const isOwn = msg.sender_role === userRole;
+                const isSystem = msg.sender_role === 'system';
+                const isOwn = !isSystem && msg.sender_role === userRole;
+
+                if (isSystem) {
+                  return (
+                    <div key={msg.id} className="flex justify-center my-1">
+                      <div className="bg-muted/50 border border-border/20 rounded-full px-4 py-1.5 max-w-[90%]">
+                        <p className="text-xs text-muted-foreground text-center">{msg.message}</p>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={msg.id}
