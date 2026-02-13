@@ -77,9 +77,12 @@ serve(async (req) => {
                 distributor_id: userId,
                 title: filmData.title,
                 genre: filmData.genre,
+                secondary_genre: filmData.secondaryGenre || null,
                 country: filmData.country,
                 distributor_name: filmData.distributorName,
                 target_audience_text: filmData.targetAudience,
+                target_audience_urls: filmData.targetAudienceUrls || [],
+                target_audience_files: filmData.targetAudienceFiles || [],
                 main_goals: filmData.goals,
                 release_date: campaignData.releaseDate,
             })

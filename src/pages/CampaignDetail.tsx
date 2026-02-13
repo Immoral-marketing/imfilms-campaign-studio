@@ -11,7 +11,7 @@ import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CreativeAssets from '@/components/CreativeAssets';
 import { formatDateShort, getRelativeTime } from '@/utils/dateUtils';
-import EditFilmInfoDialog from '@/components/EditFilmInfoDialog';
+import { CampaignInfoEditable } from '@/components/CampaignInfoEditable';
 import PendingEditBanner from '@/components/PendingEditBanner';
 import { usePendingFilmProposal } from '@/hooks/useFilmEditProposals';
 import logoImfilms from '@/assets/logo-imfilms.png';
@@ -312,24 +312,9 @@ const CampaignDetail = () => {
           <TabsContent value="details" className="space-y-4">
             <Card className="p-6 space-y-6">
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-cinema text-xl text-primary">Información de la Película</h3>
-                  <EditFilmInfoDialog
-                    film={film}
-                    platforms={campaign.campaign_platforms}
-                    campaignId={campaign.id}
-                    disabled={!!pendingProposal}
-                  >
-                    <Button variant="outline" size="sm" disabled={!!pendingProposal}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </Button>
-                  </EditFilmInfoDialog>
-                </div>
-
-                {/* Pending Edit Banner */}
+                {/* Pending Edit Banner is now above the editable area */}
                 {pendingProposal && (
-                  <div className="mb-4">
+                  <div className="mb-6">
                     <PendingEditBanner
                       proposal={pendingProposal}
                       currentFilm={film}
@@ -340,64 +325,22 @@ const CampaignDetail = () => {
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Título</p>
-                    <p className="text-foreground">{film.title}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Género</p>
-                    <p className="text-foreground">{film.genre}{film.secondary_genre ? ` / ${film.secondary_genre}` : ''}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">País</p>
-                    <p className="text-foreground">{film.country}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Territorio</p>
-                    <p className="text-foreground">{campaign.territory || 'España'}</p>
-                  </div>
-                </div>
+
+                <CampaignInfoEditable
+                  film={film}
+                  platforms={campaign.campaign_platforms}
+                  campaignId={campaign.id}
+                  totalBudget={campaign.ad_investment_amount}
+                  feeDetails={{
+                    fixed_fee_amount: campaign.fixed_fee_amount,
+                    variable_fee_amount: campaign.variable_fee_amount,
+                    setup_fee_amount: campaign.setup_fee_amount,
+                    addons_base_amount: campaign.addons_base_amount,
+                    total_estimated_amount: campaign.total_estimated_amount
+                  }}
+                  disabled={!!pendingProposal || userRole !== 'distributor'} // Only distributors can propose edits, and disabled if pending
+                />
               </div>
-
-              {campaign.campaign_platforms && campaign.campaign_platforms.length > 0 && (
-                <div>
-                  <h3 className="font-cinema text-xl text-primary mb-3">Plataformas y Distribución</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {campaign.campaign_platforms.map((platform: any, index: number) => (
-                      <Card key={index} className="p-4 bg-muted/30 border-muted">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-foreground">{platform.platform_name}</span>
-                          <span className="text-primary font-bold">
-                            {platform.budget_percent ? `${platform.budget_percent}%` : 'N/A'}
-                          </span>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {film.target_audience_text && (
-                <div>
-                  <h3 className="font-cinema text-xl text-primary mb-3">Audiencia Objetivo</h3>
-                  <p className="text-foreground whitespace-pre-wrap">{film.target_audience_text}</p>
-                </div>
-              )}
-
-              {film.main_goals && film.main_goals.length > 0 && (
-                <div>
-                  <h3 className="font-cinema text-xl text-primary mb-3">Objetivos Principales</h3>
-                  <ul className="space-y-2">
-                    {film.main_goals.map((goal: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-yellow-400 mt-1">•</span>
-                        <span className="text-foreground">{goal}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
               <div>
                 <h3 className="font-cinema text-xl text-primary mb-3">Fechas Clave</h3>

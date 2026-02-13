@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap } from "lucide-react";
+import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap, Trash2, Plus, Upload, ExternalLink } from "lucide-react";
 import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
@@ -80,6 +80,7 @@ interface WizardDraft {
     country: string;
     distributorName: string;
     targetAudience: string;
+    targetAudienceUrls?: string[];
     goals: string[];
   };
   releaseDate?: string;
@@ -163,8 +164,12 @@ const Wizard = () => {
     country: "España",
     distributorName: "",
     targetAudience: "",
+    targetAudienceUrls: [] as string[],
     goals: [] as string[],
   });
+
+  // Step 1: Target Audience Files (Not persisted in draft)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Step 2: Calendar
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
@@ -356,6 +361,49 @@ const Wizard = () => {
     }
   };
 
+  const uploadTargetAudienceFiles = async (userId: string, campaignId?: string) => {
+    if (selectedFiles.length === 0) return [];
+
+    const uploadedPaths: string[] = [];
+
+    // We need a campaign ID or a temp folder. 
+    // If we have campaignId (existing campaign), use it.
+    // If not (new campaign), we might need to use a temp ID or just the User ID until we have the campaign ID?
+    // Actually submit-campaign creates the campaign. 
+    // We can upload to a temporary folder `temp/{userId}/` and then move? 
+    // OR, better: The Edge Function `submit-campaign` returns the campaignId. 
+    // BUT we need the file paths *before* calling `submit-campaign` to include them in the DB insert? 
+    // OR we call `submit-campaign` first, get ID, then upload, then update DB?
+    // The latter is safer for consistency but requires an extra update.
+
+    // Alternative: Use a predictable path like `{userId}/{timestamp}_{filename}`.
+    // The bucket is `campaign-materials`. 
+    // Let's use `{userId}/{timestamp}_{filename}`.
+
+    for (const file of selectedFiles) {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${userId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("campaign-materials")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        continue;
+      }
+
+      // Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("campaign-materials")
+        .getPublicUrl(filePath);
+
+      uploadedPaths.push(publicUrl);
+    }
+    return uploadedPaths;
+  };
+
   const loadDraft = () => {
     const savedDraft = localStorage.getItem(WIZARD_DRAFT_KEY);
     if (!savedDraft) return;
@@ -363,7 +411,11 @@ const Wizard = () => {
     try {
       const draft: WizardDraft = JSON.parse(savedDraft);
       setCurrentStep(draft.currentStep);
-      setFilmData({ ...draft.filmData, secondaryGenre: draft.filmData.secondaryGenre || "" });
+      setFilmData({
+        ...draft.filmData,
+        secondaryGenre: draft.filmData.secondaryGenre || "",
+        targetAudienceUrls: draft.filmData.targetAudienceUrls || []
+      });
       setReleaseDate(draft.releaseDate ? new Date(draft.releaseDate) : undefined);
       setCampaignEndDate(draft.campaignEndDate ? new Date(draft.campaignEndDate) : undefined);
       setManualEndDateMode(draft.manualEndDateMode || false);
@@ -415,8 +467,10 @@ const Wizard = () => {
       country: "España",
       distributorName: "",
       targetAudience: "",
+      targetAudienceUrls: [],
       goals: [],
     });
+    setSelectedFiles([]);
     setReleaseDate(undefined);
     setCampaignEndDate(undefined);
     setManualEndDateMode(false);
@@ -557,8 +611,24 @@ const Wizard = () => {
   const handleNext = () => {
     // Validate current step
     if (currentStep === 1) {
-      // ... Step 1 validation
-    } else if (currentStep === 2) {
+      if (!filmData.title || !filmData.genre || !filmData.country || !filmData.distributorName) {
+        toast.error("Por favor completa los campos obligatorios");
+        return;
+      }
+      if (filmData.genre === "Otro" && !filmData.otherGenre) {
+        toast.error("Por favor especifica el género");
+        return;
+      }
+
+      // Target Audience Validation: At least one field (text, urls, or files) is required
+      const hasAudienceText = filmData.targetAudience.trim().length > 0;
+      const hasUrls = filmData.targetAudienceUrls && filmData.targetAudienceUrls.length > 0;
+      const hasFiles = selectedFiles.length > 0;
+
+      if (!hasAudienceText && !hasUrls && !hasFiles) {
+        toast.error("Por favor, describe el público objetivo o añade material adicional (enlaces o archivos).");
+        return;
+      }
       // ... Step 2 validation
     } else if (currentStep === 3) {
       if (selectedPlatforms.length === 0) {
@@ -730,6 +800,26 @@ const Wizard = () => {
         notifyAdmin: true
       };
 
+      // Upload files first
+      let uploadedFileUrls: string[] = [];
+      try {
+        uploadedFileUrls = await uploadTargetAudienceFiles(authData.user.id);
+      } catch (e) {
+        console.error("Error uploading files", e);
+        toast.error("Error al subir archivos. Se continuará sin ellos.");
+      }
+
+      // Add files/urls to payload
+      // We need to update the payload types in the edge function too if we pass them here
+      // But wait, the edge function expects `target_audience_urls` and `files` inside `filmData`.
+      // Let's inject them.
+      campaignPayload.filmData = {
+        ...campaignPayload.filmData,
+        // @ts-ignore
+        targetAudienceUrls: filmData.targetAudienceUrls,
+        targetAudienceFiles: uploadedFileUrls
+      };
+
       const { error: submitError } = await supabase.functions.invoke('submit-campaign', {
         body: campaignPayload
       });
@@ -782,6 +872,15 @@ const Wizard = () => {
     setLoading(true);
 
     try {
+      // Upload files first
+      let uploadedFileUrls: string[] = [];
+      try {
+        uploadedFileUrls = await uploadTargetAudienceFiles(distributorId);
+      } catch (e) {
+        console.error("Error uploading files", e);
+        toast.error("Error al subir archivos. Se continuará sin ellos.");
+      }
+
       // Create film
       const { data: filmRecord, error: filmError } = await supabase
         .from("films")
@@ -795,6 +894,8 @@ const Wizard = () => {
           target_audience_text: filmData.targetAudience,
           main_goals: filmData.goals,
           release_date: releaseDate.toISOString().split("T")[0],
+          target_audience_urls: filmData.targetAudienceUrls || [],
+          target_audience_files: uploadedFileUrls,
         })
         .select()
         .single();
@@ -1025,1054 +1126,1208 @@ const Wizard = () => {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="title" className="text-cinema-ivory">Título de la película *</Label>
-                    <HelpTooltip
-                      fieldId="film_title"
-                      title="¿Por qué te preguntamos el título?"
-                      content="Usamos el título para personalizar comunicaciones, reportes y tu panel. Es la referencia principal de todo lo que hagamos con ese estreno."
-                    />
-                  </div>
-                  <Input
-                    id="title"
-                    value={filmData.title}
-                    onChange={(e) => setFilmData({ ...filmData, title: e.target.value })}
-                    className="bg-muted border-border text-foreground"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-8">
+                {/* Block 1: Basic Film Data */}
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 h-6">
-                      <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="title" className="text-cinema-ivory">Título de la película *</Label>
                       <HelpTooltip
-                        fieldId="film_genre"
-                        title="¿Por qué te preguntamos el género?"
-                        content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                        fieldId="film_title"
+                        title="¿Por qué te preguntamos el título?"
+                        content="Usamos el título para personalizar comunicaciones, reportes y tu panel. Es la referencia principal de todo lo que hagamos con ese estreno."
                       />
                     </div>
-                    <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
-                      <SelectTrigger className="bg-muted border-border text-foreground">
-                        <SelectValue placeholder="Selecciona género" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENRES.map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 h-6"> {/* Fixed height wrapper for alignment */}
-                      <Label htmlFor="secondaryGenre" className="text-cinema-ivory">Género secundario</Label>
-                    </div>
-                    <Select value={filmData.secondaryGenre} onValueChange={(v) => setFilmData({ ...filmData, secondaryGenre: v })}>
-                      <SelectTrigger className="bg-muted border-border text-foreground">
-                        <SelectValue placeholder="Opcional" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ninguno</SelectItem>
-                        {GENRES.map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {filmData.genre === "Otro" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="otherGenre" className="text-cinema-ivory">¿Cuál? *</Label>
                     <Input
-                      id="otherGenre"
-                      value={filmData.otherGenre}
-                      onChange={(e) => setFilmData({ ...filmData, otherGenre: e.target.value })}
+                      id="title"
+                      value={filmData.title}
+                      onChange={(e) => setFilmData({ ...filmData, title: e.target.value })}
                       className="bg-muted border-border text-foreground"
-                      placeholder="Especifica el género"
                     />
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="country" className="text-cinema-ivory">País de estreno *</Label>
-                  <Input
-                    id="country"
-                    value={filmData.country}
-                    onChange={(e) => setFilmData({ ...filmData, country: e.target.value })}
-                    className="bg-muted border-border text-foreground"
-                  />
+                  <div className="grid md:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
+                        <HelpTooltip
+                          fieldId="film_genre"
+                          title="¿Por qué te preguntamos el género?"
+                          content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                        />
+                      </div>
+                      <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
+                        <SelectTrigger className="bg-muted border-border text-foreground">
+                          <SelectValue placeholder="Selecciona género" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENRES.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="secondaryGenre" className="text-cinema-ivory">Género secundario</Label>
+                      </div>
+                      <Select value={filmData.secondaryGenre} onValueChange={(v) => setFilmData({ ...filmData, secondaryGenre: v })}>
+                        <SelectTrigger className="bg-muted border-border text-foreground">
+                          <SelectValue placeholder="Opcional" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ninguno</SelectItem>
+                          {GENRES.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="distributor" className="text-cinema-ivory">Distribuidora / Productora *</Label>
+                      </div>
+                      <Input
+                        id="distributor"
+                        value={filmData.distributorName}
+                        onChange={(e) => setFilmData({ ...filmData, distributorName: e.target.value })}
+                        className="bg-muted border-border text-foreground"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="country" className="text-cinema-ivory">País de estreno *</Label>
+                      </div>
+                      <Input
+                        id="country"
+                        value={filmData.country}
+                        onChange={(e) => setFilmData({ ...filmData, country: e.target.value })}
+                        className="bg-muted border-border text-foreground"
+                      />
+                    </div>
+                  </div>
+
+                  {filmData.genre === "Otro" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="otherGenre" className="text-cinema-ivory">¿Cuál? *</Label>
+                      <Input
+                        id="otherGenre"
+                        value={filmData.otherGenre}
+                        onChange={(e) => setFilmData({ ...filmData, otherGenre: e.target.value })}
+                        className="bg-muted border-border text-foreground"
+                        placeholder="Especifica el género"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="distributor" className="text-cinema-ivory">Distribuidora / Productora *</Label>
-                  <Input
-                    id="distributor"
-                    value={filmData.distributorName}
-                    onChange={(e) => setFilmData({ ...filmData, distributorName: e.target.value })}
-                    className="bg-muted border-border text-foreground"
-                  />
+                <div className="w-full h-px bg-cinema-yellow/10" />
+
+                {/* Block 2: Audience & Materials */}
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <Label htmlFor="targetAudience" className="text-lg font-teko text-cinema-ivory">
+                      Público Objetivo *
+                    </Label>
+                    <p className="text-sm text-cinema-ivory/70">
+                      Cuéntanos a quién va dirigida tu película.
+                    </p>
+                    <Textarea
+                      id="targetAudience"
+                      value={filmData.targetAudience}
+                      onChange={(e) => setFilmData({ ...filmData, targetAudience: e.target.value })}
+                      maxLength={1000}
+                      placeholder="Describe a quién va dirigida la película (edad, género, intereses, hábitos de consumo cultural...)"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary transition-colors min-h-[200px]"
+                    />
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-cinema-ivory/60 italic">
+                        * Puedes dejar esto en blanco si subes archivos o enlaces
+                      </span>
+                      <span className="text-xs text-cinema-ivory/40">
+                        {filmData.targetAudience.length}/1000
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-lg font-teko text-cinema-ivory uppercase tracking-wider">Material Adicional</Label>
+                    <p className="text-sm text-cinema-ivory/70">
+                      Si lo prefieres, adjunta enlaces o archivos en lugar de describir.
+                    </p>
+
+                    {/* URLs Section */}
+                    <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
+                      <Label className="text-xs text-cinema-ivory/60 mb-2 block">Enlaces de interés (Press kit, referencias, etc.)</Label>
+                      <div className="space-y-2">
+                        {filmData.targetAudienceUrls?.map((url, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <Input
+                              value={url}
+                              readOnly
+                              className="bg-muted border-border text-foreground h-8 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              onClick={() => {
+                                const newUrls = [...(filmData.targetAudienceUrls || [])];
+                                newUrls.splice(idx, 1);
+                                setFilmData({ ...filmData, targetAudienceUrls: newUrls });
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <Input
+                            id="new-url-input"
+                            placeholder="https://"
+                            className="bg-muted border-border text-foreground h-8 text-xs placeholder:text-muted-foreground/50"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = e.currentTarget.value.trim();
+                                if (val) {
+                                  setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
+                                  e.currentTarget.value = '';
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"
+                            onClick={() => {
+                              const input = document.getElementById('new-url-input') as HTMLInputElement;
+                              const val = input.value.trim();
+                              if (val) {
+                                setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
+                                input.value = '';
+                              }
+                            }}
+                          >
+                            Añadir URL
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Files Section */}
+                    <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
+                      <Label className="text-xs text-cinema-ivory/60 mb-2 block">Archivos (PDF, Briefs, Presentaciones)</Label>
+
+                      {selectedFiles.length > 0 && (
+                        <div className="space-y-2 mb-2">
+                          {selectedFiles.map((file, idx) => (
+                            <div key={idx} className="flex gap-2 items-center bg-cinema-charcoal/60 p-2 rounded border border-cinema-yellow/10">
+                              <FileText className="h-4 w-4 text-cinema-yellow/70" />
+                              <span className="text-xs text-cinema-ivory truncate flex-1">{file.name}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                onClick={() => {
+                                  const newFiles = [...selectedFiles];
+                                  newFiles.splice(idx, 1);
+                                  setSelectedFiles(newFiles);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="relative">
+                        <Input
+                          type="file"
+                          id="target-audience-files"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              const newFiles = Array.from(e.target.files);
+                              setSelectedFiles([...selectedFiles, ...newFiles]);
+                            }
+                            // Reset value to allow re-selecting same file if needed
+                            e.target.value = '';
+                          }}
+                        />
+                        <Label
+                          htmlFor="target-audience-files"
+                          className="flex items-center justify-center gap-2 w-full p-2 border border-dashed border-cinema-yellow/30 rounded cursor-pointer hover:bg-cinema-yellow/5 transition-colors text-xs text-cinema-yellow"
+                        >
+                          <Upload className="h-3 w-3" />
+                          <span>Subir Archivos</span>
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full h-px bg-cinema-yellow/10" />
+
+                {/* Block 3: Goals */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-cinema-ivory">Objetivo principal de la campaña</Label>
+                    <HelpTooltip
+                      fieldId="campaign_goals"
+                      title="¿Por qué te preguntamos los objetivos?"
+                      content="Los objetivos nos ayudan a configurar la estrategia correcta: timing, plataformas, creativos y presión publicitaria. Cada objetivo requiere un enfoque diferente."
+                    />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {GOALS.map((goal) => (
+                      <button
+                        key={goal}
+                        onClick={() => handleGoalToggle(goal)}
+                        className={`cinema-card p-4 text-left flex items-center gap-3 ${filmData.goals.includes(goal) ? "border-primary bg-primary/5" : ""
+                          }`}
+                      >
+                        <Checkbox checked={filmData.goals.includes(goal)} className="border-primary data-[state=checked]:bg-primary" />
+                        <span className="text-sm">{goal}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label className="text-cinema-ivory">Objetivo principal de la campaña</Label>
-                  <HelpTooltip
-                    fieldId="campaign_goals"
-                    title="¿Por qué te preguntamos los objetivos?"
-                    content="Los objetivos nos ayudan a configurar la estrategia correcta: timing, plataformas, creativos y presión publicitaria. Cada objetivo requiere un enfoque diferente."
-                  />
-                </div>
-                <div className="grid md:grid-cols-2 gap-3">
-                  {GOALS.map((goal) => (
-                    <button
-                      key={goal}
-                      onClick={() => handleGoalToggle(goal)}
-                      className={`cinema-card p-4 text-left flex items-center gap-3 ${filmData.goals.includes(goal) ? "border-primary bg-primary/5" : ""
-                        }`}
-                    >
-                      <Checkbox checked={filmData.goals.includes(goal)} className="border-primary data-[state=checked]:bg-primary" />
-                      <span className="text-sm">{goal}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="audience" className="text-cinema-ivory">Define la audiencia objetivo</Label>
-                  <HelpTooltip
-                    fieldId="target_audience"
-                    title="¿Por qué te preguntamos por tu público?"
-                    content="Cuanto mejor entendamos a quién va dirigida tu película, más fino será el targeting. Mezclamos tus inputs con nuestros datos para elegir audiencias con mayor intención de compra."
-                  />
-                </div>
-                <Textarea
-                  id="audience"
-                  value={filmData.targetAudience}
-                  onChange={(e) => setFilmData({ ...filmData, targetAudience: e.target.value })}
-                  className="bg-muted border-border text-foreground min-h-32"
-                  placeholder="Si ya tenéis definido el público objetivo de tu película, danos aquí el máximo nivel de detalle posible: edad, géneros, intereses, tipo de cine que consumen, ciudades clave…"
-                />
-              </div>
             </Card>
           )}
 
           {/* Step 2: Calendar */}
-          {currentStep === 2 && (
-            <Card className="cinema-card p-8 space-y-6">
-              <h2 className="font-cinema text-3xl text-primary">Calendario y momentos clave</h2>
+          {
+            currentStep === 2 && (
+              <Card className="cinema-card p-8 space-y-6">
+                <h2 className="font-cinema text-3xl text-primary">Calendario y momentos clave</h2>
 
-              <div className="space-y-4">
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-cinema text-xl text-primary">Así trabajamos tu estreno en digital</h3>
-                    <HelpTooltip
-                      fieldId="campaign_phases"
-                      title="¿Por qué te preguntamos las fechas?"
-                      content="Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima. Nuestro algoritmo también las usa para evitar conflictos con otras campañas similares."
-                    />
+                <div className="space-y-4">
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-cinema text-xl text-primary">Así trabajamos tu estreno en digital</h3>
+                      <HelpTooltip
+                        fieldId="campaign_phases"
+                        title="¿Por qué te preguntamos las fechas?"
+                        content="Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima. Nuestro algoritmo también las usa para evitar conflictos con otras campañas similares."
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Marcamos tres momentos clave en cada campaña: pre-campaña de 14 días antes del estreno, fin de semana de estreno y cierre con informe final 3 días laborables después del último día de campaña.
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Para llegar con todo afinado, necesitamos recibir las creatividades finales 3 días laborables antes de activar la pre-campaña. Más adelante podrás elegir si prefieres que nuestro equipo se encargue de crear todos los anuncios a partir de tu tráiler o de algunas piezas en bruto que nos compartas.
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Marcamos tres momentos clave en cada campaña: pre-campaña de 14 días antes del estreno, fin de semana de estreno y cierre con informe final 3 días laborables después del último día de campaña.
+
+                  <Label className="text-cinema-ivory text-lg">Selecciona la fecha oficial de estreno en salas *</Label>
+                  <p className="text-sm text-muted-foreground">
+                    El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
                   </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Para llegar con todo afinado, necesitamos recibir las creatividades finales 3 días laborables antes de activar la pre-campaña. Más adelante podrás elegir si prefieres que nuestro equipo se encargue de crear todos los anuncios a partir de tu tráiler o de algunas piezas en bruto que nos compartas.
-                  </p>
-                </div>
 
-                <Label className="text-cinema-ivory text-lg">Selecciona la fecha oficial de estreno en salas *</Label>
-                <p className="text-sm text-muted-foreground">
-                  El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
-                </p>
-
-                <div className="flex justify-center">
-                  <TooltipProvider>
-                    <Calendar
-                      mode="single"
-                      selected={releaseDate}
-                      onSelect={setReleaseDate}
-                      className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
-                      weekStartsOn={1}
-                      modifiers={{
-                        creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
-                        preCampaign: campaignDates ? [
-                          { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
-                        ] : [],
-                        premiereWeekend: campaignDates ? [
-                          { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
-                        ] : [],
-                      }}
-                      modifiersClassNames={{
-                        creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
-                        preCampaign: "bg-primary/20 text-primary-foreground",
-                        premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                      }}
-                      components={{
-                        Day: (props) => {
-                          const isDeadline = campaignDates && isSameDay(props.date, campaignDates.creativesDeadline);
-                          if (isDeadline) {
-                            return (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div>
-                                    <Day {...props} />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Deadline para enviar las creatividades</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          }
-                          return <Day {...props} />;
-                        }
-                      }}
-                    />
-                  </TooltipProvider>
-                </div>
-              </div>
-
-              {/* Conflict Detection Alert */}
-              {releaseDate && hasCheckedConflicts && conflictResult && (
-                <div className="animate-in fade-in duration-500">
-                  <ConflictAlert
-                    level={conflictResult.level}
-                    conflicts={conflictResult.conflicts}
-                    isAdmin={isAdmin}
-                    onModifyDates={() => {
-                      setReleaseDate(undefined);
-                      setCampaignEndDate(undefined);
-                      setHasCheckedConflicts(false);
-                      toast.info("Modifica la fecha de estreno para revisar conflictos");
-                    }}
-                  />
-                </div>
-              )}
-
-              {releaseDate && campaignDates && (
-                <div className="space-y-6 pt-6 border-t border-border animate-in fade-in duration-500">
-                  <div className="space-y-6">
-                    <div className="flex items-start gap-4 p-6 bg-cinema-gold/10 border border-cinema-gold/30 rounded-lg">
-                      <Checkbox
-                        id="manual-end-date"
-                        checked={manualEndDateMode}
-                        onCheckedChange={(checked) => {
-                          setManualEndDateMode(checked as boolean);
-                          if (!checked) {
-                            // Restaurar fecha por defecto al desmarcar
-                            setCampaignEndDate(campaignDates.premiereWeekendEnd);
-                          } else {
-                            // Al activar modo manual, si no hay fecha personalizada, usar la fecha por defecto
-                            if (!campaignEndDate || campaignEndDate === campaignDates.premiereWeekendEnd) {
-                              setCampaignEndDate(campaignDates.premiereWeekendEnd);
+                  <div className="flex justify-center">
+                    <TooltipProvider>
+                      <Calendar
+                        mode="single"
+                        selected={releaseDate}
+                        onSelect={setReleaseDate}
+                        className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
+                        weekStartsOn={1}
+                        modifiers={{
+                          creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                          preCampaign: campaignDates ? [
+                            { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                          ] : [],
+                          premiereWeekend: campaignDates ? [
+                            { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                          ] : [],
+                        }}
+                        modifiersClassNames={{
+                          creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                          preCampaign: "bg-primary/20 text-primary-foreground",
+                          premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                        }}
+                        components={{
+                          Day: (props) => {
+                            const isDeadline = campaignDates && isSameDay(props.date, campaignDates.creativesDeadline);
+                            if (isDeadline) {
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <Day {...props} />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Deadline para enviar las creatividades</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
                             }
+                            return <Day {...props} />;
                           }
                         }}
-                        className="mt-1 flex-shrink-0"
                       />
-                      <div className="space-y-3 flex-1">
-                        <Label
-                          htmlFor="manual-end-date"
-                          className="text-base text-cinema-ivory font-semibold cursor-pointer block"
-                        >
-                          ¿Quieres definir otra fecha de finalización de campaña?
-                        </Label>
-                        <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                          <p>
-                            Por defecto, la campaña termina el <span className="text-cinema-gold font-medium">domingo del fin de semana del estreno</span>, el punto natural donde la mayoría de títulos consolidan su rendimiento.
-                          </p>
-                          <p>
-                            Pero cada película tiene su propio recorrido. Si quieres <span className="text-cinema-ivory font-medium">reforzar el impacto</span>, mantener la conversación más tiempo o aprovechar un buen boca-oreja, puedes alargar la campaña desde aquí.
-                          </p>
-                          <p className="text-cinema-gold/90 text-xs italic pt-1">
-                            Y no te preocupes: si tu película empieza a romper taquilla, siempre podrás extender la campaña en cualquier momento. El éxito también se gestiona sobre la marcha.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {manualEndDateMode && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <Label className="text-cinema-ivory text-lg">Fecha final de campaña personalizada</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Selecciona una fecha posterior al domingo del fin de semana de estreno ({formatDateShort(campaignDates.premiereWeekendEnd)})
-                        </p>
-                        <div className="flex justify-center">
-                          <Calendar
-                            mode="single"
-                            selected={campaignEndDate}
-                            onSelect={setCampaignEndDate}
-                            disabled={(date) => date < campaignDates.premiereWeekendEnd}
-                            defaultMonth={releaseDate}
-                            className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
-                            weekStartsOn={1}
-                            modifiers={{
-                              creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
-                              preCampaign: campaignDates ? [
-                                { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
-                              ] : [],
-                              premiereWeekend: campaignDates ? [
-                                { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
-                              ] : [],
-                            }}
-                            modifiersClassNames={{
-                              creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
-                              preCampaign: "bg-primary/20 text-primary-foreground",
-                              premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <Card className="bg-secondary/10 border-secondary/50 p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CalendarClock className="w-4 h-4 cinema-icon-decorative" />
-                        <p className="text-xs text-muted-foreground font-semibold">Deadline creatividades</p>
-                      </div>
-                      <p className="text-sm text-cinema-ivory">
-                        {formatDateShort(campaignDates.creativesDeadline)}
-                      </p>
-                    </Card>
-
-                    <Card className="bg-primary/10 border-primary/30 p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CalendarRange className="w-4 h-4 cinema-icon-decorative" />
-                        <p className="text-xs text-muted-foreground font-semibold">Pre-campaña</p>
-                      </div>
-                      <p className="text-sm text-cinema-ivory">
-                        {formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}
-                      </p>
-                    </Card>
-
-                    <Card className="bg-primary/20 border-primary p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <CalendarCheck className="w-4 h-4 cinema-icon-decorative" />
-                        <p className="text-xs text-muted-foreground font-semibold">Fin de semana estreno</p>
-                      </div>
-                      <p className="text-sm text-cinema-ivory">
-                        {formatDateShort(campaignDates.premiereWeekendStart)} - {formatDateShort(campaignDates.premiereWeekendEnd)}
-                      </p>
-                    </Card>
-
-                    <Card className="bg-muted p-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 cinema-icon-decorative" />
-                        <p className="text-xs text-muted-foreground font-semibold">Este día recibirás el informe con los resultados de la campaña</p>
-                      </div>
-                      <p className="text-sm text-cinema-ivory">
-                        {formatDateShort(campaignDates.finalReportDate)}
-                      </p>
-                    </Card>
+                    </TooltipProvider>
                   </div>
                 </div>
-              )}
-            </Card>
-          )}
 
-          {/* Step 3: Platforms & Investment */}
-          {currentStep === 3 && (
-            <Card className="cinema-card p-8 space-y-6">
-              <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-cinema text-2xl text-primary">Elige dónde quieres que viva tu película</h3>
-                    <HelpTooltip
-                      fieldId="platforms"
-                      title="¿Por qué te preguntamos en qué plataformas?"
-                      content="Cada plataforma tiene su lógica y audiencia. Saber dónde quieres aparecer nos ayuda a equilibrar creatividad, formatos y presupuesto para maximizar el impacto del estreno."
+                {/* Conflict Detection Alert */}
+                {releaseDate && hasCheckedConflicts && conflictResult && (
+                  <div className="animate-in fade-in duration-500">
+                    <ConflictAlert
+                      level={conflictResult.level}
+                      conflicts={conflictResult.conflicts}
+                      isAdmin={isAdmin}
+                      onModifyDates={() => {
+                        setReleaseDate(undefined);
+                        setCampaignEndDate(undefined);
+                        setHasCheckedConflicts(false);
+                        toast.info("Modifica la fecha de estreno para revisar conflictos");
+                      }}
                     />
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Cada plataforma es una sala distinta: Instagram, Facebook, TikTok, YouTube… cada una tiene su propio lenguaje, su ritmo y su forma de llenar butacas. Aquí puedes decidir en qué escenarios quieres que aparezca tu estreno y verás cómo la inversión y los fees se actualizan en tiempo real según las ventanas que elijas.
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Cuando nos cuentes al detalle cuál es la audiencia objetivo de tu película, haremos un análisis profundo y te propondremos la combinación de plataformas que mejor encaje con tu estreno. Si alguna recomendación difiere de tu previsión inicial, te explicaremos el porqué con datos y experiencia, pero la decisión final será siempre tuya. Nosotros ponemos el criterio y la estrategia; tú mantienes el control de cómo y dónde se proyecta tu campaña.
-                  </p>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    Selecciona aquí las plataformas publicitarias donde quieres que se anuncie tu estreno:
-                  </p>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {PLATFORMS.map((platform) => (
-                    <PlatformCard
-                      key={platform.name}
-                      name={platform.name}
-                      description={platform.description}
-                      logo={platform.logo}
-                      selected={selectedPlatforms.includes(platform.name)}
-                      onToggle={() => handlePlatformToggle(platform.name)}
-                    />
-                  ))}
-                </div>
+                )}
 
-                <div className="mt-4 space-y-2">
-                  <Label htmlFor="other-platform" className="text-cinema-ivory">Otras plataformas (opcional)</Label>
-                  <Input
-                    id="other-platform"
-                    value={otherPlatform}
-                    onChange={(e) => setOtherPlatform(e.target.value)}
-                    className="bg-muted border-border text-foreground"
-                    placeholder="Especifica otras plataformas"
-                  />
-                </div>
-
-                {/* Percentage Distribution */}
-                {/* Planning Mode Selector */}
-                {(selectedPlatforms.length > 0 || otherPlatform) && (
-                  <div className="mt-8 space-y-8">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xl text-cinema-ivory">Planificación de presupuesto</Label>
-                        <HelpTooltip
-                          fieldId="budget_dist"
-                          title="¿Cómo quieres distribuir tu inversión?"
-                          content="Inversión Directa: Tú decides cuánto poner en cada red. Peso relativo (%): Tú marcas un total y repartes pesos. Presupuesto Rápido: Nosotros lo dividimos a partes iguales."
-                        />
-                      </div>
-
-                      <div className="grid md:grid-cols-3 gap-3">
-                        <button
-                          onClick={() => setPlanningMode('amount')}
-                          type="button"
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Euro className={`w-4 h-4 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
-                            <span className="font-bold text-cinema-ivory">Inversión Directa</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Controla el importe exacto para cada red social.</p>
-                        </button>
-
-                        <button
-                          onClick={() => setPlanningMode('percentage')}
-                          type="button"
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Percent className={`w-4 h-4 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
-                            <span className="font-bold text-cinema-ivory">Peso relativo (%)</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Distribuye tu presupuesto total por pesos porcentuales.</p>
-                        </button>
-
-                        <button
-                          onClick={() => setPlanningMode('simple')}
-                          type="button"
-                          className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Zap className={`w-4 h-4 ${planningMode === 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
-                            <span className="font-bold text-cinema-ivory">Presupuesto Rápido</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-tight">Define un total y lo repartimos equitativamente.</p>
-                        </button>
-                      </div>
-                    </div>
-                    {/* Total Investment Field (Shown in simple and percentage modes) */}
-                    {planningMode !== 'amount' && (
-                      <div className="space-y-3 p-6 bg-primary/5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor="investment" className="text-cinema-gold font-bold text-lg">Inversión publicitaria total (€) *</Label>
-                        </div>
-                        <Input
-                          id="investment"
-                          type="number"
-                          min="3000"
-                          step="500"
-                          value={adInvestment}
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            setAdInvestment(newValue);
-
-                            // If in percentage mode, sync amounts
-                            if (planningMode === 'percentage') {
-                              const totalInvestment = parseFloat(newValue) || 0;
-                              const newAmounts: Record<string, number> = {};
-                              Object.entries(platformPercentages).forEach(([p, pct]) => {
-                                newAmounts[p] = parseFloat(((totalInvestment * pct) / 100).toFixed(2));
-                              });
-                              setPlatformAmounts(newAmounts);
+                {releaseDate && campaignDates && (
+                  <div className="space-y-6 pt-6 border-t border-border animate-in fade-in duration-500">
+                    <div className="space-y-6">
+                      <div className="flex items-start gap-4 p-6 bg-cinema-gold/10 border border-cinema-gold/30 rounded-lg">
+                        <Checkbox
+                          id="manual-end-date"
+                          checked={manualEndDateMode}
+                          onCheckedChange={(checked) => {
+                            setManualEndDateMode(checked as boolean);
+                            if (!checked) {
+                              // Restaurar fecha por defecto al desmarcar
+                              setCampaignEndDate(campaignDates.premiereWeekendEnd);
+                            } else {
+                              // Al activar modo manual, si no hay fecha personalizada, usar la fecha por defecto
+                              if (!campaignEndDate || campaignEndDate === campaignDates.premiereWeekendEnd) {
+                                setCampaignEndDate(campaignDates.premiereWeekendEnd);
+                              }
                             }
                           }}
-                          className="bg-background border-primary/30 text-foreground text-3xl font-bold h-16"
-                          placeholder="Mínimo 3.000€"
+                          className="mt-1 flex-shrink-0"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          A partir de 3.000€ tu campaña empieza a tener el músculo necesario.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Distribution Detail Area */}
-                    <div className="p-8 rounded-xl border border-border bg-card/50 shadow-inner">
-                      {planningMode === 'simple' ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
-                            <span className="text-sm font-medium">Plataformas seleccionadas</span>
-                            <span className="font-bold text-primary">{[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].length}</span>
-                          </div>
-                          {feeMode === 'additional' ? (
-                            <p className="text-cinema-ivory leading-relaxed">
-                              Dividiremos tu presupuesto de <span className="text-cinema-gold font-bold">{adInvestment || "0"}€</span> de forma equilibrada.
-                              Cada plataforma recibirá aproximadamente <span className="text-cinema-gold font-bold">{((parseFloat(adInvestment) || 0) / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
+                        <div className="space-y-3 flex-1">
+                          <Label
+                            htmlFor="manual-end-date"
+                            className="text-base text-cinema-ivory font-semibold cursor-pointer block"
+                          >
+                            ¿Quieres definir otra fecha de finalización de campaña?
+                          </Label>
+                          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+                            <p>
+                              Por defecto, la campaña termina el <span className="text-cinema-gold font-medium">domingo del fin de semana del estreno</span>, el punto natural donde la mayoría de títulos consolidan su rendimiento.
                             </p>
-                          ) : (
-                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-left-2">
-                              <p className="text-cinema-ivory leading-relaxed">
-                                Al integrar los fees, dividiremos tu inversión neta de <span className="text-cinema-gold font-bold">{Math.round(costs.effectiveAdInvestment).toLocaleString()}€</span> de forma equilibrada.
-                              </p>
-                              <p className="text-primary font-bold mt-2 text-lg italic">
-                                La inversión neta por plataforma será de <span className="text-2xl not-italic">{(costs.effectiveAdInvestment / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
-                              </p>
-                            </div>
-                          )}
+                            <p>
+                              Pero cada película tiene su propio recorrido. Si quieres <span className="text-cinema-ivory font-medium">reforzar el impacto</span>, mantener la conversación más tiempo o aprovechar un buen boca-oreja, puedes alargar la campaña desde aquí.
+                            </p>
+                            <p className="text-cinema-gold/90 text-xs italic pt-1">
+                              Y no te preocupes: si tu película empieza a romper taquilla, siempre podrás extender la campaña en cualquier momento. El éxito también se gestiona sobre la marcha.
+                            </p>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {[...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].map(p => (
-                            <div key={p} className="grid grid-cols-1 md:grid-cols-[1fr,200px,100px] items-center gap-4 group">
-                              <span className="text-sm font-semibold text-cinema-ivory truncate group-hover:text-primary transition-colors">{p}</span>
-                              <div className="relative">
-                                {planningMode === 'percentage' ? (
-                                  <>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      step="1"
-                                      value={platformPercentages[p] || 0}
-                                      onChange={(e) => handlePercentageChange(p, e.target.value)}
-                                      className="pl-4 pr-10 bg-muted border-border font-mono text-center"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">%</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="100"
-                                      value={platformAmounts[p] || 0}
-                                      onChange={(e) => handleAmountChange(p, e.target.value)}
-                                      className="pl-4 pr-10 bg-muted border-border font-mono text-center"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">€</span>
-                                  </>
-                                )}
-                              </div>
-                              <div className="text-right flex flex-col items-end">
-                                <span className="text-xs font-medium text-cinema-gold/70 bg-cinema-gold/5 px-2 py-1 rounded border border-cinema-gold/20">
-                                  {planningMode === 'percentage'
-                                    ? `${(platformAmounts[p] || 0).toLocaleString()}€`
-                                    : `${(platformPercentages[p] || 0).toFixed(1)}%`}
-                                </span>
-                                {feeMode === 'integrated' && costs.effectiveAdInvestment > 0 && (
-                                  <span className="text-[10px] text-primary/70 mt-1 font-bold animate-pulse">
-                                    Neta: {Math.round((platformAmounts[p] || 0) * (costs.effectiveAdInvestment / (costs.adInvestment || 1))).toLocaleString()}€
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                      </div>
 
-                          <div className="pt-6 border-t border-border flex flex-col items-end gap-3">
-                            {planningMode === 'percentage' && (
-                              <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/50 p-4 rounded-lg">
-                                <div className="space-y-1">
-                                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Suma de pesos</div>
-                                  <div className={`text-xl font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)) - 100) < 0.1 ? 'text-green-500' : 'text-yellow-500'}`}>
-                                    {Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0).toFixed(1)}%
-                                  </div>
-                                </div>
-                                <div className="text-right space-y-1">
-                                  <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Falta por asignar</div>
-                                  <div className="text-xl font-bold text-cinema-gold">
-                                    {(100 - Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)).toFixed(1)}%
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            {planningMode === 'amount' && (
-                              <div className="w-full md:w-auto p-4 bg-primary/10 rounded-lg border border-primary/20 text-right">
-                                <div className="text-[10px] uppercase text-primary font-bold tracking-wider mb-1">Inversión publicitaria sumada</div>
-                                <div className="text-3xl font-cinema text-primary">
-                                  {Object.values(platformAmounts).reduce((acc, curr) => acc + (curr || 0), 0).toLocaleString()}€
-                                </div>
-                              </div>
-                            )}
+                      {manualEndDateMode && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                          <Label className="text-cinema-ivory text-lg">Fecha final de campaña personalizada</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Selecciona una fecha posterior al domingo del fin de semana de estreno ({formatDateShort(campaignDates.premiereWeekendEnd)})
+                          </p>
+                          <div className="flex justify-center">
+                            <Calendar
+                              mode="single"
+                              selected={campaignEndDate}
+                              onSelect={setCampaignEndDate}
+                              disabled={(date) => date < campaignDates.premiereWeekendEnd}
+                              defaultMonth={releaseDate}
+                              className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
+                              weekStartsOn={1}
+                              modifiers={{
+                                creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                                preCampaign: campaignDates ? [
+                                  { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                                ] : [],
+                                premiereWeekend: campaignDates ? [
+                                  { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                                ] : [],
+                              }}
+                              modifiersClassNames={{
+                                creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                                preCampaign: "bg-primary/20 text-primary-foreground",
+                                premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                              }}
+                            />
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Card className="bg-secondary/10 border-secondary/50 p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarClock className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-xs text-muted-foreground font-semibold">Deadline creatividades</p>
+                        </div>
+                        <p className="text-sm text-cinema-ivory">
+                          {formatDateShort(campaignDates.creativesDeadline)}
+                        </p>
+                      </Card>
+
+                      <Card className="bg-primary/10 border-primary/30 p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarRange className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-xs text-muted-foreground font-semibold">Pre-campaña</p>
+                        </div>
+                        <p className="text-sm text-cinema-ivory">
+                          {formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}
+                        </p>
+                      </Card>
+
+                      <Card className="bg-primary/20 border-primary p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarCheck className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-xs text-muted-foreground font-semibold">Fin de semana estreno</p>
+                        </div>
+                        <p className="text-sm text-cinema-ivory">
+                          {formatDateShort(campaignDates.premiereWeekendStart)} - {formatDateShort(campaignDates.premiereWeekendEnd)}
+                        </p>
+                      </Card>
+
+                      <Card className="bg-muted p-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 cinema-icon-decorative" />
+                          <p className="text-xs text-muted-foreground font-semibold">Este día recibirás el informe con los resultados de la campaña</p>
+                        </div>
+                        <p className="text-sm text-cinema-ivory">
+                          {formatDateShort(campaignDates.finalReportDate)}
+                        </p>
+                      </Card>
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
+            )
+          }
 
+          {/* Step 3: Platforms & Investment */}
+          {
+            currentStep === 3 && (
+              <Card className="cinema-card p-8 space-y-6">
+                <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
 
-              {/* Fee Mode Toggle */}
-              {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
-                    <HelpTooltip
-                      fieldId="fee_mode"
-                      title="Opciones de fees"
-                      content="Puedes sumar nuestros fees a tu inversión publicitaria (opción por defecto) o integrarlos dentro de tu presupuesto total, en cuyo caso se descontarán de la inversión en medios."
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-cinema text-2xl text-primary">Elige dónde quieres que viva tu película</h3>
+                      <HelpTooltip
+                        fieldId="platforms"
+                        title="¿Por qué te preguntamos en qué plataformas?"
+                        content="Cada plataforma tiene su lógica y audiencia. Saber dónde quieres aparecer nos ayuda a equilibrar creatividad, formatos y presupuesto para maximizar el impacto del estreno."
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Cada plataforma es una sala distinta: Instagram, Facebook, TikTok, YouTube… cada una tiene su propio lenguaje, su ritmo y su forma de llenar butacas. Aquí puedes decidir en qué escenarios quieres que aparezca tu estreno y verás cómo la inversión y los fees se actualizan en tiempo real según las ventanas que elijas.
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Cuando nos cuentes al detalle cuál es la audiencia objetivo de tu película, haremos un análisis profundo y te propondremos la combinación de plataformas que mejor encaje con tu estreno. Si alguna recomendación difiere de tu previsión inicial, te explicaremos el porqué con datos y experiencia, pero la decisión final será siempre tuya. Nosotros ponemos el criterio y la estrategia; tú mantienes el control de cómo y dónde se proyecta tu campaña.
+                    </p>
+                    <p className="text-sm text-muted-foreground font-medium">
+                      Selecciona aquí las plataformas publicitarias donde quieres que se anuncie tu estreno:
+                    </p>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {PLATFORMS.map((platform) => (
+                      <PlatformCard
+                        key={platform.name}
+                        name={platform.name}
+                        description={platform.description}
+                        logo={platform.logo}
+                        selected={selectedPlatforms.includes(platform.name)}
+                        onToggle={() => handlePlatformToggle(platform.name)}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="other-platform" className="text-cinema-ivory">Otras plataformas (opcional)</Label>
+                    <Input
+                      id="other-platform"
+                      value={otherPlatform}
+                      onChange={(e) => setOtherPlatform(e.target.value)}
+                      className="bg-muted border-border text-foreground"
+                      placeholder="Especifica otras plataformas"
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div
-                      onClick={() => setFeeMode('additional')}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                        }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                          }`}>
-                          {feeMode === 'additional' && (
-                            <div className="w-2 h-2 rounded-full bg-background" />
-                          )}
+                  {/* Percentage Distribution */}
+                  {/* Planning Mode Selector */}
+                  {(selectedPlatforms.length > 0 || otherPlatform) && (
+                    <div className="mt-8 space-y-8">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xl text-cinema-ivory">Planificación de presupuesto</Label>
+                          <HelpTooltip
+                            fieldId="budget_dist"
+                            title="¿Cómo quieres distribuir tu inversión?"
+                            content="Inversión Directa: Tú decides cuánto poner en cada red. Peso relativo (%): Tú marcas un total y repartes pesos. Presupuesto Rápido: Nosotros lo dividimos a partes iguales."
+                          />
                         </div>
-                        <div>
-                          <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
-                          </p>
+
+                        <div className="grid md:grid-cols-3 gap-3">
+                          <button
+                            onClick={() => setPlanningMode('amount')}
+                            type="button"
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Euro className={`w-4 h-4 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className="font-bold text-cinema-ivory">Inversión Directa</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Controla el importe exacto para cada red social.</p>
+                          </button>
+
+                          <button
+                            onClick={() => setPlanningMode('percentage')}
+                            type="button"
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Percent className={`w-4 h-4 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className="font-bold text-cinema-ivory">Peso relativo (%)</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Distribuye tu presupuesto total por pesos porcentuales.</p>
+                          </button>
+
+                          <button
+                            onClick={() => setPlanningMode('simple')}
+                            type="button"
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Zap className={`w-4 h-4 ${planningMode === 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className="font-bold text-cinema-ivory">Presupuesto Rápido</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Define un total y lo repartimos equitativamente.</p>
+                          </button>
                         </div>
                       </div>
-                    </div>
+                      {/* Total Investment Field (Shown in simple and percentage modes) */}
+                      {planningMode !== 'amount' && (
+                        <div className="space-y-3 p-6 bg-primary/5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="investment" className="text-cinema-gold font-bold text-lg">Inversión publicitaria total (€) *</Label>
+                          </div>
+                          <Input
+                            id="investment"
+                            type="number"
+                            min="3000"
+                            step="500"
+                            value={adInvestment}
+                            onChange={(e) => {
+                              const newValue = e.target.value;
+                              setAdInvestment(newValue);
 
-                    <div
-                      onClick={() => setFeeMode('integrated')}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated'
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                        }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'integrated' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                          }`}>
-                          {feeMode === 'integrated' && (
-                            <div className="w-2 h-2 rounded-full bg-background" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-cinema-ivory">Integrar fees en mi presupuesto</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Los fees se descuentan de tu presupuesto total. La inversión real en medios será menor.
+                              // If in percentage mode, sync amounts
+                              if (planningMode === 'percentage') {
+                                const totalInvestment = parseFloat(newValue) || 0;
+                                const newAmounts: Record<string, number> = {};
+                                Object.entries(platformPercentages).forEach(([p, pct]) => {
+                                  newAmounts[p] = parseFloat(((totalInvestment * pct) / 100).toFixed(2));
+                                });
+                                setPlatformAmounts(newAmounts);
+                              }
+                            }}
+                            className="bg-background border-primary/30 text-foreground text-3xl font-bold h-16"
+                            placeholder="Mínimo 3.000€"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            A partir de 3.000€ tu campaña empieza a tener el músculo necesario.
                           </p>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                      )}
 
-              {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
-                <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
-              )}
-            </Card>
-          )}
+                      {/* Distribution Detail Area */}
+                      <div className="p-8 rounded-xl border border-border bg-card/50 shadow-inner">
+                        {planningMode === 'simple' ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
+                              <span className="text-sm font-medium">Plataformas seleccionadas</span>
+                              <span className="font-bold text-primary">{[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].length}</span>
+                            </div>
+                            {feeMode === 'additional' ? (
+                              <p className="text-cinema-ivory leading-relaxed">
+                                Dividiremos tu presupuesto de <span className="text-cinema-gold font-bold">{adInvestment || "0"}€</span> de forma equilibrada.
+                                Cada plataforma recibirá aproximadamente <span className="text-cinema-gold font-bold">{((parseFloat(adInvestment) || 0) / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
+                              </p>
+                            ) : (
+                              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-left-2">
+                                <p className="text-cinema-ivory leading-relaxed">
+                                  Al integrar los fees, dividiremos tu inversión neta de <span className="text-cinema-gold font-bold">{Math.round(costs.effectiveAdInvestment).toLocaleString()}€</span> de forma equilibrada.
+                                </p>
+                                <p className="text-primary font-bold mt-2 text-lg italic">
+                                  La inversión neta por plataforma será de <span className="text-2xl not-italic">{(costs.effectiveAdInvestment / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {[...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].map(p => (
+                              <div key={p} className="grid grid-cols-1 md:grid-cols-[1fr,200px,100px] items-center gap-4 group">
+                                <span className="text-sm font-semibold text-cinema-ivory truncate group-hover:text-primary transition-colors">{p}</span>
+                                <div className="relative">
+                                  {planningMode === 'percentage' ? (
+                                    <>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        value={platformPercentages[p] || 0}
+                                        onChange={(e) => handlePercentageChange(p, e.target.value)}
+                                        className="pl-4 pr-10 bg-muted border-border font-mono text-center"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">%</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="100"
+                                        value={platformAmounts[p] || 0}
+                                        onChange={(e) => handleAmountChange(p, e.target.value)}
+                                        className="pl-4 pr-10 bg-muted border-border font-mono text-center"
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">€</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                  <span className="text-xs font-medium text-cinema-gold/70 bg-cinema-gold/5 px-2 py-1 rounded border border-cinema-gold/20">
+                                    {planningMode === 'percentage'
+                                      ? `${(platformAmounts[p] || 0).toLocaleString()}€`
+                                      : `${(platformPercentages[p] || 0).toFixed(1)}%`}
+                                  </span>
+                                  {feeMode === 'integrated' && costs.effectiveAdInvestment > 0 && (
+                                    <span className="text-[10px] text-primary/70 mt-1 font-bold animate-pulse">
+                                      Neta: {Math.round((platformAmounts[p] || 0) * (costs.effectiveAdInvestment / (costs.adInvestment || 1))).toLocaleString()}€
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
 
-          {/* Step 4: Add-ons */}
-          {currentStep === 4 && (
-            <Card className="cinema-card p-8 space-y-6">
-              <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
-
-              <div className="grid md:grid-cols-3 gap-4">
-                <AddonCard
-                  title="Adaptación de contenido"
-                  description="Adaptamos tus trailers y piezas al lenguaje de cada plataforma (formatos 1:1, 9:16, motion graphics, versiones cortas, etc.)"
-                  price="290€"
-                  icon={<Clapperboard className="w-10 h-10 cinema-icon-decorative" />}
-                  selected={selectedAddons.adaptacion}
-                  onToggle={() => setSelectedAddons({ ...selectedAddons, adaptacion: !selectedAddons.adaptacion })}
-                  showPrice={isDistributor}
-                  priceHiddenMessage="Te mostraremos el coste exacto al crear tu cuenta de distribuidora."
-                />
-
-                <AddonCard
-                  title="Microsite oficial"
-                  description="Página oficial de la película con sinopsis, trailer, ficha artística y llamada a la compra de entradas."
-                  price="490€"
-                  icon={<Globe className="w-10 h-10 cinema-icon-decorative" />}
-                  selected={selectedAddons.microsite}
-                  onToggle={() => setSelectedAddons({ ...selectedAddons, microsite: !selectedAddons.microsite })}
-                  showPrice={isDistributor}
-                  priceHiddenMessage="El importe se mostrará en tu presupuesto personalizado."
-                />
-
-                <AddonCard
-                  title="Campañas email / WhatsApp"
-                  description="Automatizamos comunicaciones directas con tu público: bases de datos, newsletters y mensajes segmentados vía email y/o WhatsApp."
-                  price="390€"
-                  icon={<Mail className="w-10 h-10 cinema-icon-decorative" />}
-                  selected={selectedAddons.emailWhatsapp}
-                  onToggle={() => setSelectedAddons({ ...selectedAddons, emailWhatsapp: !selectedAddons.emailWhatsapp })}
-                  showPrice={isDistributor}
-                  priceHiddenMessage="Verás el coste de este servicio en tu presupuesto al registrarte."
-                />
-              </div>
-
-              <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={isDistributor} feeMode={feeMode} />
-            </Card>
-          )}
-
-          {/* Step 5: Summary & Submit */}
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              {!isDistributor && (
-                <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
-                  <div className="text-center space-y-3">
-                    <p className="text-cinema-ivory leading-relaxed">
-                      <strong>Ya tienes tu campaña definida.</strong> Solo falta crear tu cuenta de distribuidora para ver el presupuesto estimado y enviar la solicitud.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      ¿Ya tienes cuenta?{" "}
-                      <button
-                        onClick={() => setShowAuthModal(true)}
-                        className="text-primary hover:text-secondary font-semibold underline transition-colors"
-                      >
-                        Inicia sesión aquí
-                      </button>
-                      {" "}para ver el presupuesto sin perder la información del formulario.
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {isDistributor && justRegistered && (
-                <Card className="cinema-card p-6 bg-green-500/10 border-green-500/30">
-                  <p className="text-cinema-ivory text-center leading-relaxed">
-                    ✓ <strong>¡Cuenta creada con éxito!</strong> Ahora puedes ver tu presupuesto completo y enviar la campaña.
-                  </p>
-                </Card>
-              )}
-
-              {isDistributor && !justRegistered && (
-                <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
-                  <p className="text-cinema-ivory text-center">
-                    Revisa tus datos y confirma el envío de la campaña. Estos datos de distribuidora se usarán para la facturación y seguimiento del estreno.
-                  </p>
-                </Card>
-              )}
-
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Resumen de tu campaña</h2>
-
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-cinema text-xl text-primary mb-2">Película</h3>
-                    <p className="text-cinema-ivory"><strong>{filmData.title}</strong></p>
-                    <p className="text-sm text-muted-foreground">{filmData.genre} | {filmData.country} | {filmData.distributorName}</p>
-                    {releaseDate && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Estreno: <strong>{formatDateEs(releaseDate)}</strong>
-                      </p>
-                    )}
-                  </div>
-
-                  {campaignDates && (
-                    <div>
-                      <h3 className="font-cinema text-xl text-primary mb-2">Calendario</h3>
-                      <div className="grid md:grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Pre-campaña:</p>
-                          <p className="text-cinema-ivory">{formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Estreno:</p>
-                          <p className="text-cinema-ivory">{formatDateShort(campaignDates.premiereWeekendStart)} - {formatDateShort(campaignDates.premiereWeekendEnd)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Deadline creatividades:</p>
-                          <p className="text-cinema-ivory">{formatDateShort(campaignDates.creativesDeadline)}</p>
-                        </div>
+                            <div className="pt-6 border-t border-border flex flex-col items-end gap-3">
+                              {planningMode === 'percentage' && (
+                                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/50 p-4 rounded-lg">
+                                  <div className="space-y-1">
+                                    <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Suma de pesos</div>
+                                    <div className={`text-xl font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)) - 100) < 0.1 ? 'text-green-500' : 'text-yellow-500'}`}>
+                                      {Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0).toFixed(1)}%
+                                    </div>
+                                  </div>
+                                  <div className="text-right space-y-1">
+                                    <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Falta por asignar</div>
+                                    <div className="text-xl font-bold text-cinema-gold">
+                                      {(100 - Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)).toFixed(1)}%
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {planningMode === 'amount' && (
+                                <div className="w-full md:w-auto p-4 bg-primary/10 rounded-lg border border-primary/20 text-right">
+                                  <div className="text-[10px] uppercase text-primary font-bold tracking-wider mb-1">Inversión publicitaria sumada</div>
+                                  <div className="text-3xl font-cinema text-primary">
+                                    {Object.values(platformAmounts).reduce((acc, curr) => acc + (curr || 0), 0).toLocaleString()}€
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
-
-                  <div>
-                    <h3 className="font-cinema text-xl text-primary mb-2">Plataformas</h3>
-                    <div className="space-y-1">
-                      {(() => {
-                        const all = [...selectedPlatforms];
-                        if (otherPlatform) all.push(otherPlatform);
-
-                        // Calculate display percentages
-                        const displayPercentages = planningMode === 'simple'
-                          ? all.reduce((acc, p) => ({ ...acc, [p]: 100 / (all.length || 1) }), {} as Record<string, number>)
-                          : platformPercentages;
-
-                        return all.map(p => {
-                          const grossTotal = parseFloat(adInvestment) || 0;
-                          const grossAmount = planningMode === 'simple'
-                            ? (grossTotal / (all.length || 1))
-                            : (platformAmounts[p] || 0);
-                          const reductionRatio = costs.effectiveAdInvestment / (grossTotal || 1);
-                          const netAmount = Math.round(grossAmount * reductionRatio);
-
-                          return (
-                            <div key={p} className="flex justify-between items-center text-sm text-cinema-ivory border-b border-white/10 py-1 last:border-0">
-                              <span>{p}</span>
-                              <div className="flex flex-col items-end">
-                                <span className="text-muted-foreground">{displayPercentages[p]?.toFixed(0)}%</span>
-                                {feeMode === 'integrated' && (
-                                  <span className="text-[10px] text-primary font-bold">
-                                    Neta: {netAmount.toLocaleString()}€
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-cinema text-xl text-primary mb-2">Add-ons</h3>
-                    <p className="text-cinema-ivory">
-                      {Object.entries(selectedAddons)
-                        .filter(([_, selected]) => selected)
-                        .map(([key]) => {
-                          const names: any = {
-                            adaptacion: "Adaptación de contenido",
-                            microsite: "Microsite oficial",
-                            emailWhatsapp: "Campañas email/WhatsApp",
-                          };
-                          return names[key];
-                        })
-                        .join(", ") || "Ninguno"}
-                    </p>
-                  </div>
                 </div>
-              </Card>
 
-              {isDistributor && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
 
-              {!isDistributor ? (
-                <Card className="cinema-card p-8 space-y-6">
-                  <div className="space-y-3 mb-6">
-                    <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
-                    <p className="text-muted-foreground">
-                      Crear tu cuenta es gratis y solo te llevará un minuto. Así podrás ver el presupuesto estimado, guardar el histórico de tus estrenos y seguir el estado de cada campaña.
-                    </p>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="company-name" className="text-cinema-ivory">Nombre de la empresa / distribuidora *</Label>
-                      <Input
-                        id="company-name"
-                        value={signupData.companyName}
-                        onChange={(e) => setSignupData({ ...signupData, companyName: e.target.value })}
-                        className="bg-muted border-border text-foreground"
-                        required
+                {/* Fee Mode Toggle */}
+                {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
+                      <HelpTooltip
+                        fieldId="fee_mode"
+                        title="Opciones de fees"
+                        content="Puedes sumar nuestros fees a tu inversión publicitaria (opción por defecto) o integrarlos dentro de tu presupuesto total, en cuyo caso se descontarán de la inversión en medios."
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="contact-name" className="text-cinema-ivory">Nombre y apellidos (contacto) *</Label>
-                      <Input
-                        id="contact-name"
-                        value={signupData.contactName}
-                        onChange={(e) => setSignupData({ ...signupData, contactName: e.target.value })}
-                        className="bg-muted border-border text-foreground"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="contact-email" className="text-cinema-ivory">Email *</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="contact-email"
-                          type="email"
-                          value={signupData.contactEmail}
-                          onChange={(e) => {
-                            setSignupData({ ...signupData, contactEmail: e.target.value });
-                            // Reset verification if email changes after being verified
-                            if (step5VerificationState !== "form") {
-                              setStep5VerificationState("form");
-                              setStep5VerificationCode("");
-                            }
-                          }}
-                          className="bg-muted border-border text-foreground flex-1"
-                          placeholder="tu@email.com"
-                          required
-                          disabled={step5VerificationState === "verified"}
-                        />
-                        {step5VerificationState === "verified" ? (
-                          <div className="flex items-center gap-2 px-4 py-2 bg-green-900/30 border border-green-600/50 rounded-md text-green-400 text-sm">
-                            <Check className="w-4 h-4" /> Verificado
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div
+                        onClick={() => setFeeMode('additional')}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                          }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                            }`}>
+                            {feeMode === 'additional' && (
+                              <div className="w-2 h-2 rounded-full bg-background" />
+                            )}
                           </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleStep5SendVerification}
-                            disabled={!signupData.contactEmail || step5VerificationLoading}
-                            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground whitespace-nowrap"
-                          >
-                            {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                              step5VerificationState === "code" ? "Reenviar" : "Verificar email"}
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* OTP Code Input */}
-                      {step5VerificationState === "code" && (
-                        <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border space-y-4 animate-in fade-in slide-in-from-top-2">
-                          <p className="text-sm text-cinema-ivory">
-                            Introduce el código de 4 dígitos enviado a <span className="text-primary">{signupData.contactEmail}</span>
-                          </p>
-                          <div className="flex items-center gap-4">
-                            <InputOTP
-                              maxLength={4}
-                              value={step5VerificationCode}
-                              onChange={setStep5VerificationCode}
-                            >
-                              <InputOTPGroup className="gap-2">
-                                <InputOTPSlot index={0} className="w-12 h-12 text-xl border-primary/50" />
-                                <InputOTPSlot index={1} className="w-12 h-12 text-xl border-primary/50" />
-                                <InputOTPSlot index={2} className="w-12 h-12 text-xl border-primary/50" />
-                                <InputOTPSlot index={3} className="w-12 h-12 text-xl border-primary/50" />
-                              </InputOTPGroup>
-                            </InputOTP>
-                            <Button
-                              type="button"
-                              onClick={handleStep5VerifyCode}
-                              disabled={step5VerificationCode.length !== 4 || step5VerificationLoading}
-                              className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-black"
-                            >
-                              {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}
-                            </Button>
+                          <div>
+                            <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
+                            </p>
                           </div>
                         </div>
+                      </div>
+
+                      <div
+                        onClick={() => setFeeMode('integrated')}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                          }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'integrated' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                            }`}>
+                            {feeMode === 'integrated' && (
+                              <div className="w-2 h-2 rounded-full bg-background" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-cinema-ivory">Integrar fees en mi presupuesto</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Los fees se descuentan de tu presupuesto total. La inversión real en medios será menor.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
+                  <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
+                )}
+              </Card>
+            )
+          }
+
+          {/* Step 4: Add-ons */}
+          {
+            currentStep === 4 && (
+              <Card className="cinema-card p-8 space-y-6">
+                <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <AddonCard
+                    title="Adaptación de contenido"
+                    description="Adaptamos tus trailers y piezas al lenguaje de cada plataforma (formatos 1:1, 9:16, motion graphics, versiones cortas, etc.)"
+                    price="290€"
+                    icon={<Clapperboard className="w-10 h-10 cinema-icon-decorative" />}
+                    selected={selectedAddons.adaptacion}
+                    onToggle={() => setSelectedAddons({ ...selectedAddons, adaptacion: !selectedAddons.adaptacion })}
+                    showPrice={isDistributor}
+                    priceHiddenMessage="Te mostraremos el coste exacto al crear tu cuenta de distribuidora."
+                  />
+
+                  <AddonCard
+                    title="Microsite oficial"
+                    description="Página oficial de la película con sinopsis, trailer, ficha artística y llamada a la compra de entradas."
+                    price="490€"
+                    icon={<Globe className="w-10 h-10 cinema-icon-decorative" />}
+                    selected={selectedAddons.microsite}
+                    onToggle={() => setSelectedAddons({ ...selectedAddons, microsite: !selectedAddons.microsite })}
+                    showPrice={isDistributor}
+                    priceHiddenMessage="El importe se mostrará en tu presupuesto personalizado."
+                  />
+
+                  <AddonCard
+                    title="Campañas email / WhatsApp"
+                    description="Automatizamos comunicaciones directas con tu público: bases de datos, newsletters y mensajes segmentados vía email y/o WhatsApp."
+                    price="390€"
+                    icon={<Mail className="w-10 h-10 cinema-icon-decorative" />}
+                    selected={selectedAddons.emailWhatsapp}
+                    onToggle={() => setSelectedAddons({ ...selectedAddons, emailWhatsapp: !selectedAddons.emailWhatsapp })}
+                    showPrice={isDistributor}
+                    priceHiddenMessage="Verás el coste de este servicio en tu presupuesto al registrarte."
+                  />
+                </div>
+
+                <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={isDistributor} feeMode={feeMode} />
+              </Card>
+            )
+          }
+
+          {/* Step 5: Summary & Submit */}
+          {
+            currentStep === 5 && (
+              <div className="space-y-6">
+                {!isDistributor && (
+                  <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
+                    <div className="text-center space-y-3">
+                      <p className="text-cinema-ivory leading-relaxed">
+                        <strong>Ya tienes tu campaña definida.</strong> Solo falta crear tu cuenta de distribuidora para ver el presupuesto estimado y enviar la solicitud.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        ¿Ya tienes cuenta?{" "}
+                        <button
+                          onClick={() => setShowAuthModal(true)}
+                          className="text-primary hover:text-secondary font-semibold underline transition-colors"
+                        >
+                          Inicia sesión aquí
+                        </button>
+                        {" "}para ver el presupuesto sin perder la información del formulario.
+                      </p>
+                    </div>
+                  </Card>
+                )}
+
+                {isDistributor && justRegistered && (
+                  <Card className="cinema-card p-6 bg-green-500/10 border-green-500/30">
+                    <p className="text-cinema-ivory text-center leading-relaxed">
+                      ✓ <strong>¡Cuenta creada con éxito!</strong> Ahora puedes ver tu presupuesto completo y enviar la campaña.
+                    </p>
+                  </Card>
+                )}
+
+                {isDistributor && !justRegistered && (
+                  <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
+                    <p className="text-cinema-ivory text-center">
+                      Revisa tus datos y confirma el envío de la campaña. Estos datos de distribuidora se usarán para la facturación y seguimiento del estreno.
+                    </p>
+                  </Card>
+                )}
+
+                <Card className="cinema-card p-8 space-y-6">
+                  <h2 className="font-cinema text-3xl text-primary">Resumen de tu campaña</h2>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-cinema text-xl text-primary mb-2">Película</h3>
+                      <p className="text-cinema-ivory"><strong>{filmData.title}</strong></p>
+                      <p className="text-sm text-muted-foreground">{filmData.genre} | {filmData.country} | {filmData.distributorName}</p>
+                      {releaseDate && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Estreno: <strong>{formatDateEs(releaseDate)}</strong>
+                        </p>
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="contact-phone" className="text-cinema-ivory">Teléfono *</Label>
-                      <div className="flex gap-2">
-                        <Select value={countryCode} onValueChange={setCountryCode}>
-                          <SelectTrigger className="w-[100px] bg-muted border-border text-foreground">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                            <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                            <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                            <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                            <SelectItem value="+49">🇩🇪 +49</SelectItem>
-                            <SelectItem value="+39">🇮🇹 +39</SelectItem>
-                            <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                            <SelectItem value="+52">🇲🇽 +52</SelectItem>
-                            <SelectItem value="+54">🇦🇷 +54</SelectItem>
-                            <SelectItem value="+55">🇧🇷 +55</SelectItem>
-                            <SelectItem value="+56">🇨🇱 +56</SelectItem>
-                            <SelectItem value="+57">🇨🇴 +57</SelectItem>
-                            <SelectItem value="+58">🇻🇪 +58</SelectItem>
-                            <SelectItem value="+51">🇵🇪 +51</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    {campaignDates && (
+                      <div>
+                        <h3 className="font-cinema text-xl text-primary mb-2">Calendario</h3>
+                        <div className="grid md:grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Pre-campaña:</p>
+                            <p className="text-cinema-ivory">{formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Estreno:</p>
+                            <p className="text-cinema-ivory">{formatDateShort(campaignDates.premiereWeekendStart)} - {formatDateShort(campaignDates.premiereWeekendEnd)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Deadline creatividades:</p>
+                            <p className="text-cinema-ivory">{formatDateShort(campaignDates.creativesDeadline)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="font-cinema text-xl text-primary mb-2">Plataformas</h3>
+                      <div className="space-y-1">
+                        {(() => {
+                          const all = [...selectedPlatforms];
+                          if (otherPlatform) all.push(otherPlatform);
+
+                          // Calculate display percentages
+                          const displayPercentages = planningMode === 'simple'
+                            ? all.reduce((acc, p) => ({ ...acc, [p]: 100 / (all.length || 1) }), {} as Record<string, number>)
+                            : platformPercentages;
+
+                          return all.map(p => {
+                            const grossTotal = parseFloat(adInvestment) || 0;
+                            const grossAmount = planningMode === 'simple'
+                              ? (grossTotal / (all.length || 1))
+                              : (platformAmounts[p] || 0);
+                            const reductionRatio = costs.effectiveAdInvestment / (grossTotal || 1);
+                            const netAmount = Math.round(grossAmount * reductionRatio);
+
+                            return (
+                              <div key={p} className="flex justify-between items-center text-sm text-cinema-ivory border-b border-white/10 py-1 last:border-0">
+                                <span>{p}</span>
+                                <div className="flex flex-col items-end">
+                                  <span className="text-muted-foreground">{displayPercentages[p]?.toFixed(0)}%</span>
+                                  {feeMode === 'integrated' && (
+                                    <span className="text-[10px] text-primary font-bold">
+                                      Neta: {netAmount.toLocaleString()}€
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-cinema text-xl text-primary mb-2">Add-ons</h3>
+                      <p className="text-cinema-ivory">
+                        {Object.entries(selectedAddons)
+                          .filter(([_, selected]) => selected)
+                          .map(([key]) => {
+                            const names: any = {
+                              adaptacion: "Adaptación de contenido",
+                              microsite: "Microsite oficial",
+                              emailWhatsapp: "Campañas email/WhatsApp",
+                            };
+                            return names[key];
+                          })
+                          .join(", ") || "Ninguno"}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {isDistributor && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
+
+                {!isDistributor ? (
+                  <Card className="cinema-card p-8 space-y-6">
+                    <div className="space-y-3 mb-6">
+                      <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
+                      <p className="text-muted-foreground">
+                        Crear tu cuenta es gratis y solo te llevará un minuto. Así podrás ver el presupuesto estimado, guardar el histórico de tus estrenos y seguir el estado de cada campaña.
+                      </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="company-name" className="text-cinema-ivory">Nombre de la empresa / distribuidora *</Label>
                         <Input
-                          id="contact-phone"
-                          type="tel"
-                          value={signupData.contactPhone}
-                          onChange={(e) => setSignupData({ ...signupData, contactPhone: e.target.value })}
-                          className="bg-muted border-border text-foreground flex-1"
-                          placeholder="612 345 678"
+                          id="company-name"
+                          value={signupData.companyName}
+                          onChange={(e) => setSignupData({ ...signupData, companyName: e.target.value })}
+                          className="bg-muted border-border text-foreground"
                           required
                         />
                       </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-name" className="text-cinema-ivory">Nombre y apellidos (contacto) *</Label>
+                        <Input
+                          id="contact-name"
+                          value={signupData.contactName}
+                          onChange={(e) => setSignupData({ ...signupData, contactName: e.target.value })}
+                          className="bg-muted border-border text-foreground"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-email" className="text-cinema-ivory">Email *</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="contact-email"
+                            type="email"
+                            value={signupData.contactEmail}
+                            onChange={(e) => {
+                              setSignupData({ ...signupData, contactEmail: e.target.value });
+                              // Reset verification if email changes after being verified
+                              if (step5VerificationState !== "form") {
+                                setStep5VerificationState("form");
+                                setStep5VerificationCode("");
+                              }
+                            }}
+                            className="bg-muted border-border text-foreground flex-1"
+                            placeholder="tu@email.com"
+                            required
+                            disabled={step5VerificationState === "verified"}
+                          />
+                          {step5VerificationState === "verified" ? (
+                            <div className="flex items-center gap-2 px-4 py-2 bg-green-900/30 border border-green-600/50 rounded-md text-green-400 text-sm">
+                              <Check className="w-4 h-4" /> Verificado
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleStep5SendVerification}
+                              disabled={!signupData.contactEmail || step5VerificationLoading}
+                              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground whitespace-nowrap"
+                            >
+                              {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> :
+                                step5VerificationState === "code" ? "Reenviar" : "Verificar email"}
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* OTP Code Input */}
+                        {step5VerificationState === "code" && (
+                          <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border space-y-4 animate-in fade-in slide-in-from-top-2">
+                            <p className="text-sm text-cinema-ivory">
+                              Introduce el código de 4 dígitos enviado a <span className="text-primary">{signupData.contactEmail}</span>
+                            </p>
+                            <div className="flex items-center gap-4">
+                              <InputOTP
+                                maxLength={4}
+                                value={step5VerificationCode}
+                                onChange={setStep5VerificationCode}
+                              >
+                                <InputOTPGroup className="gap-2">
+                                  <InputOTPSlot index={0} className="w-12 h-12 text-xl border-primary/50" />
+                                  <InputOTPSlot index={1} className="w-12 h-12 text-xl border-primary/50" />
+                                  <InputOTPSlot index={2} className="w-12 h-12 text-xl border-primary/50" />
+                                  <InputOTPSlot index={3} className="w-12 h-12 text-xl border-primary/50" />
+                                </InputOTPGroup>
+                              </InputOTP>
+                              <Button
+                                type="button"
+                                onClick={handleStep5VerifyCode}
+                                disabled={step5VerificationCode.length !== 4 || step5VerificationLoading}
+                                className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-black"
+                              >
+                                {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-phone" className="text-cinema-ivory">Teléfono *</Label>
+                        <div className="flex gap-2">
+                          <Select value={countryCode} onValueChange={setCountryCode}>
+                            <SelectTrigger className="w-[100px] bg-muted border-border text-foreground">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                              <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                              <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                              <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                              <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                              <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                              <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                              <SelectItem value="+52">🇲🇽 +52</SelectItem>
+                              <SelectItem value="+54">🇦🇷 +54</SelectItem>
+                              <SelectItem value="+55">🇧🇷 +55</SelectItem>
+                              <SelectItem value="+56">🇨🇱 +56</SelectItem>
+                              <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                              <SelectItem value="+58">🇻🇪 +58</SelectItem>
+                              <SelectItem value="+51">🇵🇪 +51</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="contact-phone"
+                            type="tel"
+                            value={signupData.contactPhone}
+                            onChange={(e) => setSignupData({ ...signupData, contactPhone: e.target.value })}
+                            className="bg-muted border-border text-foreground flex-1"
+                            placeholder="612 345 678"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="password" className="text-cinema-ivory">Contraseña *</Label>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showStep5Password ? "text" : "password"}
+                            value={signupData.password}
+                            onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                            className="bg-muted border-border text-foreground pr-10"
+                            placeholder="Mínimo 6 caracteres"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowStep5Password(!showStep5Password)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                          >
+                            {showStep5Password ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="password" className="text-cinema-ivory">Contraseña *</Label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          type={showStep5Password ? "text" : "password"}
-                          value={signupData.password}
-                          onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                          className="bg-muted border-border text-foreground pr-10"
-                          placeholder="Mínimo 6 caracteres"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowStep5Password(!showStep5Password)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                        >
-                          {showStep5Password ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                      <Label htmlFor="comments" className="text-cinema-ivory">Comentarios adicionales</Label>
+                      <Textarea
+                        id="comments"
+                        value={signupData.comments}
+                        onChange={(e) => setSignupData({ ...signupData, comments: e.target.value })}
+                        className="bg-muted border-border text-foreground min-h-24"
+                        placeholder="Cualquier información adicional que quieras compartir con nosotros"
+                      />
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="cinema-card p-8 space-y-6">
+                    <h2 className="font-cinema text-3xl text-primary">Datos de tu distribuidora</h2>
+                    <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Distribuidora</p>
+                          <p className="text-cinema-yellow font-semibold text-lg">{distributor?.company_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Contacto</p>
+                          <p className="text-cinema-ivory font-semibold">{distributor?.contact_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Email</p>
+                          <p className="text-cinema-ivory">{distributor?.contact_email}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Teléfono</p>
+                          <p className="text-cinema-ivory">{distributor?.contact_phone || "—"}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="comments" className="text-cinema-ivory">Comentarios adicionales</Label>
-                    <Textarea
-                      id="comments"
-                      value={signupData.comments}
-                      onChange={(e) => setSignupData({ ...signupData, comments: e.target.value })}
-                      className="bg-muted border-border text-foreground min-h-24"
-                      placeholder="Cualquier información adicional que quieras compartir con nosotros"
-                    />
-                  </div>
-                </Card>
-              ) : (
-                <Card className="cinema-card p-8 space-y-6">
-                  <h2 className="font-cinema text-3xl text-primary">Datos de tu distribuidora</h2>
-                  <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Distribuidora</p>
-                        <p className="text-cinema-yellow font-semibold text-lg">{distributor?.company_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Contacto</p>
-                        <p className="text-cinema-ivory font-semibold">{distributor?.contact_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Email</p>
-                        <p className="text-cinema-ivory">{distributor?.contact_email}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Teléfono</p>
-                        <p className="text-cinema-ivory">{distributor?.contact_phone || "—"}</p>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="comments" className="text-cinema-ivory">Comentarios adicionales</Label>
+                      <Textarea
+                        id="comments"
+                        value={signupData.comments}
+                        onChange={(e) => setSignupData({ ...signupData, comments: e.target.value })}
+                        className="bg-muted border-border text-foreground min-h-24"
+                        placeholder="Cualquier información adicional que quieras compartir con nosotros"
+                      />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="comments" className="text-cinema-ivory">Comentarios adicionales</Label>
-                    <Textarea
-                      id="comments"
-                      value={signupData.comments}
-                      onChange={(e) => setSignupData({ ...signupData, comments: e.target.value })}
-                      className="bg-muted border-border text-foreground min-h-24"
-                      placeholder="Cualquier información adicional que quieras compartir con nosotros"
-                    />
-                  </div>
-                </Card>
-              )}
-            </div>
-          )}
+                  </Card>
+                )}
+              </div>
+            )
+          }
 
           {/* Navigation buttons */}
           <div className="flex justify-between items-center pt-6">
@@ -2115,7 +2370,7 @@ const Wizard = () => {
               </>
             )}
           </div>
-        </div>
+        </div >
       </div >
 
       {/* Auth Modal */}
