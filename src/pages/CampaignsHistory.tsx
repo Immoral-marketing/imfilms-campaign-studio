@@ -33,7 +33,7 @@ const CampaignsHistory = () => {
   const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortOrder, setSortOrder] = useState<"creation_date" | "recent_changes" | "premiere_soon" | "incomplete" | "missing_materials">("creation_date");
+  const [sortOrder, setSortOrder] = useState<"creation_date" | "pending_changes" | "premiere_soon" | "incomplete" | "missing_materials">("creation_date");
 
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
@@ -487,9 +487,11 @@ const CampaignsHistory = () => {
         const assetsCount = c.campaign_assets?.[0]?.count || 0;
         return assetsCount === 0;
       });
-    } else if (sortOrder === "recent_changes") {
-      // Sort by updated_at DESC (Most recently modified first)
-      // Fallback to created_at if updated_at is null
+    } else if (sortOrder === "pending_changes") {
+      // Filter campaigns that have pending changes
+      filtered = filtered.filter(c => c.pending_changes_list && c.pending_changes_list.length > 0);
+
+      // Sort these by updated_at DESC (Most recently modified first)
       filtered.sort((a, b) => {
         const dateA = new Date(a.updated_at || a.created_at).getTime();
         const dateB = new Date(b.updated_at || b.created_at).getTime();
@@ -874,7 +876,7 @@ const CampaignsHistory = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="creation_date">Fecha de creación</SelectItem>
-                        <SelectItem value="recent_changes">Cambios recientes</SelectItem>
+                        <SelectItem value="pending_changes">Cambios pendiente</SelectItem>
                         <SelectItem value="premiere_soon">Fecha de estreno cercana (&lt; 21 días)</SelectItem>
                         <SelectItem value="incomplete">Campañas incompletas</SelectItem>
                         <SelectItem value="missing_materials">Falta de materiales</SelectItem>
