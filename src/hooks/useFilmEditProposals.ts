@@ -101,6 +101,41 @@ export const useCreateFilmProposal = () => {
                 .single();
 
             if (error) throw error;
+
+            // Insert system notification message into campaign chat
+            try {
+                const userName = user.user_metadata?.full_name
+                    || user.user_metadata?.name
+                    || user.user_metadata?.contact_name
+                    || user.email?.split("@")[0]
+                    || "Un usuario";
+
+                const changedFields = Object.keys(proposedData).filter(k => k !== 'platforms');
+                const fieldLabels: Record<string, string> = {
+                    title: 'Título',
+                    country: 'País',
+                    genre: 'Género',
+                    secondary_genre: 'Género secundario',
+                    target_audience_text: 'Público objetivo',
+                    main_goals: 'Objetivos',
+                };
+                const fieldNames = changedFields.map(k => fieldLabels[k] || k).join(', ');
+                const platformsPart = proposedData.platforms ? ' y plataformas' : '';
+
+                const chatMessage = `✏️ ${userName} ha propuesto cambios en la campaña (${fieldNames}${platformsPart}). Pendiente de aprobación.`;
+
+                await supabase
+                    .from("campaign_messages")
+                    .insert({
+                        campaign_id: campaignId,
+                        sender_role: "system",
+                        sender_name: "Sistema",
+                        message: chatMessage,
+                    } as any);
+            } catch (sysErr) {
+                console.error("System message insert error (non-fatal):", sysErr);
+            }
+
             return data as unknown as FilmEditProposal;
         },
         onSuccess: (data) => {

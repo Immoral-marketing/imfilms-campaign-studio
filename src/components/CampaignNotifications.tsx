@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, FileImage, Loader2 } from 'lucide-react';
+import { Bell, FileImage, Pencil, Loader2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -127,37 +127,45 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
     return (
         <ScrollArea className="h-full">
             <div className="divide-y divide-border/20">
-                {notifications.map((notif) => (
-                    <div
-                        key={notif.id}
-                        className={`p-4 transition-colors ${!notif.read_at ? 'bg-primary/5' : 'hover:bg-muted/30'
-                            }`}
-                    >
-                        <div className="flex items-start gap-3">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <FileImage className="h-4 w-4 text-cinema-yellow" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                    <p className={`text-sm ${!notif.read_at ? 'text-foreground font-bold' : 'text-foreground/90 font-medium'}`}>
-                                        Nuevas creatividades subidas
-                                    </p>
-                                    {!notif.read_at && (
-                                        <Badge variant="default" className="text-[9px] px-1.5 py-0 bg-primary/80 flex-shrink-0">
-                                            Nuevo
-                                        </Badge>
-                                    )}
+                {notifications.map((notif) => {
+                    const isEditProposal = notif.message.startsWith('✏️');
+                    const NotifIcon = isEditProposal ? Pencil : FileImage;
+                    const notifTitle = isEditProposal ? 'Cambios propuestos' : 'Nuevas creatividades subidas';
+                    const iconColor = isEditProposal ? 'text-blue-400' : 'text-cinema-yellow';
+                    const iconBg = isEditProposal ? 'bg-blue-500/10' : 'bg-primary/10';
+
+                    return (
+                        <div
+                            key={notif.id}
+                            className={`p-4 transition-colors ${!notif.read_at ? 'bg-primary/5' : 'hover:bg-muted/30'
+                                }`}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className={`h-8 w-8 rounded-full ${iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                    <NotifIcon className={`h-4 w-4 ${iconColor}`} />
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                                    {notif.message}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground/60 mt-2">
-                                    {getRelativeTime(notif.created_at)}
-                                </p>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className={`text-sm ${!notif.read_at ? 'text-foreground font-bold' : 'text-foreground/90 font-medium'}`}>
+                                            {notifTitle}
+                                        </p>
+                                        {!notif.read_at && (
+                                            <Badge variant="default" className="text-[9px] px-1.5 py-0 bg-primary/80 flex-shrink-0">
+                                                Nuevo
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                        {notif.message}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground/60 mt-2">
+                                        {getRelativeTime(notif.created_at)}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </ScrollArea>
     );
