@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -69,6 +69,7 @@ interface CampaignInfoEditableProps {
         total_estimated_amount: number;
     };
     disabled?: boolean;
+    onEditingChange?: (isEditing: boolean) => void;
 }
 
 export const CampaignInfoEditable = ({
@@ -77,9 +78,15 @@ export const CampaignInfoEditable = ({
     campaignId,
     totalBudget,
     feeDetails,
-    disabled
+    disabled,
+    onEditingChange
 }: CampaignInfoEditableProps) => {
-    const [isEditing, setIsEditing] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
+    const [isEditing, _setIsEditing] = useState(false);
+    const setIsEditing = (value: boolean) => {
+        _setIsEditing(value);
+        onEditingChange?.(value);
+    };
     const [budgetMode, setBudgetMode] = useState<'percent' | 'amount'>('percent');
     const { mutate: createProposal, isPending } = useCreateFilmProposal();
     const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -500,7 +507,7 @@ export const CampaignInfoEditable = ({
             </div>
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form ref={formRef} id="campaign-edit-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Film Info Section */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
@@ -1021,6 +1028,7 @@ export const CampaignInfoEditable = ({
 
                     <div className="flex justify-end gap-4 pt-4 border-t">
                         <Button
+                            id="campaign-edit-cancel"
                             type="button"
                             variant="outline"
                             onClick={() => setIsEditing(false)}

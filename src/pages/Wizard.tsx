@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap, Trash2, Plus, Upload, ExternalLink } from "lucide-react";
+import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap, Trash2, Plus, Upload, ExternalLink, Settings2, Download } from "lucide-react";
 import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
@@ -171,6 +171,9 @@ const Wizard = () => {
   // Step 1: Target Audience Files (Not persisted in draft)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // Step 4: Creative Assets (Not persisted in draft)
+  const [creativeAssets, setCreativeAssets] = useState<File[]>([]);
+
   // Step 2: Calendar
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
   const [campaignEndDate, setCampaignEndDate] = useState<Date | undefined>(undefined);
@@ -180,8 +183,8 @@ const Wizard = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [otherPlatform, setOtherPlatform] = useState("");
   const [adInvestment, setAdInvestment] = useState("");
-  const [feeMode, setFeeMode] = useState<FeeMode>('additional');
-  const [planningMode, setPlanningMode] = useState<'simple' | 'amount' | 'percentage'>('amount');
+  const [feeMode, setFeeMode] = useState<FeeMode>('integrated');
+  const [planningMode, setPlanningMode] = useState<'simple' | 'amount' | 'percentage'>('simple');
   const [platformPercentages, setPlatformPercentages] = useState<Record<string, number>>({});
   const [platformAmounts, setPlatformAmounts] = useState<Record<string, number>>({});
 
@@ -404,6 +407,42 @@ const Wizard = () => {
     return uploadedPaths;
   };
 
+  const uploadCreativeAssets = async (userId: string, campaignId: string) => {
+    if (creativeAssets.length === 0) return;
+
+    for (const file of creativeAssets) {
+      const fileExt = file.name.split(".").pop();
+      const fileNameWithoutExt = file.name.replace(`.${fileExt}`, "");
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${campaignId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("campaign-assets")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error("Error uploading creative asset:", uploadError);
+        continue;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("campaign-assets")
+        .getPublicUrl(filePath);
+
+      await supabase
+        .from("campaign_assets")
+        .insert({
+          campaign_id: campaignId,
+          type: "otro",
+          file_url: publicUrl,
+          original_filename: file.name,
+          name: fileNameWithoutExt,
+          status: "pendiente_revision",
+          uploaded_by: userId,
+        });
+    }
+  };
+
   const loadDraft = () => {
     const savedDraft = localStorage.getItem(WIZARD_DRAFT_KEY);
     if (!savedDraft) return;
@@ -613,6 +652,10 @@ const Wizard = () => {
     if (currentStep === 1) {
       if (!filmData.title || !filmData.genre || !filmData.country || !filmData.distributorName) {
         toast.error("Por favor completa los campos obligatorios");
+        return;
+      }
+      if (filmData.goals.length === 0) {
+        toast.error("Por favor selecciona al menos un objetivo para la campaña");
         return;
       }
       if (filmData.genre === "Otro" && !filmData.otherGenre) {
@@ -932,6 +975,14 @@ const Wizard = () => {
 
       if (campaignError) throw campaignError;
 
+      // Upload creative assets if any
+      try {
+        await uploadCreativeAssets(distributorId, campaignRecord.id);
+      } catch (e) {
+        console.error("Error uploading creative assets", e);
+        // Non-fatal, we continue
+      }
+
       // Add platforms
       const platformsToInsert = [...selectedPlatforms];
 
@@ -1107,7 +1158,7 @@ const Wizard = () => {
             </Card>
           )}
 
-          <WizardProgress currentStep={currentStep} totalSteps={5} />
+          <WizardProgress currentStep={currentStep} totalSteps={5} onBack={handleBack} />
 
           {/* Step 1: Film Data */}
           {currentStep === 1 && (
@@ -1381,7 +1432,7 @@ const Wizard = () => {
                 {/* Block 3: Goals */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Label className="text-cinema-ivory">Objetivo principal de la campaña</Label>
+                    <Label className="text-cinema-ivory">Objetivo principal de la campaña *</Label>
                     <HelpTooltip
                       fieldId="campaign_goals"
                       title="¿Por qué te preguntamos los objetivos?"
@@ -1652,16 +1703,26 @@ const Wizard = () => {
                     </p>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
-                    {PLATFORMS.map((platform) => (
-                      <PlatformCard
-                        key={platform.name}
-                        name={platform.name}
-                        description={platform.description}
-                        logo={platform.logo}
-                        selected={selectedPlatforms.includes(platform.name)}
-                        onToggle={() => handlePlatformToggle(platform.name)}
-                      />
-                    ))}
+                    {PLATFORMS.map((platform) => {
+                      const investmentVal = parseFloat(adInvestment) || 0;
+                      const isAboveThreshold = investmentVal >= 30000;
+                      const isBonificado = isAboveThreshold ||
+                        (selectedPlatforms.length === 0) ||
+                        (selectedPlatforms.length > 0 && selectedPlatforms[0] === platform.name);
+
+                      return (
+                        <PlatformCard
+                          key={platform.name}
+                          name={platform.name}
+                          description={platform.description}
+                          logo={platform.logo}
+                          selected={selectedPlatforms.includes(platform.name)}
+                          onToggle={() => handlePlatformToggle(platform.name)}
+                          setupFee={200}
+                          isBonificado={isBonificado}
+                        />
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4 space-y-2">
@@ -1689,31 +1750,7 @@ const Wizard = () => {
                           />
                         </div>
 
-                        <div className="grid md:grid-cols-3 gap-3">
-                          <button
-                            onClick={() => setPlanningMode('amount')}
-                            type="button"
-                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Euro className={`w-4 h-4 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="font-bold text-cinema-ivory">Inversión Directa</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Controla el importe exacto para cada red social.</p>
-                          </button>
-
-                          <button
-                            onClick={() => setPlanningMode('percentage')}
-                            type="button"
-                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Percent className={`w-4 h-4 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="font-bold text-cinema-ivory">Peso relativo (%)</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Distribuye tu presupuesto total por pesos porcentuales.</p>
-                          </button>
-
+                        <div className="grid md:grid-cols-2 gap-3">
                           <button
                             onClick={() => setPlanningMode('simple')}
                             type="button"
@@ -1725,7 +1762,49 @@ const Wizard = () => {
                             </div>
                             <p className="text-xs text-muted-foreground mt-2 leading-tight">Define un total y lo repartimos equitativamente.</p>
                           </button>
+
+                          <button
+                            onClick={() => {
+                              if (planningMode === 'simple') {
+                                setPlanningMode('percentage');
+                              }
+                            }}
+                            type="button"
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode !== 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Settings2 className={`w-4 h-4 ${planningMode !== 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className="font-bold text-cinema-ivory">Planificación Avanzada</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Elige por porcentaje o inversión directa por plataforma.</p>
+                          </button>
                         </div>
+
+                        {/* Advanced Planning Sub-options */}
+                        {planningMode !== 'simple' && (
+                          <div className="grid md:grid-cols-2 gap-3 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <button
+                              onClick={() => setPlanningMode('percentage')}
+                              type="button"
+                              className={`p-3 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Percent className={`w-3 h-3 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
+                                <span className="text-sm font-bold text-cinema-ivory">Peso relativo (%)</span>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => setPlanningMode('amount')}
+                              type="button"
+                              className={`p-3 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Euro className={`w-3 h-3 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
+                                <span className="text-sm font-bold text-cinema-ivory">Inversión Directa</span>
+                              </div>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       {/* Total Investment Field (Shown in simple and percentage modes) */}
                       {planningMode !== 'amount' && (
@@ -1882,29 +1961,6 @@ const Wizard = () => {
 
                     <div className="grid md:grid-cols-2 gap-4">
                       <div
-                        onClick={() => setFeeMode('additional')}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                            }`}>
-                            {feeMode === 'additional' && (
-                              <div className="w-2 h-2 rounded-full bg-background" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
                         onClick={() => setFeeMode('integrated')}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated'
                           ? 'border-primary bg-primary/10'
@@ -1926,6 +1982,29 @@ const Wizard = () => {
                           </div>
                         </div>
                       </div>
+
+                      <div
+                        onClick={() => setFeeMode('additional')}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                          }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
+                            }`}>
+                            {feeMode === 'additional' && (
+                              <div className="w-2 h-2 rounded-full bg-background" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1933,57 +2012,151 @@ const Wizard = () => {
                 {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
                   <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
                 )}
+
+                {/* Add-ons section merged from previous Step 4 */}
+                <div className="pt-8 border-t border-border space-y-6">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
+                    <HelpTooltip
+                      fieldId="addons"
+                      title="Servicios adicionales"
+                      content="Mejora el impacto de tu campaña con piezas adaptadas, una web oficial o comunicación directa con tu audiencia."
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <AddonCard
+                      title="Adaptación de contenido"
+                      description="Adaptamos tus trailers y piezas al lenguaje de cada plataforma (formatos 1:1, 9:16, motion graphics, versiones cortas, etc.)"
+                      price="290€"
+                      icon={<Clapperboard className="w-10 h-10 cinema-icon-decorative" />}
+                      selected={selectedAddons.adaptacion}
+                      onToggle={() => setSelectedAddons({ ...selectedAddons, adaptacion: !selectedAddons.adaptacion })}
+                      showPrice={isDistributor}
+                      priceHiddenMessage="Te mostraremos el coste exacto al crear tu cuenta de distribuidora."
+                    />
+
+                    <AddonCard
+                      title="Microsite oficial"
+                      description="Página oficial de la película con sinopsis, trailer, ficha artística y llamada a la compra de entradas."
+                      price="490€"
+                      icon={<Globe className="w-10 h-10 cinema-icon-decorative" />}
+                      selected={selectedAddons.microsite}
+                      onToggle={() => setSelectedAddons({ ...selectedAddons, microsite: !selectedAddons.microsite })}
+                      showPrice={isDistributor}
+                      priceHiddenMessage="El importe se mostrará en tu presupuesto personalizado."
+                    />
+
+                    <AddonCard
+                      title="Campañas email / WhatsApp"
+                      description="Automatizamos comunicaciones directas con tu público: bases de datos, newsletters y mensajes segmentados vía email y/o WhatsApp."
+                      price="390€"
+                      icon={<Mail className="w-10 h-10 cinema-icon-decorative" />}
+                      selected={selectedAddons.emailWhatsapp}
+                      onToggle={() => setSelectedAddons({ ...selectedAddons, emailWhatsapp: !selectedAddons.emailWhatsapp })}
+                      showPrice={isDistributor}
+                      priceHiddenMessage="Verás el coste de este servicio en tu presupuesto al registrarte."
+                    />
+                  </div>
+                </div>
               </Card>
             )
           }
 
-          {/* Step 4: Add-ons */}
+          {/* Step 4: Creative Assets */}
           {
             currentStep === 4 && (
               <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
+                <div className="space-y-4">
+                  <h2 className="font-cinema text-3xl text-primary">Materiales y Creatividades</h2>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Sube las piezas creativas de tu campaña (trailers, clips, posters, gráficas). Si aún no las tienes listas, no te preocupes, este paso es <strong>opcional</strong>.
+                  </p>
 
-                <div className="grid md:grid-cols-3 gap-4">
-                  <AddonCard
-                    title="Adaptación de contenido"
-                    description="Adaptamos tus trailers y piezas al lenguaje de cada plataforma (formatos 1:1, 9:16, motion graphics, versiones cortas, etc.)"
-                    price="290€"
-                    icon={<Clapperboard className="w-10 h-10 cinema-icon-decorative" />}
-                    selected={selectedAddons.adaptacion}
-                    onToggle={() => setSelectedAddons({ ...selectedAddons, adaptacion: !selectedAddons.adaptacion })}
-                    showPrice={isDistributor}
-                    priceHiddenMessage="Te mostraremos el coste exacto al crear tu cuenta de distribuidora."
-                  />
+                  {campaignDates && (
+                    <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg flex items-start gap-4">
+                      <CalendarClock className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="font-semibold text-cinema-ivory">Fecha límite de entrega</p>
+                        <p className="text-sm text-muted-foreground">
+                          Para garantizar el inicio de la campaña a tiempo, necesitamos los materiales finales antes del <span className="text-primary font-bold">{formatDateEs(campaignDates.creativesDeadline)}</span>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                  <AddonCard
-                    title="Microsite oficial"
-                    description="Página oficial de la película con sinopsis, trailer, ficha artística y llamada a la compra de entradas."
-                    price="490€"
-                    icon={<Globe className="w-10 h-10 cinema-icon-decorative" />}
-                    selected={selectedAddons.microsite}
-                    onToggle={() => setSelectedAddons({ ...selectedAddons, microsite: !selectedAddons.microsite })}
-                    showPrice={isDistributor}
-                    priceHiddenMessage="El importe se mostrará en tu presupuesto personalizado."
-                  />
-
-                  <AddonCard
-                    title="Campañas email / WhatsApp"
-                    description="Automatizamos comunicaciones directas con tu público: bases de datos, newsletters y mensajes segmentados vía email y/o WhatsApp."
-                    price="390€"
-                    icon={<Mail className="w-10 h-10 cinema-icon-decorative" />}
-                    selected={selectedAddons.emailWhatsapp}
-                    onToggle={() => setSelectedAddons({ ...selectedAddons, emailWhatsapp: !selectedAddons.emailWhatsapp })}
-                    showPrice={isDistributor}
-                    priceHiddenMessage="Verás el coste de este servicio en tu presupuesto al registrarte."
-                  />
+                  <a
+                    href="/Guía de creativos.pdf"
+                    download
+                    className="flex items-center gap-4 p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 hover:border-primary/40 transition-all group"
+                  >
+                    <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                      <FileText className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-cinema-ivory text-sm">Guía de especificaciones y buenas prácticas</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Descarga el PDF con las dimensiones, formatos y consejos para cada plataforma.</p>
+                    </div>
+                    <Download className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                  </a>
                 </div>
 
-                <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={isDistributor} feeMode={feeMode} />
+                <div className="space-y-4">
+                  <Label className="text-cinema-ivory">Subir archivos</Label>
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center space-y-4 hover:border-primary/50 transition-colors">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Upload className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        onClick={() => document.getElementById('creative-assets')?.click()}
+                      >
+                        Seleccionar archivos
+                      </Button>
+                      <input
+                        id="creative-assets"
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            setCreativeAssets(prev => [...prev, ...Array.from(e.target.files!)]);
+                          }
+                        }}
+                      />
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Formatos permitidos: MP4, MOV, JPG, PNG, PDF. Máx 50MB por archivo.
+                      </p>
+                    </div>
+                  </div>
+
+                  {creativeAssets.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {creativeAssets.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border">
+                          <div className="flex items-center gap-3 truncate">
+                            <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                            <span className="text-sm truncate">{file.name}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setCreativeAssets(prev => prev.filter((_, i) => i !== index))}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </Card>
             )
           }
 
-          {/* Step 5: Summary & Submit */}
+          {/* Renumbered Step 5: Summary & Submit (previously Step 4) */}
           {
             currentStep === 5 && (
               <div className="space-y-6">
@@ -2398,8 +2571,7 @@ const Wizard = () => {
         currentStep === 1 ? "wizard" :
           currentStep === 2 ? "fechas" :
             currentStep === 3 ? "inversión" :
-              currentStep === 4 ? "extras" :
-                "campaña"
+              "campaña"
       } />
     </>
   );

@@ -406,6 +406,22 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
         </Card>
       )}
 
+      {/* PDF Guide download */}
+      <a
+        href="/Guía de creativos.pdf"
+        download
+        className="flex items-center gap-4 p-4 rounded-lg border border-cinema-yellow/20 bg-cinema-charcoal/30 hover:bg-cinema-charcoal/60 hover:border-cinema-yellow/40 transition-all group"
+      >
+        <div className="w-11 h-11 rounded-lg bg-cinema-yellow/10 flex items-center justify-center flex-shrink-0 group-hover:bg-cinema-yellow/20 transition-colors">
+          <FileText className="w-5 h-5 text-cinema-yellow" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-cinema-ivory text-sm">Guía de especificaciones y buenas prácticas</p>
+          <p className="text-xs text-cinema-ivory/60 mt-0.5">Descarga el PDF con las dimensiones, formatos y consejos para cada plataforma.</p>
+        </div>
+        <Download className="w-5 h-5 text-cinema-ivory/40 group-hover:text-cinema-yellow transition-colors flex-shrink-0" />
+      </a>
+
       {/* Upload section */}
       <Card className="bg-cinema-charcoal/60 border-cinema-yellow/20">
         <CardContent className="p-6 space-y-4">

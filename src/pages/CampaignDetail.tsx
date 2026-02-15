@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CreativeAssets from '@/components/CreativeAssets';
@@ -25,6 +25,7 @@ const CampaignDetail = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'distributor'>('distributor');
+  const [isDetailsEditing, setIsDetailsEditing] = useState(false);
 
   // Get pending film edit proposal
   const { data: pendingProposal } = usePendingFilmProposal(film?.id);
@@ -191,6 +192,36 @@ const CampaignDetail = () => {
               <ArrowLeft className="h-4 w-4" />
               Volver a Mis Campañas
             </Button>
+
+            {/* Edit action buttons - appear when editing campaign details */}
+            {isDetailsEditing && (
+              <div className="flex items-center gap-3 ml-auto">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mr-2">
+                  <Edit className="h-3.5 w-3.5 text-primary" />
+                  <span>Modo edición</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    document.getElementById('campaign-edit-cancel')?.click();
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  form="campaign-edit-form"
+                  size="sm"
+                  className="bg-primary text-primary-foreground"
+                >
+                  <Save className="h-4 w-4 mr-1" />
+                  Guardar Propuesta
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -338,7 +369,8 @@ const CampaignDetail = () => {
                     addons_base_amount: campaign.addons_base_amount,
                     total_estimated_amount: campaign.total_estimated_amount
                   }}
-                  disabled={!!pendingProposal || userRole !== 'distributor'} // Only distributors can propose edits, and disabled if pending
+                  disabled={!!pendingProposal || userRole !== 'distributor'}
+                  onEditingChange={setIsDetailsEditing}
                 />
               </div>
 
