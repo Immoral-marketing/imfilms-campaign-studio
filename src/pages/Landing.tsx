@@ -474,7 +474,7 @@ const Landing = () => {
                 <p className="flex items-center gap-3 text-white/40 text-sm">
                   Somos parte de
                   <a href="https://www.immoral.es" target="_blank" rel="noopener noreferrer" className="inline-block hover:opacity-80 transition-opacity">
-                    <img src="/imgs/logoimmoral.png" alt="Immoral" className="h-5 inline-block" />
+                    <img src="/imgs/logoImmoral.png" alt="Immoral" className="h-5 inline-block" />
                   </a>
                 </p>
               </div>
