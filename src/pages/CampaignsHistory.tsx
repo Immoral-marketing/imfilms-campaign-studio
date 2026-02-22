@@ -6,16 +6,18 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminDistributors from "./AdminDistributors";
+import CampaignComparator from "@/components/CampaignComparator";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
 import CampaignLabels from "@/components/CampaignLabels";
 
@@ -50,6 +52,22 @@ const CampaignsHistory = () => {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedCampaignForNotes, setSelectedCampaignForNotes] = useState<any>(null);
   const [pendingNotesCounts, setPendingNotesCounts] = useState<Record<string, number>>({});
+
+  // KPI Modal State
+  const [showKPIModal, setShowKPIModal] = useState(false);
+  const [selectedCampaignForKPI, setSelectedCampaignForKPI] = useState<any>(null);
+  const [kpiData, setKPIData] = useState({
+    reach: "",
+    clicks: "",
+    visits: "",
+    ctr: "",
+    cpm: ""
+  });
+
+  // Report Modal State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<any>(null);
+  const [reportLink, setReportLink] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -105,6 +123,8 @@ const CampaignsHistory = () => {
             title,
             genre,
             target_audience_text,
+            target_audience_urls,
+            target_audience_files,
             country,
             secondary_genre,
             main_goals
@@ -119,7 +139,13 @@ const CampaignsHistory = () => {
             proposed_data,
             created_at,
             status
-          )
+          ),
+          reach,
+          clicks,
+          visits,
+          ctr,
+          cpm,
+          report_link
         `);
 
       // If not admin, filter by distributor_id (userId)
@@ -425,6 +451,62 @@ const CampaignsHistory = () => {
     }
   };
 
+  const handleSaveKPIs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCampaignForKPI) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({
+          reach: kpiData.reach ? parseInt(kpiData.reach) : null,
+          clicks: kpiData.clicks ? parseInt(kpiData.clicks) : null,
+          visits: kpiData.visits ? parseInt(kpiData.visits) : null,
+          ctr: kpiData.ctr ? parseFloat(kpiData.ctr) : null,
+          cpm: kpiData.cpm ? parseFloat(kpiData.cpm) : null,
+        })
+        .eq('id', selectedCampaignForKPI.id);
+
+      if (error) throw error;
+
+      toast.success("KPIs actualizados correctamente");
+      setShowKPIModal(false);
+      await loadData(user.id, isAdmin);
+    } catch (error: any) {
+      console.error("Error saving KPIs:", error);
+      toast.error("Error al guardar KPIs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCampaignForReport) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({
+          report_link: reportLink
+        })
+        .eq('id', selectedCampaignForReport.id);
+
+      if (error) throw error;
+
+      toast.success("Informe actualizado correctamente");
+      setShowReportModal(false);
+      await loadData(user.id, isAdmin);
+    } catch (error: any) {
+      console.error("Error saving report:", error);
+      toast.error("Error al guardar el informe");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Calculate KPIs
   const kpis = useMemo(() => {
     const total = campaigns.length;
@@ -511,6 +593,7 @@ const CampaignsHistory = () => {
       nuevo: "bg-muted text-muted-foreground",
       en_revision: "bg-blue-500/20 text-blue-400",
       revisando: "bg-blue-500/20 text-blue-400",
+      propuesta_lista: "bg-cinema-yellow/20 text-cinema-yellow animate-pulse",
       aprobada: "bg-green-500/20 text-green-400",
       aprobado: "bg-green-500/20 text-green-400",
       activa: "bg-green-500/20 text-green-400 animate-pulse",
@@ -525,6 +608,7 @@ const CampaignsHistory = () => {
       nuevo: "Borrador",
       en_revision: "En revisión",
       revisando: "En revisión",
+      propuesta_lista: "Propuesta Lista",
       aprobada: "Aprobada",
       aprobado: "Aprobada",
       activa: "Activa",
@@ -688,13 +772,38 @@ const CampaignsHistory = () => {
                 Invitar Admin
               </Button>
             )}
-            <Button
-              onClick={() => navigate("/wizard")}
-              className="bg-primary text-primary-foreground hover:bg-secondary"
-            >
-              <Plus className="w-4 h-4 mr-2 cinema-icon" />
-              Nueva campaña
-            </Button>
+            <div className="flex rounded-md shadow-sm">
+              <Button
+                onClick={() => navigate("/quick-wizard")}
+                className="bg-[#ebc453] text-black hover:bg-[#d0ab40] rounded-r-none border-r border-[#black/20]"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva campaña
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="bg-[#ebc453] text-black hover:bg-[#d0ab40] rounded-l-none px-2"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-[#1f1f22] border-[#ebc453]/20">
+                  <DropdownMenuItem
+                    onClick={() => navigate("/quick-wizard")}
+                    className="text-[#ebc453] hover:bg-[#ebc453] hover:text-black focus:text-black focus:bg-[#ebc453] cursor-pointer"
+                  >
+                    Modo rápido
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/wizard")}
+                    className="text-[#ebc453] hover:bg-[#ebc453] hover:text-black focus:text-black focus:bg-[#ebc453] mt-1 cursor-pointer"
+                  >
+                    Modo Avanzado
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <Button
               onClick={() => navigate("/team")}
               variant="outline"
@@ -715,18 +824,22 @@ const CampaignsHistory = () => {
         </div>
 
         <Tabs defaultValue="campaigns" className="space-y-6">
-          {isAdmin && (
-            <TabsList className="bg-muted border border-border">
-              <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Film className="w-4 h-4 mr-2" />
-                Campañas
-              </TabsTrigger>
-              <TabsTrigger value="distributors" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsList className="bg-cinema-black border border-border">
+            <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-black">
+              <Film className="w-4 h-4 mr-2" />
+              Campañas
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="distributors" className="data-[state=active]:bg-primary data-[state=active]:text-black">
                 <Building2 className="w-4 h-4 mr-2" />
                 Distribuidoras
               </TabsTrigger>
-            </TabsList>
-          )}
+            )}
+            <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black">
+              <BarChart className="w-4 h-4 mr-2" />
+              Métricas / Comparativas
+            </TabsTrigger>
+          </TabsList>
 
           <TabsContent value="campaigns" className="space-y-8">
             {loading && (
@@ -754,7 +867,7 @@ const CampaignsHistory = () => {
                 </div>
                 {!isAdmin && (
                   <Button
-                    onClick={() => navigate("/wizard")}
+                    onClick={() => navigate("/quick-wizard")}
                     size="lg"
                     className="bg-primary text-primary-foreground hover:bg-secondary mt-4"
                   >
@@ -973,6 +1086,7 @@ const CampaignsHistory = () => {
                                 <SelectContent>
                                   <SelectItem value="borrador">Borrador</SelectItem>
                                   <SelectItem value="en_revision">En revisión</SelectItem>
+                                  <SelectItem value="propuesta_lista">Propuesta Lista</SelectItem>
                                   <SelectItem value="aprobada">Aprobada</SelectItem>
                                   <SelectItem value="creativos_en_revision">Creativos en revisión</SelectItem>
                                   <SelectItem value="activa">Activa</SelectItem>
@@ -1000,10 +1114,28 @@ const CampaignsHistory = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <DollarSign className="w-4 h-4 cinema-icon-decorative" />
-                              <p className="text-muted-foreground">Inversión publicitaria:</p>
+                              <p className="text-muted-foreground flex items-center gap-1">
+                                Inversión publicitaria:
+                                {(() => {
+                                  const totalFees = (campaign.fixed_fee_amount || 0) + (campaign.variable_fee_amount || 0) + (campaign.setup_fee_amount || 0);
+                                  const expectedIntegratedTotal = (campaign.ad_investment_amount || 0) + (campaign.addons_base_amount || 0);
+                                  const isIntegrated = Math.abs(expectedIntegratedTotal - campaign.total_estimated_amount) < 5;
+                                  return isIntegrated && (
+                                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded leading-none border border-primary/20">
+                                      Fees inc.
+                                    </span>
+                                  );
+                                })()}
+                              </p>
                             </div>
                             <p className="text-cinema-yellow font-semibold">
-                              {campaign.ad_investment_amount.toLocaleString("es-ES")}€
+                              {(() => {
+                                const totalFees = (campaign.fixed_fee_amount || 0) + (campaign.variable_fee_amount || 0) + (campaign.setup_fee_amount || 0);
+                                const expectedIntegratedTotal = (campaign.ad_investment_amount || 0) + (campaign.addons_base_amount || 0);
+                                const isIntegrated = Math.abs(expectedIntegratedTotal - campaign.total_estimated_amount) < 5;
+                                const netInvestment = isIntegrated ? (campaign.ad_investment_amount - totalFees) : campaign.ad_investment_amount;
+                                return netInvestment.toLocaleString("es-ES");
+                              })()}€
                             </p>
                           </div>
                           <div>
@@ -1023,6 +1155,137 @@ const CampaignsHistory = () => {
                             <p className="text-sm text-cinema-ivory italic">{campaign.additional_comments}</p>
                           </div>
                         )}
+
+                        {isAdmin && (
+                          <div className="pt-3 border-t border-border flex flex-wrap gap-2">
+                            {['en_revision', 'revisando'].includes(campaign.status) && (
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/wizard/review/${campaign.id}`);
+                                }}
+                                className="bg-primary text-primary-foreground hover:bg-secondary"
+                                size="sm"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Revisar campaña
+                              </Button>
+                            )}
+
+                            {campaign.pending_changes_list && campaign.pending_changes_list.length > 0 && (
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/campaigns/${campaign.id}?tab=details`);
+                                }}
+                                className="bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
+                                size="sm"
+                              >
+                                <Bell className="w-4 h-4 mr-2" />
+                                Revisar cambios
+                              </Button>
+                            )}
+
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCampaignForKPI(campaign);
+                                setKPIData({
+                                  reach: campaign.reach?.toString() || "",
+                                  clicks: campaign.clicks?.toString() || "",
+                                  visits: campaign.visits?.toString() || "",
+                                  ctr: campaign.ctr?.toString() || "",
+                                  cpm: campaign.cpm?.toString() || ""
+                                });
+                                setShowKPIModal(true);
+                              }}
+                              variant="outline"
+                              className="border-primary text-primary hover:bg-primary/10"
+                              size="sm"
+                            >
+                              <BarChart className="w-4 h-4 mr-2" />
+                              Agregar KPIs
+                            </Button>
+
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCampaignForReport(campaign);
+                                setReportLink(campaign.report_link || "");
+                                setShowReportModal(true);
+                              }}
+                              variant="outline"
+                              className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                              size="sm"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Agregar informe
+                            </Button>
+                          </div>
+                        )}
+
+                        {!isAdmin && campaign.status === 'finalizada' && (
+                          <div className="pt-3 border-t border-border mt-auto space-y-4">
+                            {(campaign.reach || campaign.clicks || campaign.visits) && (
+                              <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10">
+                                {campaign.reach && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.reach.toLocaleString()}</p>
+                                  </div>
+                                )}
+                                {campaign.clicks && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.clicks.toLocaleString()}</p>
+                                  </div>
+                                )}
+                                {campaign.ctr && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">CTR</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.ctr}%</p>
+                                  </div>
+                                )}
+                                {campaign.cpm && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">CPM</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.cpm}€</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {campaign.report_link && (
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(campaign.report_link, '_blank');
+                                }}
+                                className="w-full bg-primary text-primary-foreground hover:bg-secondary font-bold"
+                                size="sm"
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Ver Informe Completo
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {!isAdmin && campaign.status === 'propuesta_lista' && (
+                          <div className="pt-3 border-t border-border mt-auto">
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/campaigns/${campaign.id}/proposal`);
+                              }}
+                              className="w-full bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
+                              size="sm"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver Propuesta
+                            </Button>
+                          </div>
+                        )}
                       </Card>
                     ))
                   )}
@@ -1036,6 +1299,10 @@ const CampaignsHistory = () => {
               <AdminDistributors />
             </TabsContent>
           )}
+
+          <TabsContent value="comparative">
+            <CampaignComparator isAdmin={isAdmin} userId={user?.id} />
+          </TabsContent>
         </Tabs>
 
         {/* Onboarding Tour */}
@@ -1117,6 +1384,159 @@ const CampaignsHistory = () => {
         campaignTitle={selectedCampaignForNotes?.films?.title || ""}
         onNotesChange={fetchPendingNotesCounts}
       />
+
+      {/* KPI Modal */}
+      {showKPIModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <Card className="cinema-card w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowKPIModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-primary/20">
+                  <BarChart className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-cinema text-2xl text-primary">Agregar KPIs</h3>
+                  <p className="text-sm text-cinema-ivory">{selectedCampaignForKPI?.films?.title}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveKPIs} className="space-y-4 pt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Alcance (Reach)</Label>
+                    <Input
+                      type="number"
+                      value={kpiData.reach}
+                      onChange={(e) => setKPIData({ ...kpiData, reach: e.target.value })}
+                      className="bg-muted border-border"
+                      placeholder="Ej: 150000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Clicks</Label>
+                    <Input
+                      type="number"
+                      value={kpiData.clicks}
+                      onChange={(e) => setKPIData({ ...kpiData, clicks: e.target.value })}
+                      className="bg-muted border-border"
+                      placeholder="Ej: 5400"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Visitas</Label>
+                    <Input
+                      type="number"
+                      value={kpiData.visits}
+                      onChange={(e) => setKPIData({ ...kpiData, visits: e.target.value })}
+                      className="bg-muted border-border"
+                      placeholder="Ej: 3200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CTR (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={kpiData.ctr}
+                      onChange={(e) => setKPIData({ ...kpiData, ctr: e.target.value })}
+                      className="bg-muted border-border"
+                      placeholder="Ej: 1.25"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CPM (€)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={kpiData.cpm}
+                      onChange={(e) => setKPIData({ ...kpiData, cpm: e.target.value })}
+                      className="bg-muted border-border"
+                      placeholder="Ej: 0.85"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowKPIModal(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary text-primary-foreground hover:bg-secondary"
+                    disabled={loading}
+                  >
+                    {loading ? "Guardando..." : "Guardar KPIs"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <Card className="cinema-card w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowReportModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-full bg-cinema-yellow/20">
+                  <Eye className="w-6 h-6 text-cinema-yellow" />
+                </div>
+                <div>
+                  <h3 className="font-cinema text-2xl text-primary">Agregar Informe</h3>
+                  <p className="text-sm text-cinema-ivory">{selectedCampaignForReport?.films?.title}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveReport} className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Enlace al informe completo</Label>
+                  <Input
+                    type="url"
+                    value={reportLink}
+                    onChange={(e) => setReportLink(e.target.value)}
+                    className="bg-muted border-border"
+                    placeholder="https://ejemplo.com/informe-campaña"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowReportModal(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-cinema-yellow text-black hover:bg-cinema-yellow/90"
+                    disabled={loading}
+                  >
+                    {loading ? "Guardando..." : "Guardar Informe"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

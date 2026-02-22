@@ -35,7 +35,7 @@ const formSchema = z.object({
     country: z.string().min(1, "El país es obligatorio"),
     genre: z.string().min(1, "El género es obligatorio"),
     secondary_genre: z.string().optional(),
-    target_audience_text: z.string().min(1, "El público objetivo es obligatorio"),
+    target_audience_text: z.string().optional(),
     target_audience_urls: z.array(z.string()).optional(),
     target_audience_files: z.array(z.string()).optional(), // URLs/Paths to files
     main_goals: z.array(z.string()).min(1, "Debes seleccionar al menos un objetivo"),
@@ -54,6 +54,14 @@ const formSchema = z.object({
     }, {
         message: "La suma de porcentajes debe ser 100%",
     }),
+}).refine((data) => {
+    const hasText = data.target_audience_text && data.target_audience_text.trim().length > 0;
+    const hasUrls = data.target_audience_urls && data.target_audience_urls.length > 0;
+    const hasFiles = data.target_audience_files && data.target_audience_files.length > 0;
+    return hasText || hasUrls || hasFiles;
+}, {
+    message: "Describe el público objetivo o añade material adicional (enlaces o archivos)",
+    path: ["target_audience_text"],
 });
 
 interface CampaignInfoEditableProps {
@@ -446,10 +454,12 @@ export const CampaignInfoEditable = ({
                     )}
                 </div>
 
-                {film.target_audience_text && (
+                {(film.target_audience_text || film.target_audience_urls?.length > 0 || film.target_audience_files?.length > 0) && (
                     <div>
                         <h3 className="font-cinema text-xl text-primary mb-3">Audiencia Objetivo</h3>
-                        <p className="text-foreground whitespace-pre-wrap">{film.target_audience_text}</p>
+                        {film.target_audience_text && (
+                            <p className="text-foreground whitespace-pre-wrap mb-4">{film.target_audience_text}</p>
+                        )}
 
                         {(film.target_audience_urls?.length > 0 || film.target_audience_files?.length > 0) && (
                             <div className="mt-4 pt-3 border-t border-dashed border-primary/20">

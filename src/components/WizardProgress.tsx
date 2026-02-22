@@ -33,7 +33,7 @@ const WizardProgress = ({ currentStep, totalSteps, onBack, steps }: WizardProgre
     switch (status) {
       case "completed": return "COMPLETADO";
       case "current": return "PASO ACTUAL";
-      default: return "PENDIENTE";
+      default: return "PASO SIGUIENTE";
     }
   };
 

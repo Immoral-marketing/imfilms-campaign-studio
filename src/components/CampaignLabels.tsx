@@ -13,6 +13,8 @@ export interface CampaignData {
     films?: {
         title?: string;
         target_audience_text?: string;
+        target_audience_urls?: string[];
+        target_audience_files?: string[];
         genre?: string;
     } | null;
 }
@@ -32,7 +34,13 @@ const CampaignLabels = ({ campaign }: CampaignLabelsProps) => {
     // 2. Faltan materiales clave
     const missingFields: string[] = [];
 
-    if (!campaign.target_audience_text && !campaign.films?.target_audience_text) {
+    const hasAudienceInfo =
+        !!campaign.target_audience_text ||
+        !!campaign.films?.target_audience_text ||
+        (campaign.films?.target_audience_urls && campaign.films.target_audience_urls.length > 0) ||
+        (campaign.films?.target_audience_files && campaign.films.target_audience_files.length > 0);
+
+    if (!hasAudienceInfo) {
         missingFields.push("Público objetivo");
     }
 

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
-import { Shield, LogOut, RefreshCw, Calendar, DollarSign, BarChart, Building2, Film } from "lucide-react";
+import { Shield, LogOut, RefreshCw, Calendar, DollarSign, BarChart, Building2, Film, Eye } from "lucide-react";
 import AdminDistributors from "./AdminDistributors";
 
 const Admin = () => {
@@ -123,6 +123,10 @@ const Admin = () => {
           *,
           films (
             title,
+            genre,
+            target_audience_text,
+            target_audience_urls,
+            target_audience_files,
             distributor_name,
             distributors (
               company_name
@@ -323,10 +327,28 @@ const Admin = () => {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <DollarSign className="w-4 h-4 cinema-icon-decorative" />
-                        <p className="text-muted-foreground">Inversión:</p>
+                        <p className="text-muted-foreground flex items-center gap-1">
+                          Inversión:
+                          {(() => {
+                            const totalFees = (campaign.fixed_fee_amount || 0) + (campaign.variable_fee_amount || 0) + (campaign.setup_fee_amount || 0);
+                            const expectedIntegratedTotal = (campaign.ad_investment_amount || 0) + (campaign.addons_base_amount || 0);
+                            const isIntegrated = Math.abs(expectedIntegratedTotal - campaign.total_estimated_amount) < 5;
+                            return isIntegrated && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded leading-none border border-primary/20">
+                                Fees inc.
+                              </span>
+                            );
+                          })()}
+                        </p>
                       </div>
                       <p className="text-cinema-yellow font-semibold">
-                        {campaign.ad_investment_amount.toLocaleString("es-ES")}€
+                        {(() => {
+                          const totalFees = (campaign.fixed_fee_amount || 0) + (campaign.variable_fee_amount || 0) + (campaign.setup_fee_amount || 0);
+                          const expectedIntegratedTotal = (campaign.ad_investment_amount || 0) + (campaign.addons_base_amount || 0);
+                          const isIntegrated = Math.abs(expectedIntegratedTotal - campaign.total_estimated_amount) < 5;
+                          const netInvestment = isIntegrated ? (campaign.ad_investment_amount - totalFees) : campaign.ad_investment_amount;
+                          return netInvestment.toLocaleString("es-ES");
+                        })()}€
                       </p>
                     </div>
                     <div>
@@ -351,6 +373,27 @@ const Admin = () => {
                       <p className="text-sm text-cinema-ivory italic">{campaign.additional_comments}</p>
                     </div>
                   )}
+
+                  <div className="pt-3 border-t border-border flex gap-2">
+                    {['en_revision', 'revisando'].includes(campaign.status) && (
+                      <Button
+                        onClick={() => navigate(`/wizard/review/${campaign.id}`)}
+                        className="bg-primary text-primary-foreground hover:bg-secondary"
+                        size="sm"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Revisar campaña
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                      variant="outline"
+                      size="sm"
+                      className="border-border text-muted-foreground hover:text-cinema-ivory"
+                    >
+                      Ver detalle
+                    </Button>
+                  </div>
                 </Card>
               ))}
 

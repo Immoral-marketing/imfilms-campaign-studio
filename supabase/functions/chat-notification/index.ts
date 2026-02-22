@@ -117,7 +117,7 @@ serve(async (req) => {
         // 5. Send Email
         const baseUrl = "https://estrenos.imfilms.es";
         const dashboardUrl = message.sender_role === "distributor"
-            ? `${baseUrl}/admin`
+            ? `${baseUrl}/campaigns`
             : `${baseUrl}/campaigns/${campaign.id}`;
 
         const emailHtml = `

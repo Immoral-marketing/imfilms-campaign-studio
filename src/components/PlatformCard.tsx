@@ -9,9 +9,21 @@ interface PlatformCardProps {
   onToggle: () => void;
   setupFee?: number;
   isBonificado?: boolean;
+  hidePrice?: boolean;
+  hideDescription?: boolean;
 }
 
-const PlatformCard = ({ name, description, logo, selected, onToggle, setupFee, isBonificado }: PlatformCardProps) => {
+const PlatformCard = ({
+  name,
+  description,
+  logo,
+  selected,
+  onToggle,
+  setupFee,
+  isBonificado,
+  hidePrice = false,
+  hideDescription = false
+}: PlatformCardProps) => {
   return (
     <button
       onClick={onToggle}
@@ -25,16 +37,16 @@ const PlatformCard = ({ name, description, logo, selected, onToggle, setupFee, i
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="font-cinema text-2xl text-primary">{name}</h3>
-          {setupFee !== undefined && (
+          {!hidePrice && setupFee !== undefined && (
             <span className={`text-[10px] px-2 py-0.5 rounded-full border ${isBonificado
-                ? "bg-green-500/10 border-green-500/30 text-green-500 font-bold animate-pulse"
-                : "bg-cinema-gold/10 border-cinema-gold/30 text-cinema-gold"
+              ? "bg-green-500/10 border-green-500/30 text-green-500 font-bold animate-pulse"
+              : "bg-cinema-gold/10 border-cinema-gold/30 text-cinema-gold"
               }`}>
               Setup: {isBonificado ? "BONIFICADO" : `${setupFee}€`}
             </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+        {!hideDescription && <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>}
       </div>
     </button>
   );

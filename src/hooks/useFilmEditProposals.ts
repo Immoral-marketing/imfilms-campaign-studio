@@ -132,8 +132,38 @@ export const useCreateFilmProposal = () => {
                         sender_name: "Sistema",
                         message: chatMessage,
                     } as any);
+
+                // --- Trigger Email Notification to Admins ---
+                try {
+                    // Fetch campaign and distributor info for the email
+                    const { data: campaignData } = await supabase
+                        .from('campaigns')
+                        .select(`
+                            id,
+                            films (title),
+                            distributors (company_name)
+                        `)
+                        .eq('id', campaignId)
+                        .single();
+
+                    if (campaignData) {
+                        const filmTitle = (campaignData.films as any)?.title || 'Campaña sin título';
+                        const companyName = (campaignData.distributors as any)?.company_name || userName;
+
+                        await supabase.functions.invoke('send-email', {
+                            body: {
+                                type: 'edit_proposal_created',
+                                campaignId: campaignId,
+                                campaignTitle: filmTitle,
+                                distributorName: companyName
+                            }
+                        });
+                    }
+                } catch (emailErr) {
+                    console.error("Email notification error (non-fatal):", emailErr);
+                }
             } catch (sysErr) {
-                console.error("System message insert error (non-fatal):", sysErr);
+                console.error("System message/email error (non-fatal):", sysErr);
             }
 
             return data as unknown as FilmEditProposal;

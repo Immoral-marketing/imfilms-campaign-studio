@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, FileImage, Pencil, Loader2 } from 'lucide-react';
+import { Bell, FileImage, Pencil, Loader2, CheckCircle2, MessageSquare } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -129,10 +129,36 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
             <div className="divide-y divide-border/20">
                 {notifications.map((notif) => {
                     const isEditProposal = notif.message.startsWith('✏️');
-                    const NotifIcon = isEditProposal ? Pencil : FileImage;
-                    const notifTitle = isEditProposal ? 'Cambios propuestos' : 'Nuevas creatividades subidas';
-                    const iconColor = isEditProposal ? 'text-blue-400' : 'text-cinema-yellow';
-                    const iconBg = isEditProposal ? 'bg-blue-500/10' : 'bg-primary/10';
+                    const isProposalReady = notif.message.startsWith('📢');
+                    const isProposalApproved = notif.message.startsWith('🟢');
+                    const isProposalChanges = notif.message.startsWith('🟡');
+
+                    let NotifIcon = FileImage;
+                    let notifTitle = 'Nuevas creatividades subidas';
+                    let iconColor = 'text-cinema-yellow';
+                    let iconBg = 'bg-primary/10';
+
+                    if (isEditProposal) {
+                        NotifIcon = Pencil;
+                        notifTitle = 'Cambios propuestos';
+                        iconColor = 'text-blue-400';
+                        iconBg = 'bg-blue-500/10';
+                    } else if (isProposalReady) {
+                        NotifIcon = Bell;
+                        notifTitle = 'Propuesta Lista';
+                        iconColor = 'text-purple-400';
+                        iconBg = 'bg-purple-500/10';
+                    } else if (isProposalApproved) {
+                        NotifIcon = CheckCircle2;
+                        notifTitle = 'Propuesta Aprobada';
+                        iconColor = 'text-green-500';
+                        iconBg = 'bg-green-500/10';
+                    } else if (isProposalChanges) {
+                        NotifIcon = MessageSquare;
+                        notifTitle = 'Cambios Sugeridos';
+                        iconColor = 'text-yellow-500';
+                        iconBg = 'bg-yellow-500/10';
+                    }
 
                     return (
                         <div

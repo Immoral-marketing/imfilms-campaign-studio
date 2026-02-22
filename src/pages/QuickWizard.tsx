@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
-import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap, Trash2, Plus, Upload, ExternalLink, Settings2, Download, MessageSquare } from "lucide-react";
+import { Clapperboard, Globe, Mail, Info, RotateCcw, CalendarClock, CalendarRange, CalendarCheck, FileText, ArrowLeft, Check, Loader2, Eye, EyeOff, Euro, Percent, Zap, Trash2, Plus, Upload, ExternalLink, Settings2, Download } from "lucide-react";
 import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
@@ -28,7 +28,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { useCampaignCalculator, validateInvestment, FeeMode } from "@/hooks/useCampaignCalculator";
 import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { calculateCampaignDates, formatDateEs, formatDateShort } from "@/utils/dateUtils";
-import { isSameDay } from "date-fns";
+import { isSameDay, addDays } from "date-fns";
 import { z } from "zod";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import tiktokLogo from "@/assets/tiktok-logo.png";
@@ -108,15 +108,9 @@ interface WizardDraft {
   planningMode: 'simple' | 'amount' | 'percentage';
 }
 
-const Wizard = () => {
+const QuickWizard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { campaignId: reviewCampaignId } = useParams<{ campaignId?: string }>();
-  const isEditMode = !!reviewCampaignId;
-  const [editCampaignId, setEditCampaignId] = useState<string | null>(reviewCampaignId || null);
-  const [editFilmId, setEditFilmId] = useState<string | null>(null);
-  const [editDistributorName, setEditDistributorName] = useState<string>("");
-  const [editDataLoaded, setEditDataLoaded] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [user, setUser] = useState<any>(null);
   const [distributor, setDistributor] = useState<any>(null);
@@ -138,7 +132,6 @@ const Wizard = () => {
 
   // Onboarding
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
-  const [suggestedChanges, setSuggestedChanges] = useState<string | null>(null);
 
   // Check admin status
   useEffect(() => {
@@ -177,11 +170,9 @@ const Wizard = () => {
 
   // Step 1: Target Audience Files (Not persisted in draft)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [existingTargetFiles, setExistingTargetFiles] = useState<{ url: string, name: string }[]>([]);
 
   // Step 4: Creative Assets (Not persisted in draft)
   const [creativeAssets, setCreativeAssets] = useState<File[]>([]);
-  const [existingCreativeAssets, setExistingCreativeAssets] = useState<any[]>([]);
 
   // Step 2: Calendar
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
@@ -262,188 +253,10 @@ const Wizard = () => {
   }, [releaseDate, filmData.genre, filmData.otherGenre, filmData.targetAudience, filmData.country, currentStep]);
 
 
-  // Load campaign data for admin review mode
-  const loadCampaignForReview = async (campId: string) => {
-    try {
-      // Fetch campaign + film + platforms + addons
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('campaigns')
-        .select(`
-          *,
-          films (
-            id,
-            title,
-            genre,
-            secondary_genre,
-            country,
-            distributor_name,
-            target_audience_text,
-            target_audience_urls,
-            target_audience_files,
-            main_goals,
-            release_date,
-            distributors (
-              company_name,
-              contact_name,
-              contact_email
-            )
-          ),
-          campaign_platforms (
-            platform_name,
-            budget_percent
-          ),
-          campaign_addons (
-            addon_type
-          ),
-          campaign_assets (
-            id,
-            name,
-            original_filename,
-            file_url,
-            status
-          )
-        `)
-        .eq('id', campId)
-        .single();
-
-      if (campaignError) throw campaignError;
-      if (!campaignData || !campaignData.films) throw new Error('Campaign not found');
-
-      const film = campaignData.films;
-      const platforms = campaignData.campaign_platforms || [];
-      const addons = campaignData.campaign_addons || [];
-
-      // Pre-fill existing target audience files
-      if (film.target_audience_files && Array.isArray(film.target_audience_files)) {
-        const mappedUrls = film.target_audience_files.map((url: string) => {
-          let name = 'Archivo adjunto';
-          try {
-            const parts = url.split('/');
-            const filename = parts[parts.length - 1];
-            const nameParts = filename.split('_');
-            if (nameParts.length > 1 && !isNaN(Number(nameParts[0]))) {
-              name = nameParts.slice(1).join('_');
-            } else {
-              name = filename;
-            }
-            name = decodeURIComponent(name);
-          } catch (e) { }
-          return { url, name };
-        });
-        setExistingTargetFiles(mappedUrls);
-      } else {
-        setExistingTargetFiles([]);
-      }
-
-      // Pre-fill existing creative assets
-      setExistingCreativeAssets(campaignData.campaign_assets || []);
-
-      // Store IDs for update
-      setEditCampaignId(campaignData.id);
-      setEditFilmId(film.id);
-      setEditDistributorName(film.distributors?.company_name || film.distributor_name || '');
-
-      // Pre-fill film data
-      setFilmData({
-        title: film.title || '',
-        genre: film.genre || '',
-        secondaryGenre: film.secondary_genre || '',
-        otherGenre: '',
-        country: film.country || '',
-        distributorName: film.distributor_name || '',
-        targetAudience: film.target_audience_text || '',
-        targetAudienceUrls: film.target_audience_urls || [],
-        goals: film.main_goals || [],
-      });
-
-      // Pre-fill release date
-      if (film.release_date) {
-        setReleaseDate(new Date(film.release_date));
-      }
-
-      // Pre-fill campaign end date
-      if (campaignData.premiere_weekend_end) {
-        setCampaignEndDate(new Date(campaignData.premiere_weekend_end));
-      }
-
-      // Pre-fill platforms
-      const knownPlatformNames = ['Instagram', 'Facebook', 'TikTok', 'YouTube'];
-      const knownPlatforms: string[] = [];
-      let otherPlat = '';
-      const pctMap: Record<string, number> = {};
-
-      for (const p of platforms) {
-        if (knownPlatformNames.includes(p.platform_name)) {
-          knownPlatforms.push(p.platform_name);
-        } else {
-          otherPlat = p.platform_name;
-        }
-        pctMap[p.platform_name] = p.budget_percent || 0;
-      }
-
-      setSelectedPlatforms(knownPlatforms);
-      setOtherPlatform(otherPlat);
-      setPlatformPercentages(pctMap);
-
-      // Pre-fill investment
-      setAdInvestment(String(campaignData.ad_investment_amount || ''));
-
-      // Pre-fill addons
-      const addonTypes = addons.map((a: any) => a.addon_type);
-      setSelectedAddons({
-        adaptacion: addonTypes.includes('adaptacion'),
-        microsite: addonTypes.includes('microsite'),
-        emailWhatsapp: addonTypes.includes('email_whatsapp') || addonTypes.includes('emailWhatsapp'),
-      });
-
-      // Pre-fill contact data
-      setSignupData({
-        companyName: film.distributors?.company_name || '',
-        contactName: film.distributors?.contact_name || '',
-        contactEmail: film.distributors?.contact_email || '',
-        contactPhone: campaignData.contact_phone || '', // Keep phone as is if missing or handle similarly
-        password: '',
-        comments: campaignData.additional_comments || '',
-      });
-
-      setEditDataLoaded(true);
-      toast.success('Datos de la campaña cargados correctamente');
-
-      // Fetch suggested changes if in revision
-      if (campaignData.status === 'en_revision') {
-        const { data: messages } = await supabase
-          .from('campaign_messages')
-          .select('message')
-          .eq('campaign_id', campId)
-          .eq('sender_role', 'system')
-          .like('message', '🟡%')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (messages && messages.length > 0) {
-          // Remove the emoji and prefix
-          const msg = messages[0].message.replace('🟡 La distribuidora ha sugerido cambios:\n\n', '').replace('🟡 ', '');
-          setSuggestedChanges(msg);
-        }
-      }
-    } catch (error: any) {
-      console.error('Error loading campaign for review:', error);
-      toast.error('Error al cargar la campaña para revisión');
-      navigate('/campaigns');
-    }
-  };
-
-  // Load campaign data when in edit mode
-  useEffect(() => {
-    if (isEditMode && reviewCampaignId && !editDataLoaded) {
-      loadCampaignForReview(reviewCampaignId);
-    }
-  }, [isEditMode, reviewCampaignId, editDataLoaded]);
-
   // Check for saved draft on mount
   useEffect(() => {
     const savedDraft = localStorage.getItem(WIZARD_DRAFT_KEY);
-    if (savedDraft && !isEditMode) {
+    if (savedDraft) {
       setHasDraft(true);
       setShowDraftDialog(true);
     }
@@ -853,14 +666,22 @@ const Wizard = () => {
       // Target Audience Validation: At least one field (text, urls, or files) is required
       const hasAudienceText = filmData.targetAudience.trim().length > 0;
       const hasUrls = filmData.targetAudienceUrls && filmData.targetAudienceUrls.length > 0;
-      const hasFiles = selectedFiles.length > 0 || existingTargetFiles.length > 0;
+      const hasFiles = selectedFiles.length > 0;
 
       if (!hasAudienceText && !hasUrls && !hasFiles) {
         toast.error("Por favor, describe el público objetivo o añade material adicional (enlaces o archivos).");
         return;
       }
-      // ... Step 2 validation
-    } else if (currentStep === 3) {
+
+      if (!releaseDate) {
+        toast.error("Por favor selecciona una fecha de estreno");
+        return;
+      }
+
+      // Step 2 (Dates) is now merged into Step 1, so we go directly to Step 2 (Platforms)
+      setCurrentStep(2);
+      return;
+    } else if (currentStep === 2) { // Platforms
       if (selectedPlatforms.length === 0) {
         toast.error("Por favor selecciona al menos una plataforma");
         return;
@@ -886,13 +707,8 @@ const Wizard = () => {
       }
     }
 
-    if (currentStep < 5) {
-      // In edit mode, skip Step 5 (registration) — go from Step 4 straight to Step 5 summary
-      if (isEditMode && currentStep === 4) {
-        setCurrentStep(5);
-      } else {
-        setCurrentStep(currentStep + 1);
-      }
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -1087,149 +903,7 @@ const Wizard = () => {
     }
   };
 
-  // Update existing campaign (admin review mode)
-  const updateCampaign = async () => {
-    if (!releaseDate || !campaignDates || !editCampaignId || !editFilmId) {
-      toast.error('Faltan datos necesarios para actualizar');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Update film
-      const { error: filmError } = await supabase
-        .from('films')
-        .update({
-          title: filmData.title,
-          genre: filmData.genre,
-          secondary_genre: filmData.secondaryGenre || null,
-          country: filmData.country,
-          distributor_name: filmData.distributorName,
-          target_audience_text: filmData.targetAudience,
-          main_goals: filmData.goals,
-          release_date: releaseDate.toISOString().split('T')[0],
-          target_audience_urls: filmData.targetAudienceUrls || [],
-        })
-        .eq('id', editFilmId);
-
-      if (filmError) throw filmError;
-
-      // Update campaign
-      const { error: campaignError } = await supabase
-        .from('campaigns')
-        .update({
-          pre_start_date: campaignDates.preStartDate.toISOString().split('T')[0],
-          pre_end_date: campaignDates.preEndDate.toISOString().split('T')[0],
-          premiere_weekend_start: campaignDates.premiereWeekendStart.toISOString().split('T')[0],
-          premiere_weekend_end: campaignDates.premiereWeekendEnd.toISOString().split('T')[0],
-          final_report_date: campaignDates.finalReportDate.toISOString().split('T')[0],
-          creatives_deadline: campaignDates.creativesDeadline.toISOString().split('T')[0],
-          ad_investment_amount: costs.adInvestment,
-          fixed_fee_amount: costs.fixedFeePlatforms,
-          variable_fee_amount: costs.variableFeeInvestment,
-          setup_fee_amount: costs.setupFee,
-          addons_base_amount: costs.addonsBaseCost,
-          total_estimated_amount: costs.totalEstimated,
-          additional_comments: signupData.comments,
-          status: 'propuesta_lista',
-        })
-        .eq('id', editCampaignId);
-
-      if (campaignError) throw campaignError;
-
-      // Delete + re-insert platforms
-      await supabase.from('campaign_platforms').delete().eq('campaign_id', editCampaignId);
-
-      const allPlatforms = [...selectedPlatforms];
-      if (otherPlatform) allPlatforms.push(otherPlatform);
-
-      const finalPercentages: Record<string, number> = {};
-      if (planningMode === 'simple') {
-        const count = allPlatforms.length;
-        const share = 100 / count;
-        allPlatforms.forEach(p => finalPercentages[p] = share);
-      } else {
-        allPlatforms.forEach(p => {
-          finalPercentages[p] = platformPercentages[p] || 0;
-        });
-      }
-
-      for (const platform of allPlatforms) {
-        await supabase.from('campaign_platforms').insert({
-          campaign_id: editCampaignId,
-          platform_name: platform,
-          budget_percent: finalPercentages[platform] || 0,
-        });
-      }
-
-      // Delete + re-insert addons
-      await supabase.from('campaign_addons').delete().eq('campaign_id', editCampaignId);
-
-      const addonTypes = Object.entries(selectedAddons)
-        .filter(([_, selected]) => selected)
-        .map(([type]) => type);
-
-      for (const addonType of addonTypes) {
-        await supabase.from('campaign_addons').insert({
-          campaign_id: editCampaignId,
-          addon_type: addonType,
-        });
-      }
-
-      // Upload creative assets if any new ones were added
-      if (creativeAssets.length > 0 && user) {
-        try {
-          await uploadCreativeAssets(user.id, editCampaignId);
-        } catch (e) {
-          console.error('Error uploading creative assets', e);
-        }
-      }
-
-      // Add system message for internal notification
-      if (user) {
-        try {
-          await supabase.from('campaign_messages').insert({
-            campaign_id: editCampaignId,
-            sender_id: user.id,
-            sender_role: 'system',
-            message: '📢 Nueva propuesta de campaña lista para revisión.',
-          } as any);
-        } catch (e) {
-          console.error('Error recording system message', e);
-        }
-      }
-
-      // Send email to distributor
-      if (signupData.contactEmail) {
-        try {
-          await supabase.functions.invoke("send-email", {
-            body: {
-              type: "proposal_ready",
-              recipientEmail: signupData.contactEmail,
-              campaignTitle: filmData.title,
-            },
-          });
-        } catch (e) {
-          console.error('Error sending proposal ready email', e);
-        }
-      }
-
-      toast.success('¡Campaña actualizada correctamente!');
-      navigate('/campaigns');
-    } catch (error: any) {
-      console.error('Error updating campaign:', error);
-      toast.error(error.message || 'Error al actualizar la campaña');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (isEditMode) {
-      await updateCampaign();
-      return;
-    }
-
     if (!releaseDate || !campaignDates) {
       toast.error("Faltan datos necesarios");
       return;
@@ -1462,13 +1136,10 @@ const Wizard = () => {
               />
             </button>
             <h1 className="font-cinema text-4xl md:text-5xl text-primary">
-              {isEditMode ? 'Revisar campaña' : 'Configura tu campaña'}
+              Configura tu campaña
             </h1>
             <p className="text-muted-foreground">
-              {isEditMode
-                ? `Revisando campaña de ${editDistributorName || 'distribuidora'}`
-                : (isFirstRelease ? "Bienvenido a imfilms" : "Bienvenido de nuevo")
-              }
+              {isFirstRelease ? "Bienvenido a imfilms" : "Bienvenido de nuevo"}
             </p>
           </div>
 
@@ -1495,364 +1166,344 @@ const Wizard = () => {
             </Card>
           )}
 
-          <WizardProgress currentStep={currentStep} totalSteps={5} onBack={handleBack} />
+          <WizardProgress
+            currentStep={currentStep}
+            totalSteps={4}
+            onBack={handleBack}
+            steps={[
+              { title: "Película", subtitle: "Datos y Fechas" },
+              { title: "Inversión", subtitle: "Plataformas" },
+              { title: "Materiales", subtitle: "Creatividades" },
+              { title: "Resumen", subtitle: "Enviar campaña" },
+            ]}
+          />
 
           {/* Step 1: Film Data */}
           {currentStep === 1 && (
-            <div className="space-y-6">
-              {suggestedChanges && (
-                <Card className="p-6 bg-yellow-500/10 border-yellow-500/30 shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500" />
-                  <div className="flex items-start gap-3">
-                    <MessageSquare className="w-5 h-5 text-yellow-500 mt-1 flex-shrink-0" />
-                    <div className="space-y-1">
-                      <h3 className="font-cinema text-lg text-yellow-500">Sugerencias de la distribuidora</h3>
-                      <p className="text-cinema-ivory/90 whitespace-pre-wrap leading-relaxed text-sm">
-                        {suggestedChanges}
-                      </p>
+            <Card className="cinema-card p-8 space-y-6">
+              <h2 className="font-cinema text-3xl text-primary">Datos de la película</h2>
+
+              <div className="space-y-4 mb-6">
+                <p className="text-cinema-ivory leading-relaxed">
+                  Cada estreno es único. Detrás de cada fecha de lanzamiento hay meses de trabajo, talento y una historia que merece encontrarse con su público. Nuestro trabajo es sencillo de explicar y complejo de hacer bien: llenar salas conectando tu película con las personas adecuadas, en el momento exacto.
+                </p>
+                <p className="text-cinema-ivory leading-relaxed">
+                  En los próximos pasos te pediremos algunos detalles clave sobre tu película.
+                </p>
+                <p className="text-cinema-ivory leading-relaxed">
+                  Con esa información podremos diseñar una estrategia a la altura de tu estreno: qué contar, a quién, en qué plataformas y con qué intensidad. Tú pones la película; nosotros nos encargamos de que la conversación alrededor de ella empiece mucho antes de que se apague la luz en la sala.
+                </p>
+              </div>
+
+              <div className="space-y-8">
+                {/* Block 1: Basic Film Data */}
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="title" className="text-cinema-ivory">Título de la película *</Label>
+                      <HelpTooltip
+                        fieldId="film_title"
+                        title="¿Por qué te preguntamos el título?"
+                        content="Usamos el título para personalizar comunicaciones, reportes y tu panel. Es la referencia principal de todo lo que hagamos con ese estreno."
+                      />
                     </div>
+                    <Input
+                      id="title"
+                      value={filmData.title}
+                      onChange={(e) => setFilmData({ ...filmData, title: e.target.value })}
+                      className="bg-muted border-border text-foreground"
+                    />
                   </div>
-                </Card>
-              )}
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Datos de la película</h2>
 
-                <div className="space-y-4 mb-6">
-                  <p className="text-cinema-ivory leading-relaxed">
-                    Cada estreno es único. Detrás de cada fecha de lanzamiento hay meses de trabajo, talento y una historia que merece encontrarse con su público. Nuestro trabajo es sencillo de explicar y complejo de hacer bien: llenar salas conectando tu película con las personas adecuadas, en el momento exacto.
-                  </p>
-                  <p className="text-cinema-ivory leading-relaxed">
-                    En los próximos pasos te pediremos algunos detalles clave sobre tu película.
-                  </p>
-                  <p className="text-cinema-ivory leading-relaxed">
-                    Con esa información podremos diseñar una estrategia a la altura de tu estreno: qué contar, a quién, en qué plataformas y con qué intensidad. Tú pones la película; nosotros nos encargamos de que la conversación alrededor de ella empiece mucho antes de que se apague la luz en la sala.
-                  </p>
-                </div>
-
-                <div className="space-y-8">
-                  {/* Block 1: Basic Film Data */}
-                  <div className="space-y-6">
+                  <div className="grid md:grid-cols-4 gap-6">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="title" className="text-cinema-ivory">Título de la película *</Label>
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
                         <HelpTooltip
-                          fieldId="film_title"
-                          title="¿Por qué te preguntamos el título?"
-                          content="Usamos el título para personalizar comunicaciones, reportes y tu panel. Es la referencia principal de todo lo que hagamos con ese estreno."
+                          fieldId="film_genre"
+                          title="¿Por qué te preguntamos el género?"
+                          content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
                         />
                       </div>
+                      <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
+                        <SelectTrigger className="bg-muted border-border text-foreground">
+                          <SelectValue placeholder="Selecciona género" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GENRES.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="secondaryGenre" className="text-cinema-ivory">Género secundario</Label>
+                      </div>
+                      <Select value={filmData.secondaryGenre} onValueChange={(v) => setFilmData({ ...filmData, secondaryGenre: v })}>
+                        <SelectTrigger className="bg-muted border-border text-foreground">
+                          <SelectValue placeholder="Opcional" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ninguno</SelectItem>
+                          {GENRES.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="distributor" className="text-cinema-ivory">Distribuidora / Productora *</Label>
+                      </div>
                       <Input
-                        id="title"
-                        value={filmData.title}
-                        onChange={(e) => setFilmData({ ...filmData, title: e.target.value })}
+                        id="distributor"
+                        value={filmData.distributorName}
+                        onChange={(e) => setFilmData({ ...filmData, distributorName: e.target.value })}
                         className="bg-muted border-border text-foreground"
                       />
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 h-6">
-                          <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
-                          <HelpTooltip
-                            fieldId="film_genre"
-                            title="¿Por qué te preguntamos el género?"
-                            content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
-                          />
-                        </div>
-                        <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
-                          <SelectTrigger className="bg-muted border-border text-foreground">
-                            <SelectValue placeholder="Selecciona género" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {GENRES.map((g) => (
-                              <SelectItem key={g} value={g}>{g}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 h-6">
+                        <Label htmlFor="country" className="text-cinema-ivory">País de estreno *</Label>
                       </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 h-6">
-                          <Label htmlFor="secondaryGenre" className="text-cinema-ivory">Género secundario</Label>
-                        </div>
-                        <Select value={filmData.secondaryGenre} onValueChange={(v) => setFilmData({ ...filmData, secondaryGenre: v })}>
-                          <SelectTrigger className="bg-muted border-border text-foreground">
-                            <SelectValue placeholder="Opcional" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Ninguno</SelectItem>
-                            {GENRES.map((g) => (
-                              <SelectItem key={g} value={g}>{g}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 h-6">
-                          <Label htmlFor="distributor" className="text-cinema-ivory">Distribuidora / Productora *</Label>
-                        </div>
-                        <Input
-                          id="distributor"
-                          value={filmData.distributorName}
-                          onChange={(e) => setFilmData({ ...filmData, distributorName: e.target.value })}
-                          className="bg-muted border-border text-foreground"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 h-6">
-                          <Label htmlFor="country" className="text-cinema-ivory">País de estreno *</Label>
-                        </div>
-                        <Input
-                          id="country"
-                          value={filmData.country}
-                          onChange={(e) => setFilmData({ ...filmData, country: e.target.value })}
-                          className="bg-muted border-border text-foreground"
-                        />
-                      </div>
+                      <Input
+                        id="country"
+                        value={filmData.country}
+                        onChange={(e) => setFilmData({ ...filmData, country: e.target.value })}
+                        className="bg-muted border-border text-foreground"
+                      />
                     </div>
-
-                    {filmData.genre === "Otro" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="otherGenre" className="text-cinema-ivory">¿Cuál? *</Label>
-                        <Input
-                          id="otherGenre"
-                          value={filmData.otherGenre}
-                          onChange={(e) => setFilmData({ ...filmData, otherGenre: e.target.value })}
-                          className="bg-muted border-border text-foreground"
-                          placeholder="Especifica el género"
-                        />
-                      </div>
-                    )}
                   </div>
 
-                  <div className="w-full h-px bg-cinema-yellow/10" />
-
-                  {/* Block 2: Audience & Materials */}
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <Label htmlFor="targetAudience" className="text-lg font-teko text-cinema-ivory">
-                        Público Objetivo *
-                      </Label>
-                      <p className="text-sm text-cinema-ivory/70">
-                        Cuéntanos a quién va dirigida tu película.
-                      </p>
-                      <Textarea
-                        id="targetAudience"
-                        value={filmData.targetAudience}
-                        onChange={(e) => setFilmData({ ...filmData, targetAudience: e.target.value })}
-                        maxLength={1000}
-                        placeholder="Describe a quién va dirigida la película (edad, género, intereses, hábitos de consumo cultural...)"
-                        className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary transition-colors min-h-[200px]"
+                  {filmData.genre === "Otro" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="otherGenre" className="text-cinema-ivory">¿Cuál? *</Label>
+                      <Input
+                        id="otherGenre"
+                        value={filmData.otherGenre}
+                        onChange={(e) => setFilmData({ ...filmData, otherGenre: e.target.value })}
+                        className="bg-muted border-border text-foreground"
+                        placeholder="Especifica el género"
                       />
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-cinema-ivory/60 italic">
-                          * Puedes dejar esto en blanco si subes archivos o enlaces
-                        </span>
-                        <span className="text-xs text-cinema-ivory/40">
-                          {filmData.targetAudience.length}/1000
-                        </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full h-px bg-cinema-yellow/10" />
+
+                {/* Block 2: Audience & Materials */}
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <Label htmlFor="targetAudience" className="text-lg font-teko text-cinema-ivory">
+                      Público Objetivo *
+                    </Label>
+                    <p className="text-sm text-cinema-ivory/70">
+                      Cuéntanos a quién va dirigida tu película.
+                    </p>
+                    <Textarea
+                      id="targetAudience"
+                      value={filmData.targetAudience}
+                      onChange={(e) => setFilmData({ ...filmData, targetAudience: e.target.value })}
+                      maxLength={1000}
+                      placeholder="Describe a quién va dirigida la película (edad, género, intereses, hábitos de consumo cultural...)"
+                      className="bg-muted border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary transition-colors min-h-[200px]"
+                    />
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-cinema-ivory/60 italic">
+                        * Puedes dejar esto en blanco si subes archivos o enlaces
+                      </span>
+                      <span className="text-xs text-cinema-ivory/40">
+                        {filmData.targetAudience.length}/1000
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-lg font-teko text-cinema-ivory uppercase tracking-wider">Material Adicional</Label>
+                    <p className="text-sm text-cinema-ivory/70">
+                      Si lo prefieres, adjunta enlaces o archivos en lugar de describir.
+                    </p>
+
+                    {/* URLs Section */}
+                    <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
+                      <Label className="text-xs text-cinema-ivory/60 mb-2 block">Enlaces de interés (Press kit, referencias, etc.)</Label>
+                      <div className="space-y-2">
+                        {filmData.targetAudienceUrls?.map((url, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <Input
+                              value={url}
+                              readOnly
+                              className="bg-muted border-border text-foreground h-8 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              onClick={() => {
+                                const newUrls = [...(filmData.targetAudienceUrls || [])];
+                                newUrls.splice(idx, 1);
+                                setFilmData({ ...filmData, targetAudienceUrls: newUrls });
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <Input
+                            id="new-url-input"
+                            placeholder="https://"
+                            className="bg-muted border-border text-foreground h-8 text-xs placeholder:text-muted-foreground/50"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = e.currentTarget.value.trim();
+                                if (val) {
+                                  setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
+                                  e.currentTarget.value = '';
+                                }
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"
+                            onClick={() => {
+                              const input = document.getElementById('new-url-input') as HTMLInputElement;
+                              const val = input.value.trim();
+                              if (val) {
+                                setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
+                                input.value = '';
+                              }
+                            }}
+                          >
+                            Añadir URL
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <Label className="text-lg font-teko text-cinema-ivory uppercase tracking-wider">Material Adicional</Label>
-                      <p className="text-sm text-cinema-ivory/70">
-                        Si lo prefieres, adjunta enlaces o archivos en lugar de describir.
-                      </p>
+                    {/* Files Section */}
+                    <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
+                      <Label className="text-xs text-cinema-ivory/60 mb-2 block">Archivos (PDF, Briefs, Presentaciones)</Label>
 
-                      {/* URLs Section */}
-                      <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
-                        <Label className="text-xs text-cinema-ivory/60 mb-2 block">Enlaces de interés (Press kit, referencias, etc.)</Label>
-                        <div className="space-y-2">
-                          {filmData.targetAudienceUrls?.map((url, idx) => (
-                            <div key={idx} className="flex gap-2">
-                              <Input
-                                value={url}
-                                readOnly
-                                className="bg-muted border-border text-foreground h-8 text-xs"
-                              />
+                      {selectedFiles.length > 0 && (
+                        <div className="space-y-2 mb-2">
+                          {selectedFiles.map((file, idx) => (
+                            <div key={idx} className="flex gap-2 items-center bg-cinema-charcoal/60 p-2 rounded border border-cinema-yellow/10">
+                              <FileText className="h-4 w-4 text-cinema-yellow/70" />
+                              <span className="text-xs text-cinema-ivory truncate flex-1">{file.name}</span>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                className="h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-900/20"
                                 onClick={() => {
-                                  const newUrls = [...(filmData.targetAudienceUrls || [])];
-                                  newUrls.splice(idx, 1);
-                                  setFilmData({ ...filmData, targetAudienceUrls: newUrls });
+                                  const newFiles = [...selectedFiles];
+                                  newFiles.splice(idx, 1);
+                                  setSelectedFiles(newFiles);
                                 }}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           ))}
-                          <div className="flex gap-2">
-                            <Input
-                              id="new-url-input"
-                              placeholder="https://"
-                              className="bg-muted border-border text-foreground h-8 text-xs placeholder:text-muted-foreground/50"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const val = e.currentTarget.value.trim();
-                                  if (val) {
-                                    setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
-                                    e.currentTarget.value = '';
-                                  }
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"
-                              onClick={() => {
-                                const input = document.getElementById('new-url-input') as HTMLInputElement;
-                                const val = input.value.trim();
-                                if (val) {
-                                  setFilmData({ ...filmData, targetAudienceUrls: [...(filmData.targetAudienceUrls || []), val] });
-                                  input.value = '';
-                                }
-                              }}
-                            >
-                              Añadir URL
-                            </Button>
-                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      {/* Files Section */}
-                      <div className="bg-cinema-charcoal/40 p-3 rounded border border-cinema-yellow/10">
-                        <Label className="text-xs text-cinema-ivory/60 mb-2 block">Archivos (PDF, Briefs, Presentaciones)</Label>
-
-                        {(selectedFiles.length > 0 || existingTargetFiles.length > 0) && (
-                          <div className="space-y-2 mb-2">
-                            {existingTargetFiles.map((file, idx) => (
-                              <div key={`ext-${idx}`} className="flex gap-2 items-center bg-cinema-charcoal/60 p-2 rounded border border-cinema-yellow/10">
-                                <FileText className="h-4 w-4 text-cinema-yellow/70" />
-                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs text-cinema-ivory hover:text-cinema-yellow underline truncate flex-1">
-                                  {file.name}
-                                </a>
-                              </div>
-                            ))}
-                            {selectedFiles.map((file, idx) => (
-                              <div key={idx} className="flex gap-2 items-center bg-cinema-charcoal/60 p-2 rounded border border-cinema-yellow/10">
-                                <FileText className="h-4 w-4 text-cinema-yellow/70" />
-                                <span className="text-xs text-cinema-ivory truncate flex-1">{file.name}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  onClick={() => {
-                                    const newFiles = [...selectedFiles];
-                                    newFiles.splice(idx, 1);
-                                    setSelectedFiles(newFiles);
-                                  }}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="relative">
-                          <Input
-                            type="file"
-                            id="target-audience-files"
-                            multiple
-                            className="hidden"
-                            onChange={(e) => {
-                              if (e.target.files) {
-                                const newFiles = Array.from(e.target.files);
-                                setSelectedFiles([...selectedFiles, ...newFiles]);
-                              }
-                              // Reset value to allow re-selecting same file if needed
-                              e.target.value = '';
-                            }}
-                          />
-                          <Label
-                            htmlFor="target-audience-files"
-                            className="flex items-center justify-center gap-2 w-full p-2 border border-dashed border-cinema-yellow/30 rounded cursor-pointer hover:bg-cinema-yellow/5 transition-colors text-xs text-cinema-yellow"
-                          >
-                            <Upload className="h-3 w-3" />
-                            <span>Subir Archivos</span>
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-px bg-cinema-yellow/10" />
-
-                  {/* Block 3: Goals */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-cinema-ivory">Objetivo principal de la campaña *</Label>
-                      <HelpTooltip
-                        fieldId="campaign_goals"
-                        title="¿Por qué te preguntamos los objetivos?"
-                        content="Los objetivos nos ayudan a configurar la estrategia correcta: timing, plataformas, creativos y presión publicitaria. Cada objetivo requiere un enfoque diferente."
-                      />
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {GOALS.map((goal) => (
-                        <button
-                          key={goal}
-                          onClick={() => handleGoalToggle(goal)}
-                          className={`cinema-card p-4 text-left flex items-center gap-3 ${filmData.goals.includes(goal) ? "border-primary bg-primary/5" : ""
-                            }`}
+                      <div className="relative">
+                        <Input
+                          type="file"
+                          id="target-audience-files"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              const newFiles = Array.from(e.target.files);
+                              setSelectedFiles([...selectedFiles, ...newFiles]);
+                            }
+                            // Reset value to allow re-selecting same file if needed
+                            e.target.value = '';
+                          }}
+                        />
+                        <Label
+                          htmlFor="target-audience-files"
+                          className="flex items-center justify-center gap-2 w-full p-2 border border-dashed border-cinema-yellow/30 rounded cursor-pointer hover:bg-cinema-yellow/5 transition-colors text-xs text-cinema-yellow"
                         >
-                          <Checkbox checked={filmData.goals.includes(goal)} className="border-primary data-[state=checked]:bg-primary" />
-                          <span className="text-sm">{goal}</span>
-                        </button>
-                      ))}
+                          <Upload className="h-3 w-3" />
+                          <span>Subir Archivos</span>
+                        </Label>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </Card>
-            </div>
-          )}
 
-          {/* Step 2: Calendar */}
-          {
-            currentStep === 2 && (
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Calendario y momentos clave</h2>
+                <div className="w-full h-px bg-cinema-yellow/10" />
 
+                {/* Block 3: Goals */}
                 <div className="space-y-4">
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-cinema text-xl text-primary">Así trabajamos tu estreno en digital</h3>
-                      <HelpTooltip
-                        fieldId="campaign_phases"
-                        title="¿Por qué te preguntamos las fechas?"
-                        content="Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima. Nuestro algoritmo también las usa para evitar conflictos con otras campañas similares."
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Marcamos tres momentos clave en cada campaña: pre-campaña de 14 días antes del estreno, fin de semana de estreno y cierre con informe final 3 días laborables después del último día de campaña.
-                    </p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Para llegar con todo afinado, necesitamos recibir las creatividades finales 3 días laborables antes de activar la pre-campaña. Más adelante podrás elegir si prefieres que nuestro equipo se encargue de crear todos los anuncios a partir de tu tráiler o de algunas piezas en bruto que nos compartas.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-cinema-ivory">Objetivo principal de la campaña *</Label>
+                    <HelpTooltip
+                      fieldId="campaign_goals"
+                      title="¿Por qué te preguntamos los objetivos?"
+                      content="Los objetivos nos ayudan a configurar la estrategia correcta: timing, plataformas, creativos y presión publicitaria. Cada objetivo requiere un enfoque diferente."
+                    />
                   </div>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {GOALS.map((goal) => (
+                      <button
+                        key={goal}
+                        onClick={() => handleGoalToggle(goal)}
+                        className={`cinema-card p-4 text-left flex items-center gap-3 ${filmData.goals.includes(goal) ? "border-primary bg-primary/5" : ""
+                          }`}
+                      >
+                        <Checkbox checked={filmData.goals.includes(goal)} className="border-primary data-[state=checked]:bg-primary" />
+                        <span className="text-sm">{goal}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="w-full h-px bg-cinema-yellow/10" />
 
-                  <Label className="text-cinema-ivory text-lg">Selecciona la fecha oficial de estreno en salas *</Label>
-                  <p className="text-sm text-muted-foreground">
-                    El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
+              {/* Block 4: Calendar */}
+              <div className="space-y-4">
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-cinema text-xl text-primary">Así trabajamos tu estreno en digital</h3>
+                    <HelpTooltip
+                      fieldId="campaign_phases"
+                      title="¿Por qué te preguntamos las fechas?"
+                      content="Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima."
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Marcamos tres momentos clave en cada campaña: pre-campaña de 14 días antes del estreno, fin de semana de estreno y cierre con informe final 3 días laborables después del último día de campaña.
                   </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Para llegar con todo afinado, necesitamos recibir las creatividades finales 3 días laborables antes de activar la pre-campaña. Más adelante podrás elegir si prefieres que nuestro equipo se encargue de crear todos los anuncios a partir de tu tráiler o de algunas piezas en bruto que nos compartas.
+                  </p>
+                </div>
 
-                  <div className="flex justify-center">
+                <Label className="text-cinema-ivory text-lg">Selecciona la fecha oficial de estreno en salas *</Label>
+                <p className="text-sm text-muted-foreground">
+                  El sistema calculará automáticamente el fin de semana de estreno (viernes-domingo) y todos los plazos de la campaña.
+                </p>
+
+                {!manualEndDateMode && (
+                  <div className="flex justify-center animate-in fade-in duration-500">
                     <TooltipProvider>
                       <Calendar
                         mode="single"
                         selected={releaseDate}
-                        defaultMonth={releaseDate}
                         onSelect={setReleaseDate}
                         className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
                         weekStartsOn={1}
@@ -1893,157 +1544,127 @@ const Wizard = () => {
                       />
                     </TooltipProvider>
                   </div>
-                </div>
-
-                {/* Conflict Detection Alert */}
-                {releaseDate && hasCheckedConflicts && conflictResult && (
-                  <div className="animate-in fade-in duration-500">
-                    <ConflictAlert
-                      level={conflictResult.level}
-                      conflicts={conflictResult.conflicts}
-                      isAdmin={isAdmin}
-                      onModifyDates={() => {
-                        setReleaseDate(undefined);
-                        setCampaignEndDate(undefined);
-                        setHasCheckedConflicts(false);
-                        toast.info("Modifica la fecha de estreno para revisar conflictos");
-                      }}
-                    />
-                  </div>
                 )}
 
                 {releaseDate && campaignDates && (
-                  <div className="space-y-6 pt-6 border-t border-border animate-in fade-in duration-500">
-                    <div className="space-y-6">
-                      <div className="flex items-start gap-4 p-6 bg-cinema-gold/10 border border-cinema-gold/30 rounded-lg">
-                        <Checkbox
-                          id="manual-end-date"
-                          checked={manualEndDateMode}
-                          onCheckedChange={(checked) => {
-                            setManualEndDateMode(checked as boolean);
-                            if (!checked) {
-                              // Restaurar fecha por defecto al desmarcar
-                              setCampaignEndDate(campaignDates.premiereWeekendEnd);
-                            } else {
-                              // Al activar modo manual, si no hay fecha personalizada, usar la fecha por defecto
-                              if (!campaignEndDate || campaignEndDate === campaignDates.premiereWeekendEnd) {
-                                setCampaignEndDate(campaignDates.premiereWeekendEnd);
-                              }
-                            }
-                          }}
-                          className="mt-1 flex-shrink-0"
-                        />
-                        <div className="space-y-3 flex-1">
-                          <Label
-                            htmlFor="manual-end-date"
-                            className="text-base text-cinema-ivory font-semibold cursor-pointer block"
-                          >
+                  <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="w-full h-px bg-cinema-yellow/10" />
+
+                    {/* Custom End Date Toggle Area */}
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all ${manualEndDateMode ? 'border-primary bg-primary' : 'border-muted-foreground hover:border-primary'}`}
+                          onClick={() => setManualEndDateMode(!manualEndDateMode)}
+                        >
+                          {manualEndDateMode && <div className="w-3 h-3 rounded-full bg-background" />}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <h4 className="font-cinema text-xl text-primary leading-none cursor-pointer" onClick={() => setManualEndDateMode(!manualEndDateMode)}>
                             ¿Quieres definir otra fecha de finalización de campaña?
-                          </Label>
-                          <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
-                            <p>
-                              Por defecto, la campaña termina el <span className="text-cinema-gold font-medium">domingo del fin de semana del estreno</span>, el punto natural donde la mayoría de títulos consolidan su rendimiento.
-                            </p>
-                            <p>
-                              Pero cada película tiene su propio recorrido. Si quieres <span className="text-cinema-ivory font-medium">reforzar el impacto</span>, mantener la conversación más tiempo o aprovechar un buen boca-oreja, puedes alargar la campaña desde aquí.
-                            </p>
-                            <p className="text-cinema-gold/90 text-xs italic pt-1">
-                              Y no te preocupes: si tu película empieza a romper taquilla, siempre podrás extender la campaña en cualquier momento. El éxito también se gestiona sobre la marcha.
-                            </p>
-                          </div>
+                          </h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            Cada película tiene su propio recorrido. Si quieres <span className="text-primary font-bold">reforzar el impacto</span>, mantener la conversación más tiempo o aprovechar un buen boca-oreja, puedes alargar la campaña desde aquí.
+                          </p>
+
+                          {manualEndDateMode && (
+                            <div className="mt-4 p-4 bg-background/50 rounded-lg border border-primary/20 animate-in zoom-in-95 duration-500">
+                              <Label className="text-cinema-ivory block mb-4">Selecciona la nueva fecha de fin</Label>
+                              <div className="flex justify-center">
+                                <Calendar
+                                  mode="single"
+                                  selected={campaignEndDate}
+                                  onSelect={setCampaignEndDate}
+                                  disabled={(date) => date <= releaseDate}
+                                  className="bg-muted border border-border rounded-md transition-all duration-300"
+                                  weekStartsOn={1}
+                                  modifiers={{
+                                    creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
+                                    preCampaign: campaignDates ? [
+                                      { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
+                                    ] : [],
+                                    premiereWeekend: campaignDates ? [
+                                      { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
+                                    ] : [],
+                                  }}
+                                  modifiersClassNames={{
+                                    creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
+                                    preCampaign: "bg-primary/20 text-primary-foreground",
+                                    premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Milestone Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Deadline Card */}
+                      <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3 relative overflow-hidden group hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-2 text-primary">
+                          <CalendarClock className="w-5 h-5" />
+                          <span className="font-cinema text-lg">Deadline creatividades</span>
+                        </div>
+                        <div className="text-2xl font-teko text-cinema-ivory">
+                          {formatDateEs(campaignDates.creativesDeadline)}
+                        </div>
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] -mr-8 -mt-8 pointer-events-none" />
+                      </div>
+
+                      {/* Pre-campaign Card */}
+                      <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3 relative overflow-hidden group hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-2 text-primary">
+                          <CalendarRange className="w-5 h-5" />
+                          <span className="font-cinema text-lg">Pre-campaña</span>
+                        </div>
+                        <div className="text-2xl font-teko text-cinema-ivory">
+                          {formatDateEs(campaignDates.preStartDate)} - {formatDateEs(campaignDates.preEndDate)}
+                        </div>
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] -mr-8 -mt-8 pointer-events-none" />
+                      </div>
+
+                      {/* Launch Weekend Card */}
+                      <div className="bg-muted/40 border border-primary/40 rounded-xl p-5 space-y-3 relative overflow-hidden ring-1 ring-primary/20 bg-primary/5">
+                        <div className="flex items-center gap-2 text-primary">
+                          <CalendarCheck className="w-5 h-5" />
+                          <span className="font-cinema text-lg">Fin de semana estreno</span>
+                        </div>
+                        <div className="text-2xl font-teko text-primary">
+                          {formatDateEs(campaignDates.premiereWeekendStart)} - {formatDateEs(campaignDates.premiereWeekendEnd)}
                         </div>
                       </div>
 
-                      {manualEndDateMode && (
-                        <div className="space-y-4 animate-in fade-in duration-300">
-                          <Label className="text-cinema-ivory text-lg">Fecha final de campaña personalizada</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Selecciona una fecha posterior al domingo del fin de semana de estreno ({formatDateShort(campaignDates.premiereWeekendEnd)})
-                          </p>
-                          <div className="flex justify-center">
-                            <Calendar
-                              mode="single"
-                              selected={campaignEndDate}
-                              onSelect={setCampaignEndDate}
-                              disabled={(date) => date < campaignDates.premiereWeekendEnd}
-                              defaultMonth={releaseDate}
-                              className="rounded-md border border-border bg-muted pointer-events-auto transition-all duration-300"
-                              weekStartsOn={1}
-                              modifiers={{
-                                creativesDeadline: campaignDates ? [campaignDates.creativesDeadline] : [],
-                                preCampaign: campaignDates ? [
-                                  { from: campaignDates.preStartDate, to: campaignDates.preEndDate }
-                                ] : [],
-                                premiereWeekend: campaignDates ? [
-                                  { from: campaignDates.premiereWeekendStart, to: campaignDates.premiereWeekendEnd }
-                                ] : [],
-                              }}
-                              modifiersClassNames={{
-                                creativesDeadline: "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground",
-                                preCampaign: "bg-primary/20 text-primary-foreground",
-                                premiereWeekend: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                              }}
-                            />
-                          </div>
+                      {/* Report Card */}
+                      <div className="bg-muted/30 border border-border/50 rounded-xl p-5 space-y-3 relative overflow-hidden opacity-80">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <FileText className="w-5 h-5" />
+                          <span className="font-cinema text-lg text-muted-foreground">Este día recibirás el informe final</span>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Card className="bg-secondary/10 border-secondary/50 p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CalendarClock className="w-4 h-4 cinema-icon-decorative" />
-                          <p className="text-xs text-muted-foreground font-semibold">Deadline creatividades</p>
+                        <div className="text-2xl font-teko text-cinema-ivory">
+                          {formatDateEs(addDays(campaignDates.premiereWeekendEnd, 3))}
                         </div>
-                        <p className="text-sm text-cinema-ivory">
-                          {formatDateShort(campaignDates.creativesDeadline)}
-                        </p>
-                      </Card>
-
-                      <Card className="bg-primary/10 border-primary/30 p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CalendarRange className="w-4 h-4 cinema-icon-decorative" />
-                          <p className="text-xs text-muted-foreground font-semibold">Pre-campaña</p>
-                        </div>
-                        <p className="text-sm text-cinema-ivory">
-                          {formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}
-                        </p>
-                      </Card>
-
-                      <Card className="bg-primary/20 border-primary p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CalendarCheck className="w-4 h-4 cinema-icon-decorative" />
-                          <p className="text-xs text-muted-foreground font-semibold">Fin de semana estreno</p>
-                        </div>
-                        <p className="text-sm text-cinema-ivory">
-                          {formatDateShort(campaignDates.premiereWeekendStart)} - {formatDateShort(campaignDates.premiereWeekendEnd)}
-                        </p>
-                      </Card>
-
-                      <Card className="bg-muted p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 cinema-icon-decorative" />
-                          <p className="text-xs text-muted-foreground font-semibold">Este día recibirás el informe con los resultados de la campaña</p>
-                        </div>
-                        <p className="text-sm text-cinema-ivory">
-                          {formatDateShort(campaignDates.finalReportDate)}
-                        </p>
-                      </Card>
+                      </div>
                     </div>
                   </div>
                 )}
-              </Card>
-            )
-          }
+              </div>
+            </Card>
+          )}
 
-          {/* Step 3: Platforms & Investment */}
+          {/* Old Step 2 Removed */}
+
+          {/* Step 2: Platforms & Investment (formerly Step 3) */}
           {
-            currentStep === 3 && (
+            currentStep === 2 && (
               <Card className="cinema-card p-8 space-y-6">
                 <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
+                <div className="space-y-6">
+                  {/* Platform Selection */}
+                  <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <h3 className="font-cinema text-2xl text-primary">Elige dónde quieres que viva tu película</h3>
                       <HelpTooltip
@@ -2053,122 +1674,59 @@ const Wizard = () => {
                       />
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Cada plataforma es una sala distinta: Instagram, Facebook, TikTok, YouTube… cada una tiene su propio lenguaje, su ritmo y su forma de llenar butacas. Aquí puedes decidir en qué escenarios quieres que aparezca tu estreno y verás cómo la inversión y los fees se actualizan en tiempo real según las ventanas que elijas.
+                      Cada plataforma es una sala distinta: Instagram, Facebook, TikTok, YouTube… cada una tiene su propio lenguaje, su ritmo y su forma de llenar butacas. Selecciona aquí las plataformas publicitarias donde quieres que se anuncie tu estreno:
                     </p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Cuando nos cuentes al detalle cuál es la audiencia objetivo de tu película, haremos un análisis profundo y te propondremos la combinación de plataformas que mejor encaje con tu estreno. Si alguna recomendación difiere de tu previsión inicial, te explicaremos el porqué con datos y experiencia, pero la decisión final será siempre tuya. Nosotros ponemos el criterio y la estrategia; tú mantienes el control de cómo y dónde se proyecta tu campaña.
-                    </p>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Selecciona aquí las plataformas publicitarias donde quieres que se anuncie tu estreno:
-                    </p>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {PLATFORMS.map((platform) => {
-                      const investmentVal = parseFloat(adInvestment) || 0;
-                      const isAboveThreshold = investmentVal >= 30000;
-                      const isBonificado = isAboveThreshold ||
-                        (selectedPlatforms.length === 0) ||
-                        (selectedPlatforms.length > 0 && selectedPlatforms[0] === platform.name);
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {PLATFORMS.map((platform) => {
+                        const investmentVal = parseFloat(adInvestment) || 0;
+                        const isAboveThreshold = investmentVal >= 30000;
+                        const isBonificado = isAboveThreshold ||
+                          (selectedPlatforms.length === 0) ||
+                          (selectedPlatforms.length > 0 && selectedPlatforms[0] === platform.name);
 
-                      return (
-                        <PlatformCard
-                          key={platform.name}
-                          name={platform.name}
-                          description={platform.description}
-                          logo={platform.logo}
-                          selected={selectedPlatforms.includes(platform.name)}
-                          onToggle={() => handlePlatformToggle(platform.name)}
-                          setupFee={200}
-                          isBonificado={isBonificado}
-                        />
-                      );
-                    })}
-                  </div>
+                        return (
+                          <PlatformCard
+                            key={platform.name}
+                            name={platform.name}
+                            description={platform.description}
+                            logo={platform.logo}
+                            selected={selectedPlatforms.includes(platform.name)}
+                            onToggle={() => handlePlatformToggle(platform.name)}
+                            setupFee={200}
+                            isBonificado={isBonificado}
+                            hidePrice={true}
+                            hideDescription={true}
+                          />
+                        );
+                      })}
+                    </div>
 
-                  <div className="mt-4 space-y-2">
-                    <Label htmlFor="other-platform" className="text-cinema-ivory">Otras plataformas (opcional)</Label>
-                    <Input
-                      id="other-platform"
-                      value={otherPlatform}
-                      onChange={(e) => setOtherPlatform(e.target.value)}
-                      className="bg-muted border-border text-foreground"
-                      placeholder="Especifica otras plataformas"
-                    />
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="other-platform" className="text-cinema-ivory">Otras plataformas (opcional)</Label>
+                      <Input
+                        id="other-platform"
+                        value={otherPlatform}
+                        onChange={(e) => setOtherPlatform(e.target.value)}
+                        className="bg-muted border-border text-foreground"
+                        placeholder="Especifica otras plataformas"
+                      />
+                    </div>
                   </div>
 
-                  {/* Percentage Distribution */}
-                  {/* Planning Mode Selector */}
+                  {/* Budget Selection */}
                   {(selectedPlatforms.length > 0 || otherPlatform) && (
-                    <div className="mt-8 space-y-8">
+                    <div className="mt-8 space-y-8 animate-in fade-in duration-500">
                       <div className="space-y-4">
                         <div className="flex items-center gap-2">
                           <Label className="text-xl text-cinema-ivory">Planificación de presupuesto</Label>
                           <HelpTooltip
                             fieldId="budget_dist"
                             title="¿Cómo quieres distribuir tu inversión?"
-                            content="Inversión Directa: Tú decides cuánto poner en cada red. Peso relativo (%): Tú marcas un total y repartes pesos. Presupuesto Rápido: Nosotros lo dividimos a partes iguales."
+                            content="Dividiremos tu presupuesto de forma equilibrada entre las plataformas seleccionadas para maximizar el impacto de tu estreno."
                           />
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-3">
-                          <button
-                            onClick={() => setPlanningMode('simple')}
-                            type="button"
-                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode === 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Zap className={`w-4 h-4 ${planningMode === 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="font-bold text-cinema-ivory">Presupuesto Rápido</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Define un total y lo repartimos equitativamente.</p>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              if (planningMode === 'simple') {
-                                setPlanningMode('percentage');
-                              }
-                            }}
-                            type="button"
-                            className={`p-4 rounded-lg border-2 text-left transition-all ${planningMode !== 'simple' ? 'border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Settings2 className={`w-4 h-4 ${planningMode !== 'simple' ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="font-bold text-cinema-ivory">Planificación Avanzada</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 leading-tight">Elige por porcentaje o inversión directa por plataforma.</p>
-                          </button>
-                        </div>
-
-                        {/* Advanced Planning Sub-options */}
-                        {planningMode !== 'simple' && (
-                          <div className="grid md:grid-cols-2 gap-3 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <button
-                              onClick={() => setPlanningMode('percentage')}
-                              type="button"
-                              className={`p-3 rounded-lg border-2 text-left transition-all ${planningMode === 'percentage' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Percent className={`w-3 h-3 ${planningMode === 'percentage' ? 'text-primary' : 'text-muted-foreground'}`} />
-                                <span className="text-sm font-bold text-cinema-ivory">Peso relativo (%)</span>
-                              </div>
-                            </button>
-                            <button
-                              onClick={() => setPlanningMode('amount')}
-                              type="button"
-                              className={`p-3 rounded-lg border-2 text-left transition-all ${planningMode === 'amount' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Euro className={`w-3 h-3 ${planningMode === 'amount' ? 'text-primary' : 'text-muted-foreground'}`} />
-                                <span className="text-sm font-bold text-cinema-ivory">Inversión Directa</span>
-                              </div>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {/* Total Investment Field (Shown in simple and percentage modes) */}
-                      {planningMode !== 'amount' && (
-                        <div className="space-y-3 p-6 bg-primary/5 rounded-lg border border-primary/20 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-3 p-6 bg-primary/5 rounded-lg border border-primary/20">
                           <div className="flex items-center gap-2">
                             <Label htmlFor="investment" className="text-cinema-gold font-bold text-lg">Inversión publicitaria total (€) *</Label>
                           </div>
@@ -2178,20 +1736,7 @@ const Wizard = () => {
                             min="3000"
                             step="500"
                             value={adInvestment}
-                            onChange={(e) => {
-                              const newValue = e.target.value;
-                              setAdInvestment(newValue);
-
-                              // If in percentage mode, sync amounts
-                              if (planningMode === 'percentage') {
-                                const totalInvestment = parseFloat(newValue) || 0;
-                                const newAmounts: Record<string, number> = {};
-                                Object.entries(platformPercentages).forEach(([p, pct]) => {
-                                  newAmounts[p] = parseFloat(((totalInvestment * pct) / 100).toFixed(2));
-                                });
-                                setPlatformAmounts(newAmounts);
-                              }
-                            }}
+                            onChange={(e) => setAdInvestment(e.target.value)}
                             className="bg-background border-primary/30 text-foreground text-3xl font-bold h-16"
                             placeholder="Mínimo 3.000€"
                           />
@@ -2199,233 +1744,73 @@ const Wizard = () => {
                             A partir de 3.000€ tu campaña empieza a tener el músculo necesario.
                           </p>
                         </div>
+
+
+                      </div>
+
+                      {/* Fee Mode Toggle */}
+                      {parseFloat(adInvestment) >= 3000 && (
+                        <div className="space-y-3 pt-6 border-t border-border/10">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
+                            <HelpTooltip
+                              fieldId="fee_mode"
+                              title="Opciones de fees"
+                              content="Puedes sumar nuestros fees a tu inversión publicitaria o integrarlos dentro de tu presupuesto total."
+                            />
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div
+                              onClick={() => setFeeMode('integrated')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'integrated' ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                                  {feeMode === 'integrated' && <div className="w-2 h-2 rounded-full bg-background" />}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-cinema-ivory">Integrar fees en mi presupuesto</p>
+                                  <p className="text-sm text-muted-foreground mt-1">Los fees se descuentan del total.</p>
+                                </div>
+                              </div>
+                            </div>
+                            <div
+                              onClick={() => setFeeMode('additional')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                                  {feeMode === 'additional' && <div className="w-2 h-2 rounded-full bg-background" />}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
+                                  <p className="text-sm text-muted-foreground mt-1">Los fees se añaden al total.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )}
 
-                      {/* Distribution Detail Area */}
-                      <div className="p-8 rounded-xl border border-border bg-card/50 shadow-inner">
-                        {planningMode === 'simple' ? (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
-                              <span className="text-sm font-medium">Plataformas seleccionadas</span>
-                              <span className="font-bold text-primary">{[...selectedPlatforms, ...(otherPlatform ? [otherPlatform] : [])].length}</span>
-                            </div>
-                            {feeMode === 'additional' ? (
-                              <p className="text-cinema-ivory leading-relaxed">
-                                Dividiremos tu presupuesto de <span className="text-cinema-gold font-bold">{adInvestment || "0"}€</span> de forma equilibrada.
-                                Cada plataforma recibirá aproximadamente <span className="text-cinema-gold font-bold">{((parseFloat(adInvestment) || 0) / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
-                              </p>
-                            ) : (
-                              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg animate-in fade-in slide-in-from-left-2">
-                                <p className="text-cinema-ivory leading-relaxed">
-                                  Al integrar los fees, dividiremos tu inversión neta de <span className="text-cinema-gold font-bold">{Math.round(costs.effectiveAdInvestment).toLocaleString()}€</span> de forma equilibrada.
-                                </p>
-                                <p className="text-primary font-bold mt-2 text-lg italic">
-                                  La inversión neta por plataforma será de <span className="text-2xl not-italic">{(costs.effectiveAdInvestment / ([...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}€</span>.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-6">
-                            {[...selectedPlatforms, ...(otherPlatform.trim() !== "" ? [otherPlatform] : [])].map(p => (
-                              <div key={p} className="grid grid-cols-1 md:grid-cols-[1fr,200px,100px] items-center gap-4 group">
-                                <span className="text-sm font-semibold text-cinema-ivory truncate group-hover:text-primary transition-colors">{p}</span>
-                                <div className="relative">
-                                  {planningMode === 'percentage' ? (
-                                    <>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="1"
-                                        value={platformPercentages[p] || 0}
-                                        onChange={(e) => handlePercentageChange(p, e.target.value)}
-                                        className="pl-4 pr-10 bg-muted border-border font-mono text-center"
-                                      />
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">%</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="100"
-                                        value={platformAmounts[p] || 0}
-                                        onChange={(e) => handleAmountChange(p, e.target.value)}
-                                        className="pl-4 pr-10 bg-muted border-border font-mono text-center"
-                                      />
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">€</span>
-                                    </>
-                                  )}
-                                </div>
-                                <div className="text-right flex flex-col items-end">
-                                  <span className="text-xs font-medium text-cinema-gold/70 bg-cinema-gold/5 px-2 py-1 rounded border border-cinema-gold/20">
-                                    {planningMode === 'percentage'
-                                      ? `${(platformAmounts[p] || 0).toLocaleString()}€`
-                                      : `${(platformPercentages[p] || 0).toFixed(1)}%`}
-                                  </span>
-                                  {feeMode === 'integrated' && costs.effectiveAdInvestment > 0 && (
-                                    <span className="text-[10px] text-primary/70 mt-1 font-bold animate-pulse">
-                                      Neta: {Math.round((platformAmounts[p] || 0) * (costs.effectiveAdInvestment / (costs.adInvestment || 1))).toLocaleString()}€
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-
-                            <div className="pt-6 border-t border-border flex flex-col items-end gap-3">
-                              {planningMode === 'percentage' && (
-                                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4 bg-muted/50 p-4 rounded-lg">
-                                  <div className="space-y-1">
-                                    <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Suma de pesos</div>
-                                    <div className={`text-xl font-bold ${Math.abs((Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)) - 100) < 0.1 ? 'text-green-500' : 'text-yellow-500'}`}>
-                                      {Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0).toFixed(1)}%
-                                    </div>
-                                  </div>
-                                  <div className="text-right space-y-1">
-                                    <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Falta por asignar</div>
-                                    <div className="text-xl font-bold text-cinema-gold">
-                                      {(100 - Object.values(platformPercentages).reduce((a, b) => (a || 0) + (b || 0), 0)).toFixed(1)}%
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              {planningMode === 'amount' && (
-                                <div className="w-full md:w-auto p-4 bg-primary/10 rounded-lg border border-primary/20 text-right">
-                                  <div className="text-[10px] uppercase text-primary font-bold tracking-wider mb-1">Inversión publicitaria sumada</div>
-                                  <div className="text-3xl font-cinema text-primary">
-                                    {Object.values(platformAmounts).reduce((acc, curr) => acc + (curr || 0), 0).toLocaleString()}€
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      {/* Cost Summary */}
+                      {parseFloat(adInvestment) >= 3000 && (
+                        <div className="animate-in fade-in duration-500">
+                          <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
 
 
-                {/* Fee Mode Toggle */}
-                {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
-                      <HelpTooltip
-                        fieldId="fee_mode"
-                        title="Opciones de fees"
-                        content="Puedes sumar nuestros fees a tu inversión publicitaria (opción por defecto) o integrarlos dentro de tu presupuesto total, en cuyo caso se descontarán de la inversión en medios."
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div
-                        onClick={() => setFeeMode('integrated')}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'integrated' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                            }`}>
-                            {feeMode === 'integrated' && (
-                              <div className="w-2 h-2 rounded-full bg-background" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-cinema-ivory">Integrar fees en mi presupuesto</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Los fees se descuentan de tu presupuesto total. La inversión real en medios será menor.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        onClick={() => setFeeMode('additional')}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'additional'
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-4 h-4 rounded-full border-2 mt-1 flex items-center justify-center ${feeMode === 'additional' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                            }`}>
-                            {feeMode === 'additional' && (
-                              <div className="w-2 h-2 rounded-full bg-background" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-cinema-ivory">Sumar fees a mi inversión</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Tu inversión en medios se mantiene íntegra. Los fees se añaden al total.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedPlatforms.length > 0 && parseFloat(adInvestment) >= 3000 && (
-                  <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
-                )}
-
-                {/* Add-ons section merged from previous Step 4 */}
-                <div className="pt-8 border-t border-border space-y-6">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
-                    <HelpTooltip
-                      fieldId="addons"
-                      title="Servicios adicionales"
-                      content="Mejora el impacto de tu campaña con piezas adaptadas, una web oficial o comunicación directa con tu audiencia."
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <AddonCard
-                      title="Adaptación de contenido"
-                      description="Adaptamos tus trailers y piezas al lenguaje de cada plataforma (formatos 1:1, 9:16, motion graphics, versiones cortas, etc.)"
-                      price="290€"
-                      icon={<Clapperboard className="w-10 h-10 cinema-icon-decorative" />}
-                      selected={selectedAddons.adaptacion}
-                      onToggle={() => setSelectedAddons({ ...selectedAddons, adaptacion: !selectedAddons.adaptacion })}
-                      showPrice={isDistributor}
-                      priceHiddenMessage="Te mostraremos el coste exacto al crear tu cuenta de distribuidora."
-                    />
-
-                    <AddonCard
-                      title="Microsite oficial"
-                      description="Página oficial de la película con sinopsis, trailer, ficha artística y llamada a la compra de entradas."
-                      price="490€"
-                      icon={<Globe className="w-10 h-10 cinema-icon-decorative" />}
-                      selected={selectedAddons.microsite}
-                      onToggle={() => setSelectedAddons({ ...selectedAddons, microsite: !selectedAddons.microsite })}
-                      showPrice={isDistributor}
-                      priceHiddenMessage="El importe se mostrará en tu presupuesto personalizado."
-                    />
-
-                    <AddonCard
-                      title="Campañas email / WhatsApp"
-                      description="Automatizamos comunicaciones directas con tu público: bases de datos, newsletters y mensajes segmentados vía email y/o WhatsApp."
-                      price="390€"
-                      icon={<Mail className="w-10 h-10 cinema-icon-decorative" />}
-                      selected={selectedAddons.emailWhatsapp}
-                      onToggle={() => setSelectedAddons({ ...selectedAddons, emailWhatsapp: !selectedAddons.emailWhatsapp })}
-                      showPrice={isDistributor}
-                      priceHiddenMessage="Verás el coste de este servicio en tu presupuesto al registrarte."
-                    />
-                  </div>
                 </div>
               </Card>
             )
           }
 
-          {/* Step 4: Creative Assets */}
+          {/* Step 3: Creative Assets (formerly Step 4) */}
           {
-            currentStep === 4 && (
+            currentStep === 3 && (
               <Card className="cinema-card p-8 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-cinema text-3xl text-primary">Materiales y Creatividades</h2>
@@ -2454,8 +1839,8 @@ const Wizard = () => {
                       <FileText className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-cinema-ivory text-sm">Guía de especificaciones y buenas prácticas</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Descarga el PDF con las dimensiones, formatos y consejos para cada plataforma.</p>
+                      <p className="font-semibold text-cinema-ivory text-sm">Guía de especificaciones y buenas prácticas (Guía básica)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Encuentra la guía completa dentro de la seccion de creatividades una vez creada tu campaña</p>
                     </div>
                     <Download className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                   </a>
@@ -2491,18 +1876,8 @@ const Wizard = () => {
                     </div>
                   </div>
 
-                  {(creativeAssets.length > 0 || existingCreativeAssets.length > 0) && (
+                  {creativeAssets.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      {existingCreativeAssets.map((asset, index) => (
-                        <div key={`ext-${index}`} className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border">
-                          <div className="flex items-center gap-3 truncate">
-                            <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-                            <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-sm truncate hover:underline hover:text-primary transition-colors">
-                              {asset.original_filename || asset.name}
-                            </a>
-                          </div>
-                        </div>
-                      ))}
                       {creativeAssets.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border">
                           <div className="flex items-center gap-3 truncate">
@@ -2526,19 +1901,11 @@ const Wizard = () => {
             )
           }
 
-          {/* Renumbered Step 5: Summary & Submit (previously Step 4) */}
+          {/* Step 4: Final Summary (formerly Step 5) */}
           {
-            currentStep === 5 && (
+            currentStep === 4 && (
               <div className="space-y-6">
-                {isEditMode && (
-                  <Card className="cinema-card p-6 bg-blue-500/10 border-blue-500/30">
-                    <p className="text-cinema-ivory text-center leading-relaxed">
-                      🔍 <strong>Modo revisión de administrador</strong> — Estás editando la campaña de <strong>{editDistributorName}</strong>. Revisa todos los datos y haz clic en "Guardar cambios" para actualizar.
-                    </p>
-                  </Card>
-                )}
-
-                {!isEditMode && !isDistributor && (
+                {!isDistributor && (
                   <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
                     <div className="text-center space-y-3">
                       <p className="text-cinema-ivory leading-relaxed">
@@ -2558,7 +1925,7 @@ const Wizard = () => {
                   </Card>
                 )}
 
-                {!isEditMode && isDistributor && justRegistered && (
+                {isDistributor && justRegistered && (
                   <Card className="cinema-card p-6 bg-green-500/10 border-green-500/30">
                     <p className="text-cinema-ivory text-center leading-relaxed">
                       ✓ <strong>¡Cuenta creada con éxito!</strong> Ahora puedes ver tu presupuesto completo y enviar la campaña.
@@ -2566,7 +1933,7 @@ const Wizard = () => {
                   </Card>
                 )}
 
-                {!isEditMode && isDistributor && !justRegistered && (
+                {isDistributor && !justRegistered && (
                   <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
                     <p className="text-cinema-ivory text-center">
                       Revisa tus datos y confirma el envío de la campaña. Estos datos de distribuidora se usarán para la facturación y seguimiento del estreno.
@@ -2666,23 +2033,9 @@ const Wizard = () => {
                   </div>
                 </Card>
 
-                {(isEditMode || isDistributor) && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
+                {isDistributor && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
 
-                {isEditMode ? (
-                  <Card className="cinema-card p-8 space-y-6">
-                    <h2 className="font-cinema text-3xl text-primary">Notas del administrador</h2>
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-comments" className="text-cinema-ivory">Comentarios adicionales</Label>
-                      <Textarea
-                        id="admin-comments"
-                        value={signupData.comments}
-                        onChange={(e) => setSignupData({ ...signupData, comments: e.target.value })}
-                        className="bg-muted border-border text-foreground min-h-24"
-                        placeholder="Añade notas internas o comentarios para la distribuidora"
-                      />
-                    </div>
-                  </Card>
-                ) : !isDistributor ? (
+                {!isDistributor ? (
                   <Card className="cinema-card p-8 space-y-6">
                     <div className="space-y-3 mb-6">
                       <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
@@ -2906,7 +2259,7 @@ const Wizard = () => {
               </Button>
             )}
 
-            {currentStep < 5 ? (
+            {currentStep < 4 ? (
               <Button
                 onClick={handleNext}
                 className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"
@@ -2915,15 +2268,7 @@ const Wizard = () => {
               </Button>
             ) : (
               <>
-                {isEditMode ? (
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
-                  >
-                    {loading ? "Guardando..." : "Guardar cambios"}
-                  </Button>
-                ) : !isDistributor ? (
+                {!isDistributor ? (
                   <Button
                     onClick={handleCreateAccount}
                     disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password || step5VerificationState !== "verified"}
@@ -2969,12 +2314,12 @@ const Wizard = () => {
       {/* Global Help Button */}
       <GlobalHelpButton context={
         currentStep === 1 ? "wizard" :
-          currentStep === 2 ? "fechas" :
-            currentStep === 3 ? "inversión" :
+          currentStep === 2 ? "inversión" :
+            currentStep === 3 ? "creatividades" :
               "campaña"
       } />
     </>
   );
 };
 
-export default Wizard;
+export default QuickWizard;

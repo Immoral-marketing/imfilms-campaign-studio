@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
+import CampaignNotifications from '@/components/CampaignNotifications';
 import CreativeAssets from '@/components/CreativeAssets';
 import { formatDateShort, getRelativeTime } from '@/utils/dateUtils';
 import { CampaignInfoEditable } from '@/components/CampaignInfoEditable';
@@ -19,7 +20,8 @@ import logoImfilms from '@/assets/logo-imfilms.png';
 const CampaignDetail = () => {
   const { id: campaignId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("timeline");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "timeline");
   const [campaign, setCampaign] = useState<any>(null);
   const [film, setFilm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,8 @@ const CampaignDetail = () => {
             secondary_genre,
             country,
             target_audience_text,
+            target_audience_urls,
+            target_audience_files,
             main_goals
           ),
           campaign_platforms (
@@ -281,15 +285,29 @@ const CampaignDetail = () => {
               </p>
             </Card>
 
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <DollarSign className="h-4 w-4" />
-                <p className="text-xs font-semibold">Inversión Publicitaria</p>
-              </div>
-              <p className="text-lg font-cinema text-foreground">
-                {campaign.ad_investment_amount?.toLocaleString('es-ES')}€
-              </p>
-            </Card>
+            {(() => {
+              const totalFees = (campaign.fixed_fee_amount || 0) + (campaign.variable_fee_amount || 0) + (campaign.setup_fee_amount || 0);
+              const expectedIntegratedTotal = (campaign.ad_investment_amount || 0) + (campaign.addons_base_amount || 0);
+              const isIntegrated = Math.abs(expectedIntegratedTotal - campaign.total_estimated_amount) < 5;
+              const netInvestment = isIntegrated ? (campaign.ad_investment_amount - totalFees) : campaign.ad_investment_amount;
+
+              return (
+                <Card className="p-4 space-y-2 relative overflow-hidden">
+                  {isIntegrated && (
+                    <div className="absolute top-0 right-0 bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-bl font-medium border-l border-b border-primary/20">
+                      Fees incluidos
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <DollarSign className="h-4 w-4" />
+                    <p className="text-xs font-semibold">Inversión Publicitaria</p>
+                  </div>
+                  <p className="text-lg font-cinema text-foreground">
+                    {netInvestment?.toLocaleString('es-ES')}€
+                  </p>
+                </Card>
+              );
+            })()}
 
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -459,8 +477,25 @@ const CampaignDetail = () => {
 
           {/* Chat Tab */}
           <TabsContent value="chat" className="space-y-4">
-            <Card className="p-0 overflow-hidden" style={{ height: '600px' }}>
-              <CampaignChat campaignId={campaign.id} userRole={userRole} />
+            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: '600px' }}>
+              <Tabs defaultValue="conversation" className="flex flex-col h-full border-none">
+                <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border/40 bg-muted/30">
+                  <TabsTrigger value="conversation" className="flex items-center gap-2 data-[state=active]:bg-background">
+                    <MessageSquare className="h-4 w-4" />
+                    Conversación
+                  </TabsTrigger>
+                  <TabsTrigger value="notifications" className="flex items-center gap-2 data-[state=active]:bg-background">
+                    <Bell className="h-4 w-4" />
+                    Notificaciones
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="conversation" className="flex-1 min-h-0 border-none p-0 mt-0 focus-visible:ring-0">
+                  <CampaignChat campaignId={campaign.id} userRole={userRole} minimal={true} />
+                </TabsContent>
+                <TabsContent value="notifications" className="flex-1 min-h-0 border-none p-0 mt-0 focus-visible:ring-0 overflow-y-auto">
+                  <CampaignNotifications campaignId={campaign.id} />
+                </TabsContent>
+              </Tabs>
             </Card>
           </TabsContent>
 
