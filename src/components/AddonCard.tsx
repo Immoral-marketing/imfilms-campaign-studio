@@ -29,9 +29,8 @@ const AddonCard = ({
   return (
     <button
       onClick={onToggle}
-      className={`cinema-card p-6 text-left space-y-4 w-full ${
-        selected ? "border-primary bg-primary/5" : ""
-      }`}
+      className={`cinema-card p-6 text-left space-y-4 w-full ${selected ? "border-primary bg-primary/5" : ""
+        }`}
     >
       <div className="flex items-start justify-between">
         <div>{icon}</div>
@@ -41,7 +40,7 @@ const AddonCard = ({
         <h3 className="font-cinema text-2xl text-primary">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>
         {showPrice ? (
-          <p className="text-lg font-semibold text-cinema-yellow">Precio fijo: {price}</p>
+          <p className="text-lg font-semibold text-cinema-yellow">Desde: {price}</p>
         ) : (
           <div className="text-xs text-muted-foreground/80">
             <UnlockBudgetGate message={priceHiddenMessage} />

@@ -99,43 +99,43 @@ const handler = async (req: Request): Promise<Response> => {
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 </head>
-                <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                         <tr>
                             <td align="center">
-                                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                     <!-- Header -->
                                     <tr>
-                                        <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                        <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                             <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                            <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                         </td>
                                     </tr>
                                     <!-- Content -->
                                     <tr>
                                         <td style="padding: 40px 30px;">
-                                            <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">Verifica tu correo</h2>
-                                            <p style="margin: 0 0 30px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                            <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Verifica tu correo</h2>
+                                            <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                 Usa el siguiente código para completar tu registro en Imfilms Campaign Studio:
                                             </p>
                                             <!-- Code Box -->
                                             <table width="100%" cellpadding="0" cellspacing="0">
                                                 <tr>
                                                     <td align="center">
-                                                        <div style="background-color: #1a1a1a; border: 2px solid #b5a642; border-radius: 8px; padding: 24px 40px; display: inline-block;">
-                                                            <span style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #b5a642; font-family: monospace;">${code}</span>
+                                                        <div style="background-color: #1a1a1a; border: 2px solid #F5D849; border-radius: 8px; padding: 24px 40px; display: inline-block;">
+                                                            <span style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #F5D849; font-family: monospace;">${code}</span>
                                                         </div>
                                                     </td>
                                                 </tr>
                                             </table>
                                             <p style="margin: 30px 0 0 0; color: #666666; font-size: 13px; text-align: center;">
-                                                Este código expira en <strong style="color: #b5a642;">15 minutos</strong>.
+                                                Este código expira en <strong style="color: #F5D849;">15 minutos</strong>.
                                             </p>
                                         </td>
                                     </tr>
                                     <!-- Footer -->
                                     <tr>
-                                        <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                        <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                             <p style="margin: 0; color: #555555; font-size: 12px; text-align: center;">
                                                 Si no solicitaste este código, puedes ignorar este email.
                                             </p>
@@ -228,33 +228,33 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">Nueva Campaña Creada</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Nueva Campaña Creada</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     El distribuidor <strong>${payload.distributorName}</strong> ha creado una nueva campaña para:
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #b5a642; font-size: 18px; font-weight: bold; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
                                                     ${payload.campaignTitle}
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ver en el Dashboard
                                                             </a>
                                                         </td>
@@ -264,7 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>
@@ -295,33 +295,33 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">¡Hemos recibido tu campaña!</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">¡Hemos recibido tu campaña!</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     Hola, tu campaña para <strong>${payload.campaignTitle}</strong> ha sido creada correctamente.
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     Nuestro equipo la revisará pronto y te notificaremos cualquier novedad.
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ir a mi Dashboard
                                                             </a>
                                                         </td>
@@ -331,7 +331,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>
@@ -363,33 +363,33 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">Propuesta de campaña lista</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Propuesta de campaña lista</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     Nuestro equipo ha revisado y enriquecido tu campaña para <strong>${payload.campaignTitle}</strong>.
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     Hemos creado una propuesta detallada que ya puedes revisar, aprobar o sugerir cambios.
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ver mi Propuesta
                                                             </a>
                                                         </td>
@@ -399,7 +399,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>
@@ -441,33 +441,30 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">${title}</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">${title}</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     ${text}
-                                                </p>
-                                                <p style="margin: 0 0 30px 0; color: #b5a642; font-size: 18px; font-weight: bold; text-align: center;">
-                                                    ${payload.campaignTitle}
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ver en el Dashboard
                                                             </a>
                                                         </td>
@@ -477,7 +474,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>
@@ -510,36 +507,36 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">Cambios Propuestos</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Cambios Propuestos</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     El distribuidor <strong>${payload.distributorName}</strong> ha propuesto ediciones en la campaña para:
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #b5a642; font-size: 18px; font-weight: bold; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
                                                     ${payload.campaignTitle}
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #a0a0a0; font-size: 14px; line-height: 1.6; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 14px; line-height: 1.6; text-align: center;">
                                                     Por favor, revisa y aprueba estos cambios para que se apliquen a la película.
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/admin" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/admin" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ver en el Dashboard
                               </a>
                                                         </td>
@@ -549,7 +546,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>
@@ -582,33 +579,33 @@ const handler = async (req: Request): Promise<Response> => {
                         <meta charset="utf-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     </head>
-                    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: Arial, sans-serif;">
-                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #141414; border-radius: 12px; border: 1px solid #b5a642; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #b5a642 0%, #8a7d32 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #0a0a0a; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #f5f5dc; font-size: 22px; text-align: center;">Estado de campaña actualizado</h2>
-                                                <p style="margin: 0 0 20px 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Estado de campaña actualizado</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     El estado de tu campaña para <strong>${payload.campaignTitle}</strong> ha cambiado a:
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #b5a642; font-size: 18px; font-weight: bold; text-align: center;">
+                                                <p style="margin: 0 0 30px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
                                                     ${newStatusLabel}
                                                 </p>
                                                 <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #b5a642; color: #0a0a0a; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ir a mi Dashboard
                                                             </a>
                                                         </td>
@@ -618,7 +615,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         </tr>
                                         <!-- Footer -->
                                         <tr>
-                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #222;">
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
                                                     Este es un aviso automático de Imfilms Campaign Studio.
                                                 </p>

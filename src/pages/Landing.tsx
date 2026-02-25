@@ -449,7 +449,7 @@ const Landing = () => {
                   <TicketButton text="PROBAR DEMO" onClick={() => navigate("/demo")} className="w-80" />
                   <TicketButton
                     text="EMPEZAR AHORA"
-                    onClick={() => navigate("/wizard")}
+                    onClick={() => navigate("/quick-wizard")}
                     variant="solid"
                     className="w-80 font-body"
                     style={{ fontFamily: "'Manrope', sans-serif" }}

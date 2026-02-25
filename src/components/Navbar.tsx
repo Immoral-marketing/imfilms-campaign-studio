@@ -40,7 +40,7 @@ export const Navbar = () => {
           className="hidden md:flex scale-75 origin-right"
         />
         <Button
-          onClick={() => navigate("/wizard")}
+          onClick={() => navigate("/quick-wizard")}
           className="bg-primary hover:bg-primary/90 text-black font-body font-bold text-base px-6 py-2 h-auto rounded-sm tracking-normal transition-transform hover:scale-105"
         >
           EMPEZAR AHORA

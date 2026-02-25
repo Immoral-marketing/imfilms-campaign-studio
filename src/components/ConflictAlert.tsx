@@ -172,7 +172,7 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
         <AlertTriangle className="h-6 w-6 text-red-500" />
         <div className="flex items-center gap-2">
           <AlertTitle className="text-red-500 font-cinema text-xl mb-0">
-            ⚠️ No podemos avanzar con esta configuración
+            ⚠️ Conflicto de fechas detectado
           </AlertTitle>
           <HelpTooltip
             title="Política de resolución de conflictos"
@@ -192,18 +192,16 @@ La primera distribuidora en reservar fechas y audiencia tiene prioridad para ese
         </div>
         <AlertDescription className="text-red-400 space-y-3">
           <p className="font-semibold">
-            Ya tenemos otra campaña activa en las mismas fechas.
+            Ya tenemos otra campaña programada en fechas similares para este género.
           </p>
           <p>
-            Esto reduciría la efectividad de ambas campañas y podría disparar los costes al competir contra nosotros mismos.
+            Esto puede afectar al rendimiento al competir por la misma audiencia, pero <strong>puedes continuar con tu configuración</strong>. Nuestro equipo revisará la solicitud manualmente para optimizar los calendarios y resolver cualquier solapamiento.
           </p>
           <div className="space-y-2 pt-2">
-            <p className="font-cinema text-yellow-400">¿Qué puedes hacer?</p>
-            <div className="flex flex-wrap gap-2">
-              <div className="inline-flex items-center px-3 py-1 rounded bg-cinema-yellow/20 text-cinema-yellow border border-cinema-yellow/30 text-sm font-medium cursor-default">
-                <Calendar className="mr-2 h-4 w-4" />
-                Cambiar fechas
-              </div>
+            <p className="font-cinema text-yellow-400">¿Qué sucederá ahora?</p>
+            <div className="space-y-1 text-sm">
+              <p>• Puedes seguir completando los pasos del wizard.</p>
+              <p>• Un administrador contactará contigo tras recibir la solicitud para validar las fechas.</p>
             </div>
           </div>
           {isAdmin && (

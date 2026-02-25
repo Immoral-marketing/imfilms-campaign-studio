@@ -37,14 +37,7 @@ const PlatformCard = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="font-cinema text-2xl text-primary">{name}</h3>
-          {!hidePrice && setupFee !== undefined && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${isBonificado
-              ? "bg-green-500/10 border-green-500/30 text-green-500 font-bold animate-pulse"
-              : "bg-cinema-gold/10 border-cinema-gold/30 text-cinema-gold"
-              }`}>
-              Setup: {isBonificado ? "BONIFICADO" : `${setupFee}€`}
-            </span>
-          )}
+
         </div>
         {!hideDescription && <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>}
       </div>
