@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -145,7 +146,10 @@ const CampaignsHistory = () => {
           visits,
           ctr,
           cpm,
-          report_link
+          report_link,
+          media_plan_phases (
+            count
+          )
         `);
 
       // If not admin, filter by distributor_id (userId)
@@ -618,10 +622,42 @@ const CampaignsHistory = () => {
       rechazada: "Rechazada",
       rechazado: "Rechazada",
     };
+    const variant = styles[status] || styles.nuevo;
+    const label = labels[status] || "Borrador";
+
+    return <Badge variant="outline" className={`${variant} border-none font-cinema text-[10px] uppercase tracking-wider`}>{label}</Badge>;
+  };
+
+  const getMediaPlanBadge = (campaign: any) => {
+    const status = campaign.media_plan_status || 'borrador';
+    const phasesCount = campaign.media_plan_phases?.[0]?.count || 0;
+
+    if (phasesCount === 0) {
+      return (
+        <Badge variant="outline" className="absolute -top-2 -right-2 z-10 bg-zinc-700 text-zinc-300 border-none text-[8px] uppercase font-black px-1.5 py-0.5 leading-none shadow-md">
+          Vacío
+        </Badge>
+      );
+    }
+
+    const styles: any = {
+      borrador: "bg-blue-600 text-white border-none",
+      pendiente_aprobacion: "bg-cinema-yellow text-black border-none animate-pulse",
+      aprobado: "bg-green-600 text-white border-none",
+      rechazado: "bg-red-600 text-white border-none"
+    };
+
+    const labels: any = {
+      borrador: "Borrador",
+      pendiente_aprobacion: "Pendiente",
+      aprobado: "Aprobado",
+      rechazado: "Rechazado"
+    };
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[status] || styles.borrador}`}>
-        {labels[status] || status}
-      </span>
+      <Badge variant="outline" className={`absolute -top-2 -right-2 z-10 ${styles[status] || styles.borrador} text-[8px] uppercase font-black px-1.5 py-0.5 leading-none shadow-sm`}>
+        {labels[status] || "Borrador"}
+      </Badge>
     );
   };
 
@@ -1200,7 +1236,7 @@ const CampaignsHistory = () => {
                                 setShowKPIModal(true);
                               }}
                               variant="outline"
-                              className="border-primary text-primary hover:bg-primary/10"
+                              className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black transition-colors"
                               size="sm"
                             >
                               <BarChart className="w-4 h-4 mr-2" />
@@ -1215,75 +1251,114 @@ const CampaignsHistory = () => {
                                 setShowReportModal(true);
                               }}
                               variant="outline"
-                              className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                              className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black transition-colors"
                               size="sm"
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               Agregar informe
                             </Button>
+
+                            <div className="relative inline-block">
+                              {getMediaPlanBadge(campaign)}
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/admin/media-plan/${campaign.id}`);
+                                }}
+                                variant="outline"
+                                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black transition-colors"
+                                size="sm"
+                              >
+                                <LayoutGrid className="w-4 h-4 mr-2" />
+                                Agregar plan de medios
+                              </Button>
+                            </div>
                           </div>
                         )}
 
-                        {!isAdmin && campaign.status === 'finalizada' && (
+                        {!isAdmin && (
                           <div className="pt-3 border-t border-border mt-auto space-y-4">
-                            {(campaign.reach || campaign.clicks || campaign.visits) && (
-                              <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10">
-                                {campaign.reach && (
-                                  <div className="text-center">
-                                    <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>
-                                    <p className="text-sm font-cinema text-primary">{campaign.reach.toLocaleString()}</p>
+                            {/* Media Plan Button for Distributor */}
+                            {campaign.media_plan_status && campaign.media_plan_status !== 'borrador' && (
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/campaigns/${campaign.id}/media-plan`);
+                                }}
+                                className={`w-full font-bold ${campaign.media_plan_status === 'pendiente_aprobacion'
+                                  ? 'bg-cinema-yellow text-black hover:bg-cinema-yellow/90 animate-pulse'
+                                  : 'border-cinema-gold text-cinema-gold hover:bg-cinema-gold/10'
+                                  }`}
+                                variant={campaign.media_plan_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
+                                size="sm"
+                              >
+                                <LayoutGrid className="w-4 h-4 mr-2" />
+                                {campaign.media_plan_status === 'pendiente_aprobacion'
+                                  ? 'Revisar Plan de Medios'
+                                  : 'Ver Plan de Medios'}
+                              </Button>
+                            )}
+
+                            {campaign.status === 'finalizada' && (
+                              <div className="space-y-4">
+                                {(campaign.reach || campaign.clicks || campaign.visits) && (
+                                  <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10">
+                                    {campaign.reach && (
+                                      <div className="text-center">
+                                        <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>
+                                        <p className="text-sm font-cinema text-primary">{campaign.reach.toLocaleString()}</p>
+                                      </div>
+                                    )}
+                                    {campaign.clicks && (
+                                      <div className="text-center">
+                                        <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                        <p className="text-sm font-cinema text-primary">{campaign.clicks.toLocaleString()}</p>
+                                      </div>
+                                    )}
+                                    {campaign.ctr && (
+                                      <div className="text-center">
+                                        <p className="text-[10px] text-muted-foreground uppercase">CTR</p>
+                                        <p className="text-sm font-cinema text-primary">{campaign.ctr}%</p>
+                                      </div>
+                                    )}
+                                    {campaign.cpm && (
+                                      <div className="text-center">
+                                        <p className="text-[10px] text-muted-foreground uppercase">CPM</p>
+                                        <p className="text-sm font-cinema text-primary">{campaign.cpm}€</p>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
-                                {campaign.clicks && (
-                                  <div className="text-center">
-                                    <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
-                                    <p className="text-sm font-cinema text-primary">{campaign.clicks.toLocaleString()}</p>
-                                  </div>
-                                )}
-                                {campaign.ctr && (
-                                  <div className="text-center">
-                                    <p className="text-[10px] text-muted-foreground uppercase">CTR</p>
-                                    <p className="text-sm font-cinema text-primary">{campaign.ctr}%</p>
-                                  </div>
-                                )}
-                                {campaign.cpm && (
-                                  <div className="text-center">
-                                    <p className="text-[10px] text-muted-foreground uppercase">CPM</p>
-                                    <p className="text-sm font-cinema text-primary">{campaign.cpm}€</p>
-                                  </div>
+
+                                {campaign.report_link && (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(campaign.report_link, '_blank');
+                                    }}
+                                    className="w-full bg-primary text-primary-foreground hover:bg-secondary font-bold"
+                                    size="sm"
+                                  >
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    Ver Informe Completo
+                                  </Button>
                                 )}
                               </div>
                             )}
 
-                            {campaign.report_link && (
+                            {campaign.status === 'propuesta_lista' && (
                               <Button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.open(campaign.report_link, '_blank');
+                                  navigate(`/campaigns/${campaign.id}/proposal`);
                                 }}
-                                className="w-full bg-primary text-primary-foreground hover:bg-secondary font-bold"
+                                className="w-full bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
                                 size="sm"
                               >
                                 <Eye className="w-4 h-4 mr-2" />
-                                Ver Informe Completo
+                                Ver Propuesta
                               </Button>
                             )}
-                          </div>
-                        )}
-
-                        {!isAdmin && campaign.status === 'propuesta_lista' && (
-                          <div className="pt-3 border-t border-border mt-auto">
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/campaigns/${campaign.id}/proposal`);
-                              }}
-                              className="w-full bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
-                              size="sm"
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Ver Propuesta
-                            </Button>
                           </div>
                         )}
                       </Card>

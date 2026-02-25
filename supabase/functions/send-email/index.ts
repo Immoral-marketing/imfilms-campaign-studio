@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created";
+    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected";
     campaignId?: string;
     campaignTitle?: string;
     distributorName?: string;
@@ -215,13 +215,15 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Matching email type: "${type}" (length: ${type.length})`);
 
-        if (type === "new_campaign") {
-            console.log("Branch: new_campaign");
-            // 1. Notify Admins
-            const adminEmails = await getAdminEmails();
-            if (adminEmails.length > 0) {
-                const subject = `🚀 Nueva Campaña: ${payload.campaignTitle}`;
-                const emailHtml = `
+        switch (type) {
+            case "new_campaign": {
+                console.log("Branch: new_campaign matched");
+                console.log("Branch: new_campaign");
+                // 1. Notify Admins
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const subject = `🚀 Nueva Campaña: ${payload.campaignTitle}`;
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -278,17 +280,17 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: adminEmails,
-                    subject: subject,
-                    html: emailHtml
-                });
-            }
-            // 2. Notify Creator
-            if (payload.recipientEmail) {
-                const subject = `✅ Campaña Recibida: ${payload.campaignTitle}`;
-                const emailHtml = `
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                // 2. Notify Creator
+                if (payload.recipientEmail) {
+                    const subject = `✅ Campaña Recibida: ${payload.campaignTitle}`;
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -345,18 +347,21 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: payload.recipientEmail,
-                    subject: subject,
-                    html: emailHtml
-                });
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
             }
-        } else if (type === "proposal_ready") {
-            console.log("Branch: proposal_ready");
-            if (payload.recipientEmail) {
-                const subject = `💡 Propuesta lista para tu revisión: ${payload.campaignTitle}`;
-                const emailHtml = `
+            case "proposal_ready": {
+                console.log("Branch: proposal_ready matched");
+                console.log("Branch: proposal_ready");
+                if (payload.recipientEmail) {
+                    const subject = `💡 Propuesta lista para tu revisión: ${payload.campaignTitle}`;
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -413,28 +418,32 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: payload.recipientEmail,
-                    subject: subject,
-                    html: emailHtml
-                });
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
             }
-        } else if (type === "proposal_approved" || type === "proposal_changes_suggested") {
-            const adminEmails = await getAdminEmails();
-            if (adminEmails.length > 0) {
-                const isApproved = type === "proposal_approved";
-                const subject = isApproved
-                    ? `🟢 Propuesta Aprobada: ${payload.campaignTitle}`
-                    : `🟡 Cambios Sugeridos en Propuesta: ${payload.campaignTitle}`;
-                const title = isApproved
-                    ? `Propuesta Aprobada`
-                    : `Cambios Sugeridos`;
-                const text = isApproved
-                    ? `La distribuidora <strong>${payload.distributorName}</strong> ha aprobado la propuesta de campaña para:`
-                    : `La distribuidora <strong>${payload.distributorName}</strong> ha sugerido cambios en la propuesta para:`;
+            case "proposal_approved":
+            case "proposal_changes_suggested": {
+                console.log(`Branch: ${type} matched`);
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const isApproved = type === "proposal_approved";
+                    const subject = isApproved
+                        ? `🟢 Propuesta Aprobada: ${payload.campaignTitle}`
+                        : `🟡 Cambios Sugeridos en Propuesta: ${payload.campaignTitle}`;
+                    const title = isApproved
+                        ? `Propuesta Aprobada`
+                        : `Cambios Sugeridos`;
+                    const text = isApproved
+                        ? `La distribuidora <strong>${payload.distributorName}</strong> ha aprobado la propuesta de campaña para:`
+                        : `La distribuidora <strong>${payload.distributorName}</strong> ha sugerido cambios en la propuesta para:`;
 
-                const emailHtml = `
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -488,19 +497,22 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: adminEmails,
-                    subject: subject,
-                    html: emailHtml
-                });
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
             }
-        } else if (type === "edit_proposal_created") {
-            console.log("Branch: edit_proposal_created - SUCCESS MATCH");
-            const adminEmails = await getAdminEmails();
-            if (adminEmails.length > 0) {
-                const subject = `✏️ Propuesta de Edición: ${payload.campaignTitle}`;
-                const emailHtml = `
+            case "edit_proposal_created": {
+                console.log("Branch: edit_proposal_created matched");
+                console.log("Branch: edit_proposal_created - SUCCESS MATCH");
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const subject = `✏️ Propuesta de Edición: ${payload.campaignTitle}`;
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -560,19 +572,175 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: adminEmails,
-                    subject: subject,
-                    html: emailHtml
-                });
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
             }
-        } else if (type === "status_update") {
-            if (payload.recipientEmail) {
-                const subject = `📢 Actualización de Estado: ${payload.campaignTitle}`;
-                const newStatusLabel = payload.newStatus?.toUpperCase().replace('_', ' ') || "ACTUALIZADO";
+            case "media_plan_ready": {
+                console.log("Branch: media_plan_ready matched");
+                if (payload.recipientEmail) {
+                    console.log(`Processing media_plan_ready for ${payload.recipientEmail}`);
+                    const subject = `📅 Plan de Medios listo para revisión: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Plan de Medios listo</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Ya tenemos lista la estrategia de medios para <strong>${payload.campaignTitle}</strong>.
+                                                </p>
+                                                <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Por favor, revisa el desglose de fases, canales y audiencias para darnos tu aprobación.
+                                                </p>
+                                                <!-- Button -->
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}/media-plan" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Revisar Plan de Medios
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                `;
 
-                const emailHtml = `
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
+            }
+            case "media_plan_approved":
+            case "media_plan_rejected": {
+                console.log(`Branch: ${type} matched`);
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const isApproved = type === "media_plan_approved";
+                    const subject = isApproved
+                        ? `✅ Plan de Medios Aprobado: ${payload.campaignTitle}`
+                        : `❌ Sugerencias en Plan de Medios: ${payload.campaignTitle}`;
+                    const title = isApproved
+                        ? `Plan de Medios Aprobado`
+                        : `Sugerencias Recibidas`;
+                    const text = isApproved
+                        ? `La distribuidora <strong>${payload.distributorName}</strong> ha aprobado el plan de medios para:`
+                        : `La distribuidora <strong>${payload.distributorName}</strong> ha sugerido cambios en el plan de medios para:`;
+
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">${title}</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    ${text}
+                                                </p>
+                                                <p style="margin: 0 0 30px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
+                                                    ${payload.campaignTitle}
+                                                </p>
+                                                <!-- Button -->
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/admin/media-plan/${payload.campaignId}" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver Plan de Medios
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
+            }
+            case "status_update": {
+                console.log("Branch: status_update matched");
+                if (payload.recipientEmail) {
+                    const subject = `📢 Actualización de Estado: ${payload.campaignTitle}`;
+                    const newStatusLabel = payload.newStatus?.toUpperCase().replace('_', ' ') || "ACTUALIZADO";
+
+                    const emailHtml = `
                     <!DOCTYPE html>
                     <html>
                     <head>
@@ -629,15 +797,18 @@ const handler = async (req: Request): Promise<Response> => {
                     </html>
                 `;
 
-                emailsToSend.push({
-                    from: fromEmail,
-                    to: payload.recipientEmail,
-                    subject: subject,
-                    html: emailHtml
-                });
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
             }
-        } else {
-            console.log(`Unknown payload type encountered: "${type}"`);
+            default: {
+                console.log(`Unknown payload type encountered: "${type}"`);
+            }
         }
 
         console.log(`Queueing ${emailsToSend.length} emails to send...`);

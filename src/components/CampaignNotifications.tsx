@@ -132,6 +132,9 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                     const isProposalReady = notif.message.startsWith('📢');
                     const isProposalApproved = notif.message.startsWith('🟢');
                     const isProposalChanges = notif.message.startsWith('🟡');
+                    const isMediaPlanReady = notif.message.startsWith('📅');
+                    const isMediaPlanApproved = notif.message.startsWith('✅');
+                    const isMediaPlanRejected = notif.message.startsWith('❌');
 
                     let NotifIcon = FileImage;
                     let notifTitle = 'Nuevas creatividades subidas';
@@ -158,6 +161,21 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                         notifTitle = 'Cambios Sugeridos';
                         iconColor = 'text-yellow-500';
                         iconBg = 'bg-yellow-500/10';
+                    } else if (isMediaPlanReady) {
+                        NotifIcon = Bell;
+                        notifTitle = 'Plan de Medios Listo';
+                        iconColor = 'text-cinema-yellow';
+                        iconBg = 'bg-primary/10';
+                    } else if (isMediaPlanApproved) {
+                        NotifIcon = CheckCircle2;
+                        notifTitle = 'Plan de Medios Aprobado';
+                        iconColor = 'text-green-500';
+                        iconBg = 'bg-green-500/10';
+                    } else if (isMediaPlanRejected) {
+                        NotifIcon = MessageSquare;
+                        notifTitle = 'Sugerencias en Plan de Medios';
+                        iconColor = 'text-red-500';
+                        iconBg = 'bg-red-500/10';
                     }
 
                     return (

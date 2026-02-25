@@ -16,6 +16,8 @@ import CasosExito from "./pages/CasosExito";
 import DemoWizard from "./pages/DemoWizard";
 import TeamManagement from "./pages/TeamManagement";
 import ResetPassword from "./pages/ResetPassword";
+import MediaPlanEditor from "./pages/MediaPlanEditor";
+import MediaPlanView from "./pages/MediaPlanView";
 import NotFound from "./pages/NotFound";
 import SmoothScroll from "./components/SmoothScroll";
 import GlobalChatWidget from "./components/chat/GlobalChatWidget";
@@ -46,6 +48,8 @@ const AppContent = () => {
             <Route path="/confirmation" element={<Confirmation />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/distributors" element={<AdminDistributors />} />
+            <Route path="/admin/media-plan/:campaignId" element={<MediaPlanEditor />} />
+            <Route path="/campaigns/:id/media-plan" element={<MediaPlanView />} />
             <Route path="/team" element={<TeamManagement />} />
             <Route path="/casos-exito" element={<CasosExito />} />
             <Route path="/demo" element={<DemoWizard />} />
