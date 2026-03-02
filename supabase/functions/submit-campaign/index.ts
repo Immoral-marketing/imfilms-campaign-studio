@@ -147,34 +147,9 @@ serve(async (req) => {
             if (addonError) console.error('Error adding addons:', addonError);
         }
 
-        // 7. Send Notification Email (if requested)
-        if (notifyAdmin) {
-            try {
-                // Call send-email function
-                // internal call or direct fetch if internal not supported easily in same project context
-                // effectively we just want to trigger the logic.
-                // For simplicity, we can let the FRONTEND trigger the email or do it here.
-                // Ideally here to be robust. 
-
-                await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: 'new_campaign',
-                        campaignId: campaignRecord.id,
-                        campaignTitle: filmData.title,
-                        distributorName: filmData.distributorName,
-                        recipientEmail: contactData.contactEmail
-                    })
-                });
-
-            } catch (emailErr) {
-                console.error('Failed to send email notification:', emailErr);
-            }
-        }
+        // 7. Email notification is now sent from the frontend directly
+        // (internal fetch between edge functions was unreliable for new accounts)
+        console.log('Campaign created successfully, campaignId:', campaignRecord.id);
 
         return new Response(
             JSON.stringify({ success: true, campaignId: campaignRecord.id }),

@@ -10,14 +10,14 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import logoImfilms from "@/assets/logo-imfilms.png";
-import { 
-  Users, 
-  UserPlus, 
-  Mail, 
-  Shield, 
-  Check, 
-  X, 
+import { NavbarAdmin } from "@/components/NavbarAdmin";
+import {
+  Users,
+  UserPlus,
+  Mail,
+  Shield,
+  Check,
+  X,
   ChevronLeft,
   Settings,
   Crown,
@@ -63,7 +63,7 @@ const TeamManagement = () => {
   const checkAuthAndLoadTeam = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session?.user) {
         navigate("/campaigns");
         return;
@@ -81,7 +81,7 @@ const TeamManagement = () => {
       if (duError) throw duError;
 
       const ownerRecord = distributorUsers?.find(du => du.is_owner);
-      
+
       if (!ownerRecord) {
         toast.error("No tienes permisos para gestionar el equipo");
         navigate("/campaigns");
@@ -102,7 +102,7 @@ const TeamManagement = () => {
   const loadTeamMembers = async (distributorId: string) => {
     try {
       const { data: session } = await supabase.auth.getSession();
-      
+
       if (!session?.session?.access_token) {
         throw new Error('No session token');
       }
@@ -130,18 +130,18 @@ const TeamManagement = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const validated = inviteSchema.parse({ email: inviteEmail });
-      
+
       const { data: session } = await supabase.auth.getSession();
-      
+
       if (!session?.session?.access_token) {
         throw new Error('No session token');
       }
 
       const { data, error } = await supabase.functions.invoke('invite-team-member', {
-        body: { 
+        body: {
           email: validated.email,
           distributorId: distributor.id,
           role: inviteRole
@@ -292,29 +292,12 @@ const TeamManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+      <NavbarAdmin />
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-4">
-          <button onClick={() => navigate("/")} className="block">
-            <img 
-              src={logoImfilms}
-              alt="IMFILMS" 
-              className="w-32 cursor-pointer hover:opacity-80 transition-opacity"
-            />
-          </button>
-          
-          <div className="flex items-center gap-4">
-            <Button
-              onClick={() => navigate("/campaigns")}
-              variant="outline"
-              size="sm"
-              className="border-primary text-primary hover:bg-primary/10"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2 cinema-icon" />
-              Volver
-            </Button>
-          </div>
+
 
           <div>
             <h1 className="font-cinema text-5xl md:text-6xl text-primary mb-2">
@@ -340,7 +323,7 @@ const TeamManagement = () => {
             </div>
             <div className="space-y-3">
               {pendingRequests.map((request) => (
-                <div 
+                <div
                   key={request.id}
                   className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border"
                 >
@@ -447,7 +430,7 @@ const TeamManagement = () => {
               </div>
             </div>
 
-            <Button 
+            <Button
               type="submit"
               className="w-full md:w-auto bg-primary text-primary-foreground hover:bg-secondary"
             >
@@ -502,7 +485,7 @@ const TeamManagement = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={member.is_active}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           handleUpdateMember(member.id, { is_active: checked })
                         }
                       />

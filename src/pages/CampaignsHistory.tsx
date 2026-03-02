@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid, FileBarChart } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -21,6 +21,8 @@ import AdminDistributors from "./AdminDistributors";
 import CampaignComparator from "@/components/CampaignComparator";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
 import CampaignLabels from "@/components/CampaignLabels";
+import { NavbarAdmin } from "@/components/NavbarAdmin";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -39,6 +41,7 @@ const CampaignsHistory = () => {
   const [sortOrder, setSortOrder] = useState<"creation_date" | "pending_changes" | "premiere_soon" | "incomplete" | "missing_materials">("creation_date");
 
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
+  const { isEnabled } = useFeatureFlags();
 
   // Admin Invite State
   const [showInviteAdmin, setShowInviteAdmin] = useState(false);
@@ -65,10 +68,7 @@ const CampaignsHistory = () => {
     cpm: ""
   });
 
-  // Report Modal State
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [selectedCampaignForReport, setSelectedCampaignForReport] = useState<any>(null);
-  const [reportLink, setReportLink] = useState("");
+  // Report Modal State (removed - replaced with dedicated page)
 
   useEffect(() => {
     checkAuth();
@@ -485,30 +485,27 @@ const CampaignsHistory = () => {
     }
   };
 
-  const handleSaveReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCampaignForReport) return;
+  const getReportBadge = (campaign: any) => {
+    const status = campaign.report_status;
+    if (!status || status === 'borrador') return null;
 
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update({
-          report_link: reportLink
-        })
-        .eq('id', selectedCampaignForReport.id);
+    const colors: any = {
+      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
+      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
+    };
 
-      if (error) throw error;
+    const labels: any = {
+      pendiente_aprobacion: "Informe Revisión",
+      aprobado: "Informe Aprobado",
+      rechazado: "Informe Rechazado",
+    };
 
-      toast.success("Informe actualizado correctamente");
-      setShowReportModal(false);
-      await loadData(user.id, isAdmin);
-    } catch (error: any) {
-      console.error("Error saving report:", error);
-      toast.error("Error al guardar el informe");
-    } finally {
-      setLoading(false);
-    }
+    return (
+      <Badge variant="outline" className={`absolute -top-2 -right-2 text-[10px] px-1.5 py-0 ${colors[status]}`}>
+        {labels[status]}
+      </Badge>
+    );
   };
 
   // Calculate KPIs
@@ -629,34 +626,47 @@ const CampaignsHistory = () => {
   };
 
   const getMediaPlanBadge = (campaign: any) => {
-    const status = campaign.media_plan_status || 'borrador';
-    const phasesCount = campaign.media_plan_phases?.[0]?.count || 0;
+    const status = campaign.media_plan_simple_status;
+    if (!status || status === 'borrador') return null;
 
-    if (phasesCount === 0) {
-      return (
-        <Badge variant="outline" className="absolute -top-2 -right-2 z-10 bg-zinc-700 text-zinc-300 border-none text-[8px] uppercase font-black px-1.5 py-0.5 leading-none shadow-md">
-          Vacío
-        </Badge>
-      );
-    }
-
-    const styles: any = {
-      borrador: "bg-blue-600 text-white border-none",
-      pendiente_aprobacion: "bg-cinema-yellow text-black border-none animate-pulse",
-      aprobado: "bg-green-600 text-white border-none",
-      rechazado: "bg-red-600 text-white border-none"
+    const colors = {
+      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
+      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
     };
 
-    const labels: any = {
-      borrador: "Borrador",
-      pendiente_aprobacion: "Pendiente",
-      aprobado: "Aprobado",
-      rechazado: "Rechazado"
+    const labels = {
+      pendiente_aprobacion: "Plan Revisión",
+      aprobado: "Plan Aprobado",
+      rechazado: "Plan Rechazado",
     };
 
     return (
-      <Badge variant="outline" className={`absolute -top-2 -right-2 z-10 ${styles[status] || styles.borrador} text-[8px] uppercase font-black px-1.5 py-0.5 leading-none shadow-sm`}>
-        {labels[status] || "Borrador"}
+      <Badge variant="outline" className={`absolute -top-2 -right-2 text-[10px] px-1.5 py-0 ${colors[status as keyof typeof colors]}`}>
+        {labels[status as keyof typeof labels]}
+      </Badge>
+    );
+  };
+
+  const getMediaPlanBetaBadge = (campaign: any) => {
+    const status = campaign.media_plan_status;
+    if (!status || status === 'borrador') return null;
+
+    const colors = {
+      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
+      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
+    };
+
+    const labels = {
+      pendiente_aprobacion: "BETA Revisión",
+      aprobado: "BETA Aprobado",
+      rechazado: "BETA Rechazado",
+    };
+
+    return (
+      <Badge variant="outline" className={`absolute -top-2 -right-2 text-[10px] px-1.5 py-0 ${colors[status as keyof typeof colors]}`}>
+        {labels[status as keyof typeof labels]}
       </Badge>
     );
   };
@@ -771,7 +781,8 @@ const CampaignsHistory = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+      <NavbarAdmin />
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -840,22 +851,6 @@ const CampaignsHistory = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <Button
-              onClick={() => navigate("/team")}
-              variant="outline"
-              className="border-primary text-primary hover:bg-primary/10"
-            >
-              <Users className="w-4 h-4 mr-2 cinema-icon" />
-              Equipo
-            </Button>
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="border-primary text-primary hover:bg-primary/10"
-            >
-              <LogOut className="w-4 h-4 mr-2 cinema-icon" />
-              Cerrar sesión
-            </Button>
           </div>
         </div>
 
@@ -871,10 +866,12 @@ const CampaignsHistory = () => {
                 Distribuidoras
               </TabsTrigger>
             )}
-            <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black">
-              <BarChart className="w-4 h-4 mr-2" />
-              Métricas / Comparativas
-            </TabsTrigger>
+            {isEnabled('show_metrics_comparative') && (
+              <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black">
+                <BarChart className="w-4 h-4 mr-2" />
+                Métricas / Comparativas
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="campaigns" className="space-y-8">
@@ -1243,20 +1240,21 @@ const CampaignsHistory = () => {
                               Agregar KPIs
                             </Button>
 
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCampaignForReport(campaign);
-                                setReportLink(campaign.report_link || "");
-                                setShowReportModal(true);
-                              }}
-                              variant="outline"
-                              className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black transition-colors"
-                              size="sm"
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Agregar informe
-                            </Button>
+                            <div className="relative inline-block">
+                              {getReportBadge(campaign)}
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/admin/report/${campaign.id}`);
+                                }}
+                                variant="outline"
+                                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black transition-colors"
+                                size="sm"
+                              >
+                                <FileBarChart className="w-4 h-4 mr-2" />
+                                Agregar informe
+                              </Button>
+                            </div>
 
                             <div className="relative inline-block">
                               {getMediaPlanBadge(campaign)}
@@ -1273,91 +1271,137 @@ const CampaignsHistory = () => {
                                 Agregar plan de medios
                               </Button>
                             </div>
+
+                            {isEnabled('show_beta_media_plan') && (
+                              <div className="relative inline-block">
+                                {getMediaPlanBetaBadge(campaign)}
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/admin/media-plan-beta/${campaign.id}`);
+                                  }}
+                                  variant="outline"
+                                  className="border-cinema-gold/30 text-cinema-gold/60 hover:bg-cinema-gold/10 transition-colors"
+                                  size="sm"
+                                >
+                                  <LayoutGrid className="w-4 h-4 mr-2" />
+                                  Agregar plan (BETA)
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
 
                         {!isAdmin && (
                           <div className="pt-3 border-t border-border mt-auto space-y-4">
-                            {/* Media Plan Button for Distributor */}
-                            {campaign.media_plan_status && campaign.media_plan_status !== 'borrador' && (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/campaigns/${campaign.id}/media-plan`);
-                                }}
-                                className={`w-full font-bold ${campaign.media_plan_status === 'pendiente_aprobacion'
-                                  ? 'bg-cinema-yellow text-black hover:bg-cinema-yellow/90 animate-pulse'
-                                  : 'border-cinema-gold text-cinema-gold hover:bg-cinema-gold/10'
-                                  }`}
-                                variant={campaign.media_plan_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
-                                size="sm"
-                              >
-                                <LayoutGrid className="w-4 h-4 mr-2" />
-                                {campaign.media_plan_status === 'pendiente_aprobacion'
-                                  ? 'Revisar Plan de Medios'
-                                  : 'Ver Plan de Medios'}
-                              </Button>
-                            )}
+                            {/* Action buttons row */}
+                            <div className="flex flex-wrap gap-2">
+                              {/* Simplified Media Plan Button for Distributor */}
+                              {campaign.media_plan_simple_status && campaign.media_plan_simple_status !== 'borrador' && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/campaigns/${campaign.id}/media-plan`);
+                                  }}
+                                  className={`font-bold ${campaign.media_plan_simple_status === 'pendiente_aprobacion'
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 animate-pulse outline outline-2 outline-primary outline-offset-2'
+                                    : 'border-primary text-primary hover:bg-primary/10'
+                                    }`}
+                                  variant={campaign.media_plan_simple_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
+                                  size="sm"
+                                >
+                                  <LayoutGrid className="w-4 h-4 mr-2" />
+                                  {campaign.media_plan_simple_status === 'pendiente_aprobacion'
+                                    ? 'Revisar Plan de Medios'
+                                    : 'Ver Plan de Medios'}
+                                </Button>
+                              )}
 
-                            {campaign.status === 'finalizada' && (
-                              <div className="space-y-4">
-                                {(campaign.reach || campaign.clicks || campaign.visits) && (
-                                  <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10">
-                                    {campaign.reach && (
-                                      <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>
-                                        <p className="text-sm font-cinema text-primary">{campaign.reach.toLocaleString()}</p>
-                                      </div>
-                                    )}
-                                    {campaign.clicks && (
-                                      <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
-                                        <p className="text-sm font-cinema text-primary">{campaign.clicks.toLocaleString()}</p>
-                                      </div>
-                                    )}
-                                    {campaign.ctr && (
-                                      <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground uppercase">CTR</p>
-                                        <p className="text-sm font-cinema text-primary">{campaign.ctr}%</p>
-                                      </div>
-                                    )}
-                                    {campaign.cpm && (
-                                      <div className="text-center">
-                                        <p className="text-[10px] text-muted-foreground uppercase">CPM</p>
-                                        <p className="text-sm font-cinema text-primary">{campaign.cpm}€</p>
-                                      </div>
-                                    )}
+                              {/* BETA Media Plan Button for Distributor */}
+                              {isEnabled('show_beta_media_plan') && campaign.media_plan_status && campaign.media_plan_status !== 'borrador' && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/campaigns/${campaign.id}/media-plan-beta`);
+                                  }}
+                                  className={`font-bold ${campaign.media_plan_status === 'pendiente_aprobacion'
+                                    ? 'bg-cinema-yellow text-black hover:bg-cinema-yellow/90 opacity-80'
+                                    : 'border-cinema-gold/40 text-cinema-gold/60 hover:bg-cinema-gold/10'
+                                    }`}
+                                  variant={campaign.media_plan_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
+                                  size="sm"
+                                >
+                                  <LayoutGrid className="w-4 h-4 mr-2" />
+                                  {campaign.media_plan_status === 'pendiente_aprobacion'
+                                    ? 'Revisar Plan (BETA)'
+                                    : 'Ver Plan (BETA)'}
+                                </Button>
+                              )}
+
+                              {/* Report Button for Distributor */}
+                              {campaign.report_status && campaign.report_status !== 'borrador' && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/campaigns/${campaign.id}/report`);
+                                  }}
+                                  className={`font-bold ${campaign.report_status === 'pendiente_aprobacion'
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 animate-pulse outline outline-2 outline-primary outline-offset-2'
+                                    : 'border-primary text-primary hover:bg-primary/10'
+                                    }`}
+                                  variant={campaign.report_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
+                                  size="sm"
+                                >
+                                  <FileBarChart className="w-4 h-4 mr-2" />
+                                  {campaign.report_status === 'pendiente_aprobacion'
+                                    ? 'Revisar Informe'
+                                    : 'Ver Informe'}
+                                </Button>
+                              )}
+
+                              {campaign.status === 'propuesta_lista' && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/campaigns/${campaign.id}/proposal`);
+                                  }}
+                                  className="bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
+                                  size="sm"
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  Ver Propuesta
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* KPIs - full width */}
+                            {campaign.status === 'finalizada' && (campaign.reach || campaign.clicks || campaign.visits) && (
+                              <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10 w-full">
+                                {campaign.reach && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.reach.toLocaleString()}</p>
                                   </div>
                                 )}
-
-                                {campaign.report_link && (
-                                  <Button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(campaign.report_link, '_blank');
-                                    }}
-                                    className="w-full bg-primary text-primary-foreground hover:bg-secondary font-bold"
-                                    size="sm"
-                                  >
-                                    <Eye className="w-4 h-4 mr-2" />
-                                    Ver Informe Completo
-                                  </Button>
+                                {campaign.clicks && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.clicks.toLocaleString()}</p>
+                                  </div>
+                                )}
+                                {campaign.ctr && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">CTR</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.ctr}%</p>
+                                  </div>
+                                )}
+                                {campaign.cpm && (
+                                  <div className="text-center">
+                                    <p className="text-[10px] text-muted-foreground uppercase">CPM</p>
+                                    <p className="text-sm font-cinema text-primary">{campaign.cpm}€</p>
+                                  </div>
                                 )}
                               </div>
-                            )}
-
-                            {campaign.status === 'propuesta_lista' && (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/campaigns/${campaign.id}/proposal`);
-                                }}
-                                className="w-full bg-cinema-yellow text-black hover:bg-cinema-yellow/90 font-bold"
-                                size="sm"
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                Ver Propuesta
-                              </Button>
                             )}
                           </div>
                         )}
@@ -1375,9 +1419,11 @@ const CampaignsHistory = () => {
             </TabsContent>
           )}
 
-          <TabsContent value="comparative">
-            <CampaignComparator isAdmin={isAdmin} userId={user?.id} />
-          </TabsContent>
+          {isEnabled('show_metrics_comparative') && (
+            <TabsContent value="comparative">
+              <CampaignComparator isAdmin={isAdmin} userId={user?.id} />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Onboarding Tour */}
@@ -1558,60 +1604,7 @@ const CampaignsHistory = () => {
         </div>
       )}
 
-      {/* Report Modal */}
-      {showReportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <Card className="cinema-card w-full max-w-md p-6 relative">
-            <button
-              onClick={() => setShowReportModal(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-white"
-            >
-              ✕
-            </button>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-cinema-yellow/20">
-                  <Eye className="w-6 h-6 text-cinema-yellow" />
-                </div>
-                <div>
-                  <h3 className="font-cinema text-2xl text-primary">Agregar Informe</h3>
-                  <p className="text-sm text-cinema-ivory">{selectedCampaignForReport?.films?.title}</p>
-                </div>
-              </div>
 
-              <form onSubmit={handleSaveReport} className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <Label>Enlace al informe completo</Label>
-                  <Input
-                    type="url"
-                    value={reportLink}
-                    onChange={(e) => setReportLink(e.target.value)}
-                    className="bg-muted border-border"
-                    placeholder="https://ejemplo.com/informe-campaña"
-                    required
-                  />
-                </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setShowReportModal(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-cinema-yellow text-black hover:bg-cinema-yellow/90"
-                    disabled={loading}
-                  >
-                    {loading ? "Guardando..." : "Guardar Informe"}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 };

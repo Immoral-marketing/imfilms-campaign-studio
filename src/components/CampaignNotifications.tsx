@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bell, FileImage, Pencil, Loader2, CheckCircle2, MessageSquare } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -14,6 +13,7 @@ interface SystemMessage {
     message: string;
     created_at: string;
     read_at: string | null;
+    message_read_states?: { user_id: string }[];
 }
 
 interface CampaignNotificationsProps {
@@ -32,9 +32,15 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
     const [loading, setLoading] = useState(true);
     const mountedRef = useRef(true);
 
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
     useEffect(() => {
         mountedRef.current = true;
         loadNotifications();
+
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) setCurrentUserId(user.id);
+        });
 
         // Real-time subscription for new system messages
         const channel = supabase
@@ -64,29 +70,49 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
 
     // Mark unread system messages as read when viewed
     useEffect(() => {
-        const unread = notifications.filter((n) => !n.read_at);
-        if (unread.length > 0) {
-            const ids = unread.map((n) => n.id);
-            supabase
-                .from('campaign_messages')
-                .update({ read_at: new Date().toISOString() } as any)
-                .in('id', ids)
-                .then(() => {
-                    setNotifications((prev) =>
-                        prev.map((n) =>
-                            ids.includes(n.id) ? { ...n, read_at: new Date().toISOString() } : n
-                        )
-                    );
-                });
+        const markAsRead = async () => {
+            if (!currentUserId) return;
+
+            const unread = notifications.filter((n) =>
+                !n.message_read_states?.some(rs => rs.user_id === currentUserId)
+            );
+
+            if (unread.length > 0) {
+                const entries = unread.map((n) => ({
+                    message_id: n.id,
+                    user_id: currentUserId
+                }));
+
+                await supabase
+                    .from('message_read_states')
+                    .upsert(entries, { onConflict: 'message_id,user_id' });
+
+                setNotifications((prev) =>
+                    prev.map((n) => {
+                        const isNowRead = unread.some(u => u.id === n.id);
+                        if (isNowRead) {
+                            const currentStates = n.message_read_states || [];
+                            if (!currentStates.some(rs => rs.user_id === currentUserId)) {
+                                return { ...n, message_read_states: [...currentStates, { user_id: currentUserId }] };
+                            }
+                        }
+                        return n;
+                    })
+                );
+            }
+        };
+
+        if (notifications.length > 0) {
+            markAsRead();
         }
-    }, [notifications.length]);
+    }, [notifications.length, currentUserId]);
 
     const loadNotifications = async () => {
         setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('campaign_messages')
-                .select('*')
+                .select('*, message_read_states(user_id)')
                 .eq('campaign_id', campaignId)
                 .eq('sender_role', 'system')
                 .order('created_at', { ascending: false })
@@ -125,7 +151,10 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
     }
 
     return (
-        <ScrollArea className="h-full">
+        <div
+            className="h-full overflow-y-auto overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+        >
             <div className="divide-y divide-border/20">
                 {notifications.map((notif) => {
                     const isEditProposal = notif.message.startsWith('✏️');
@@ -163,25 +192,27 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                         iconBg = 'bg-yellow-500/10';
                     } else if (isMediaPlanReady) {
                         NotifIcon = Bell;
-                        notifTitle = 'Plan de Medios Listo';
+                        notifTitle = notif.message.includes('(BETA)') ? 'Plan de Medios (BETA) Listo' : 'Plan de Medios Listo';
                         iconColor = 'text-cinema-yellow';
                         iconBg = 'bg-primary/10';
                     } else if (isMediaPlanApproved) {
                         NotifIcon = CheckCircle2;
-                        notifTitle = 'Plan de Medios Aprobado';
+                        notifTitle = notif.message.includes('(BETA)') ? 'Plan de Medios (BETA) Aprobado' : 'Plan de Medios Aprobado';
                         iconColor = 'text-green-500';
                         iconBg = 'bg-green-500/10';
                     } else if (isMediaPlanRejected) {
                         NotifIcon = MessageSquare;
-                        notifTitle = 'Sugerencias en Plan de Medios';
+                        notifTitle = notif.message.includes('(BETA)') ? 'Sugerencias en Plan de Medios (BETA)' : 'Sugerencias en Plan de Medios';
                         iconColor = 'text-red-500';
                         iconBg = 'bg-red-500/10';
                     }
 
+                    const isRead = notif.message_read_states?.some(rs => rs.user_id === currentUserId);
+
                     return (
                         <div
                             key={notif.id}
-                            className={`p-4 transition-colors ${!notif.read_at ? 'bg-primary/5' : 'hover:bg-muted/30'
+                            className={`p-4 transition-colors ${!isRead ? 'bg-primary/5' : 'hover:bg-muted/30'
                                 }`}
                         >
                             <div className="flex items-start gap-3">
@@ -190,17 +221,17 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2">
-                                        <p className={`text-sm ${!notif.read_at ? 'text-foreground font-bold' : 'text-foreground/90 font-medium'}`}>
+                                        <p className={`text-sm ${!isRead ? 'text-foreground font-bold' : 'text-foreground/90 font-medium'}`}>
                                             {notifTitle}
                                         </p>
-                                        {!notif.read_at && (
+                                        {!isRead && (
                                             <Badge variant="default" className="text-[9px] px-1.5 py-0 bg-primary/80 flex-shrink-0">
                                                 Nuevo
                                             </Badge>
                                         )}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                                        {notif.message}
+                                        {notif.message.replace(/^[^\s]+ /, '')}
                                     </p>
                                     <p className="text-[10px] text-muted-foreground/60 mt-2">
                                         {getRelativeTime(notif.created_at)}
@@ -211,7 +242,7 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                     );
                 })}
             </div>
-        </ScrollArea>
+        </div>
     );
 };
 

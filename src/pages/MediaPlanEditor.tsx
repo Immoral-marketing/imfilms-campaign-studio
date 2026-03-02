@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MediaPlanPreview from "@/components/MediaPlanPreview";
+import { NavbarAdmin } from "@/components/NavbarAdmin";
 
 const MediaPlanEditor = () => {
     const { campaignId } = useParams();
@@ -171,14 +172,14 @@ const MediaPlanEditor = () => {
                 // Add system notification
                 await supabase.from('campaign_messages').insert({
                     campaign_id: campaignId,
-                    message: `📅 Plan de Medios listo para revisión: ${campaign?.films?.title || 'Campaña'}`,
+                    message: `📅 Plan de Medios (BETA) listo para revisión: ${campaign?.films?.title || 'Campaña'}`,
                     sender_role: 'system',
                     sender_name: 'Sistema'
                 } as any);
 
                 toast.success("Plan enviado para aprobación");
             } else {
-                toast.success("Plan de medios guardado correctamente");
+                toast.success("Plan de medios (BETA) guardado correctamente");
             }
 
             // Clear deletion trackers on success
@@ -320,7 +321,8 @@ const MediaPlanEditor = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background py-12 px-6">
+        <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+            <NavbarAdmin />
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
@@ -332,7 +334,7 @@ const MediaPlanEditor = () => {
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Volver a campañas
                         </Button>
-                        <h1 className="font-cinema text-5xl text-primary">Plan de Medios</h1>
+                        <h1 className="font-cinema text-5xl text-primary">Plan de Medios (BETA)</h1>
                         <p className="text-cinema-ivory text-xl">{campaign?.films?.title}</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -387,7 +389,7 @@ const MediaPlanEditor = () => {
                         </TabsTrigger>
                         <TabsTrigger value="plan" className="flex items-center gap-2 px-6">
                             <LayoutGrid className="w-4 h-4" />
-                            Plan de medios
+                            Plan de medios (BETA)
                         </TabsTrigger>
                         <TabsTrigger value="audiences" className="flex items-center gap-2 px-6">
                             <Users className="w-4 h-4" />
@@ -572,7 +574,7 @@ const MediaPlanEditor = () => {
 
                             <TabsContent value="plan" className="space-y-6">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="font-cinema text-3xl text-primary">Plan de medios detallado</h2>
+                                    <h2 className="font-cinema text-3xl text-primary">Plan de medios (BETA) detallado</h2>
                                 </div>
 
                                 {phases.map((phase, pIdx) => (

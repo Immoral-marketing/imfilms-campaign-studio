@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import { Shield, LogOut, RefreshCw, Calendar, DollarSign, BarChart, Building2, Film, Eye } from "lucide-react";
 import AdminDistributors from "./AdminDistributors";
+import { NavbarAdmin } from "@/components/NavbarAdmin";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -235,21 +236,14 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+      <NavbarAdmin />
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="font-cinema text-5xl text-primary">PANEL DE ADMINISTRACIÓN</h1>
             <p className="text-muted-foreground">Gestión completa de campañas y distribuidoras</p>
           </div>
-          <Button
-            onClick={handleLogout}
-            variant="outline"
-            className="border-primary text-primary hover:bg-primary/10"
-          >
-            <LogOut className="w-4 h-4 mr-2 cinema-icon" />
-            Cerrar sesión
-          </Button>
         </div>
 
         <Tabs defaultValue="campaigns" className="space-y-6">

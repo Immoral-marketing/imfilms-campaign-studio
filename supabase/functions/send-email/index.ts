@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected";
+    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected" | "report_ready" | "report_approved" | "report_rejected";
     campaignId?: string;
     campaignTitle?: string;
     distributorName?: string;
@@ -585,7 +585,7 @@ const handler = async (req: Request): Promise<Response> => {
                 console.log("Branch: media_plan_ready matched");
                 if (payload.recipientEmail) {
                     console.log(`Processing media_plan_ready for ${payload.recipientEmail}`);
-                    const subject = `📅 Plan de Medios listo para revisión: ${payload.campaignTitle}`;
+                    const subject = `📅 Plan de Medios (BETA) listo para revisión: ${payload.campaignTitle}`;
                     const emailHtml = `
                     <!DOCTYPE html>
                     <html>
@@ -608,7 +608,7 @@ const handler = async (req: Request): Promise<Response> => {
                                         <!-- Content -->
                                         <tr>
                                             <td style="padding: 40px 30px;">
-                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Plan de Medios listo</h2>
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Plan de Medios (BETA) listo</h2>
                                                 <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     Ya tenemos lista la estrategia de medios para <strong>${payload.campaignTitle}</strong>.
                                                 </p>
@@ -620,7 +620,7 @@ const handler = async (req: Request): Promise<Response> => {
                                                     <tr>
                                                         <td align="center">
                                                             <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}/media-plan" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
-                                                                Revisar Plan de Medios
+                                                                Revisar Plan de Medios (BETA)
                                                             </a>
                                                         </td>
                                                     </tr>
@@ -652,21 +652,98 @@ const handler = async (req: Request): Promise<Response> => {
                 }
                 break;
             }
+            case "media_plan_simple_ready": {
+                console.log("Branch: media_plan_simple_ready matched");
+                if (payload.recipientEmail) {
+                    console.log(`Processing media_plan_simple_ready for ${payload.recipientEmail}`);
+                    const subject = `📅 Plan de Medios listo para revisión: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #7B61FF; overflow: hidden;">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #7B61FF 0%, #6344F5 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Plan de Medios listo</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Ya tenemos lista la estrategia de medios para <strong>${payload.campaignTitle}</strong>.
+                                                </p>
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}/media-plan" style="background-color: #7B61FF; color: #FFFFFF; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Revisar Plan de Medios
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="padding: 0 30px 30px 30px; text-align: center;">
+                                                <p style="margin: 0; color: #F5F2EB; opacity: 0.4; font-size: 12px;">
+                                                    Imfilms Campaign Studio &copy; 2025
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: [payload.recipientEmail],
+                        subject: subject,
+                        html: emailHtml,
+                    });
+                }
+                break;
+            }
             case "media_plan_approved":
-            case "media_plan_rejected": {
+            case "media_plan_simple_approved":
+            case "media_plan_rejected":
+            case "media_plan_simple_rejected": {
                 console.log(`Branch: ${type} matched`);
                 const adminEmails = await getAdminEmails();
                 if (adminEmails.length > 0) {
-                    const isApproved = type === "media_plan_approved";
+                    const isApproved = type.includes("approved");
+                    const isSimple = type.includes("simple");
+
                     const subject = isApproved
-                        ? `✅ Plan de Medios Aprobado: ${payload.campaignTitle}`
-                        : `❌ Sugerencias en Plan de Medios: ${payload.campaignTitle}`;
+                        ? `✅ Plan de Medios${isSimple ? '' : ' (BETA)'} Aprobado: ${payload.campaignTitle}`
+                        : `❌ Sugerencias en Plan de Medios${isSimple ? '' : ' (BETA)'}: ${payload.campaignTitle}`;
+
                     const title = isApproved
                         ? `Plan de Medios Aprobado`
                         : `Sugerencias Recibidas`;
+
                     const text = isApproved
-                        ? `La distribuidora <strong>${payload.distributorName}</strong> ha aprobado el plan de medios para:`
-                        : `La distribuidora <strong>${payload.distributorName}</strong> ha sugerido cambios en el plan de medios para:`;
+                        ? `La distribuidora <strong>${payload.distributorName}</strong> ha aprobado el plan de medios${isSimple ? '' : ' (BETA)'} para:`
+                        : `La distribuidora <strong>${payload.distributorName}</strong> ha sugerido cambios en el plan de medios${isSimple ? '' : ' (BETA)'} para:`;
+
+                    const viewUrl = isSimple
+                        ? `https://estrenos.imfilms.es/admin/media-plan/${payload.campaignId}`
+                        : `https://estrenos.imfilms.es/admin/media-plan-beta/${payload.campaignId}`;
 
                     const emailHtml = `
                     <!DOCTYPE html>
@@ -679,12 +756,12 @@ const handler = async (req: Request): Promise<Response> => {
                         <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
                             <tr>
                                 <td align="center">
-                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid ${isApproved ? '#22C55E' : '#EF4444'}; overflow: hidden;">
                                         <!-- Header -->
                                         <tr>
-                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                            <td style="background: ${isApproved ? 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' : 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)'}; padding: 24px 30px; text-align: center;">
                                                 <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
-                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
                                             </td>
                                         </tr>
                                         <!-- Content -->
@@ -694,14 +771,13 @@ const handler = async (req: Request): Promise<Response> => {
                                                 <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
                                                     ${text}
                                                 </p>
-                                                <p style="margin: 0 0 30px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
+                                                <p style="margin: 0 0 24px 0; color: #F5F2EB; font-size: 18px; font-weight: bold; text-align: center;">
                                                     ${payload.campaignTitle}
                                                 </p>
-                                                <!-- Button -->
                                                 <table width="100%" cellpadding="0" cellspacing="0">
                                                     <tr>
                                                         <td align="center">
-                                                            <a href="https://estrenos.imfilms.es/admin/media-plan/${payload.campaignId}" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                            <a href="${viewUrl}" style="background-color: ${isApproved ? '#22C55E' : '#EF4444'}; color: #FFFFFF; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
                                                                 Ver Plan de Medios
                                                             </a>
                                                         </td>
@@ -710,6 +786,69 @@ const handler = async (req: Request): Promise<Response> => {
                                             </td>
                                         </tr>
                                         <!-- Footer -->
+                                        <tr>
+                                            <td style="padding: 0 30px 30px 30px; text-align: center;">
+                                                <p style="margin: 0; color: #F5F2EB; opacity: 0.4; font-size: 12px;">
+                                                    Imfilms Campaign Studio &copy; 2025
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject: subject,
+                        html: emailHtml,
+                    });
+                }
+                break;
+            }
+            case "report_ready": {
+                console.log("Branch: report_ready matched");
+                if (payload.recipientEmail) {
+                    const subject = `📊 Informe listo para revisión: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Informe listo para revisión</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    El informe de tu campaña <strong>${payload.campaignTitle}</strong> está listo para tu revisión y aprobación.
+                                                </p>
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}/report" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Revisar Informe
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
                                         <tr>
                                             <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
                                                 <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
@@ -723,13 +862,141 @@ const handler = async (req: Request): Promise<Response> => {
                         </table>
                     </body>
                     </html>
-                `;
+                    `;
 
                     emailsToSend.push({
                         from: fromEmail,
-                        to: adminEmails,
+                        to: payload.recipientEmail,
                         subject: subject,
-                        html: emailHtml
+                        html: emailHtml,
+                    });
+                }
+                break;
+            }
+            case "report_approved": {
+                console.log("Branch: report_approved matched");
+                const reportApprovedAdminEmails = await getAdminEmails();
+                if (reportApprovedAdminEmails.length > 0) {
+                    const subject = `\u2705 Informe aprobado: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Informe aprobado</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    La distribuidora <strong>${payload.distributorName}</strong> ha aprobado el informe de la campaña <strong>${payload.campaignTitle}</strong>.
+                                                </p>
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver en el Dashboard
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: reportApprovedAdminEmails,
+                        subject: subject,
+                        html: emailHtml,
+                    });
+                }
+                break;
+            }
+            case "report_rejected": {
+                console.log("Branch: report_rejected matched");
+                const reportRejectedAdminEmails = await getAdminEmails();
+                if (reportRejectedAdminEmails.length > 0) {
+                    const subject = `\u274C Informe rechazado: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Informe rechazado</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    La distribuidora <strong>${payload.distributorName}</strong> ha rechazado el informe de la campaña <strong>${payload.campaignTitle}</strong> con sugerencias.
+                                                </p>
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver en el Dashboard
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: reportRejectedAdminEmails,
+                        subject: subject,
+                        html: emailHtml,
                     });
                 }
                 break;

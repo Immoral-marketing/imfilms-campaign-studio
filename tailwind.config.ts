@@ -100,7 +100,9 @@ export default {
 					'yellow-dark': 'hsl(var(--cinema-yellow-dark))',
 					black: 'hsl(var(--cinema-black))',
 					gray: 'hsl(var(--cinema-gray))',
-					ivory: 'hsl(var(--cinema-ivory))'
+					ivory: 'hsl(var(--cinema-ivory))',
+					gold: 'hsl(var(--cinema-yellow))',
+					deep: 'hsl(var(--cinema-black))'
 				}
 			},
 			borderRadius: {

@@ -193,7 +193,10 @@ const CampaignChat = ({ campaignId, userRole, minimal = false }: CampaignChatPro
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4 overscroll-contain min-h-0"
+        onWheel={(e) => e.stopPropagation()}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">Cargando mensajes...</p>

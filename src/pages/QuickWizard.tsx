@@ -880,6 +880,27 @@ const QuickWizard = () => {
         throw new Error("Error al guardar la campaña. Por favor contacta con soporte.");
       }
 
+      // Send notification email directly from frontend (edge function internal fetch is unreliable)
+      try {
+        console.log("Sending new_campaign email from frontend...");
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'new_campaign',
+            campaignTitle: filmData.title,
+            distributorName: filmData.distributorName || signupData.companyName,
+            recipientEmail: signupData.contactEmail
+          }
+        });
+
+        if (emailError) {
+          console.error("Email function error:", emailError);
+        } else {
+          console.log("Email sent successfully:", emailData);
+        }
+      } catch (emailErr) {
+        console.error("Failed to send notification email:", emailErr);
+      }
+
       // Success handling
       toast.success("¡Cuenta creada y campaña enviada con éxito!");
 

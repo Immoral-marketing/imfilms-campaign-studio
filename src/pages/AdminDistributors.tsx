@@ -15,6 +15,8 @@ import DistributorAnalytics from "@/components/distributors/DistributorAnalytics
 import { Search, Building2, Calendar, Film, Mail, Phone, RefreshCw, Activity, StickyNote } from "lucide-react";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
 import CampaignLabels from "@/components/CampaignLabels";
+import { NavbarAdmin } from "@/components/NavbarAdmin";
+import { useLocation } from "react-router-dom";
 
 interface Distributor {
   id: string;
@@ -430,8 +432,12 @@ const AdminDistributors = () => {
     );
   };
 
+  const location = useLocation();
+  const isStandalonePage = location.pathname === "/admin/distributors";
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isStandalonePage ? "pt-24 pb-12 px-6" : ""}`}>
+      {isStandalonePage && <NavbarAdmin />}
       {/* Controls */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
         <div className="flex-1 relative">

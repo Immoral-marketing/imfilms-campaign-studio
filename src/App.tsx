@@ -17,10 +17,17 @@ import DemoWizard from "./pages/DemoWizard";
 import TeamManagement from "./pages/TeamManagement";
 import ResetPassword from "./pages/ResetPassword";
 import MediaPlanEditor from "./pages/MediaPlanEditor";
+import MediaPlanSimpleEditor from "./pages/MediaPlanSimpleEditor";
 import MediaPlanView from "./pages/MediaPlanView";
+import MediaPlanSimpleView from "./pages/MediaPlanSimpleView";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
+import ReportEditor from "./pages/ReportEditor";
+import ReportView from "./pages/ReportView";
 import SmoothScroll from "./components/SmoothScroll";
 import GlobalChatWidget from "./components/chat/GlobalChatWidget";
+import GlobalNotificationWidget from "./components/chat/GlobalNotificationWidget";
+import { ChatRealtimeListener } from "./components/chat/ChatRealtimeListener";
 import { useAccessLogger } from "./hooks/useAccessLogger";
 
 const queryClient = new QueryClient();
@@ -32,6 +39,7 @@ const AppContent = () => {
 
   return (
     <TooltipProvider>
+      <ChatRealtimeListener />
       <Toaster />
       <Sonner />
 
@@ -48,15 +56,21 @@ const AppContent = () => {
             <Route path="/confirmation" element={<Confirmation />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/distributors" element={<AdminDistributors />} />
-            <Route path="/admin/media-plan/:campaignId" element={<MediaPlanEditor />} />
-            <Route path="/campaigns/:id/media-plan" element={<MediaPlanView />} />
+            <Route path="/admin/media-plan/:campaignId" element={<MediaPlanSimpleEditor />} />
+            <Route path="/admin/media-plan-beta/:campaignId" element={<MediaPlanEditor />} />
+            <Route path="/campaigns/:id/media-plan" element={<MediaPlanSimpleView />} />
+            <Route path="/campaigns/:id/media-plan-beta" element={<MediaPlanView />} />
+            <Route path="/admin/report/:campaignId" element={<ReportEditor />} />
+            <Route path="/campaigns/:id/report" element={<ReportView />} />
             <Route path="/team" element={<TeamManagement />} />
             <Route path="/casos-exito" element={<CasosExito />} />
             <Route path="/demo" element={<DemoWizard />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <GlobalChatWidget />
+          <GlobalChatWidget showFloatingButton={false} />
+          <GlobalNotificationWidget position="top" />
         </BrowserRouter>
       </SmoothScroll>
     </TooltipProvider>

@@ -47,7 +47,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                     {!showRejectForm ? (
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                             <div>
-                                <h3 className="font-cinema text-2xl text-cinema-gold uppercase">Revisión del Plan de Medios</h3>
+                                <h3 className="font-cinema text-2xl text-cinema-gold uppercase">Revisión del Plan de Medios (BETA)</h3>
                                 <p className="text-cinema-ivory/80">Por favor, revisa la estrategia y el desglose detallado antes de proceder.</p>
                             </div>
                             <div className="flex items-center gap-4 shrink-0">
@@ -107,7 +107,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                     </TabsTrigger>
                     <TabsTrigger value="plan" className="flex items-center gap-2 px-6">
                         <LayoutGrid className="w-4 h-4" />
-                        Plan de medios
+                        Plan de medios (BETA)
                     </TabsTrigger>
                     <TabsTrigger value="audiences" className="flex items-center gap-2 px-6">
                         <Users className="w-4 h-4" />
@@ -223,7 +223,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
 
                         {phases.length === 0 && (
                             <Card className="cinema-card p-12 text-center text-muted-foreground italic">
-                                No hay fases o plan de medios disponible.
+                                No hay fases o plan de medios (BETA) disponible.
                             </Card>
                         )}
                     </div>

@@ -48,7 +48,7 @@ const MediaPlanView = () => {
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Error al cargar el plan de medios");
+            toast.error("Error al cargar el plan de medios (BETA)");
         } finally {
             setLoading(false);
         }
@@ -66,7 +66,7 @@ const MediaPlanView = () => {
             // Add system notification
             await supabase.from('campaign_messages').insert({
                 campaign_id: id,
-                message: "✅ El plan de medios ha sido aprobado por la distribuidora.",
+                message: "✅ El plan de medios (BETA) ha sido aprobado por la distribuidora.",
                 sender_role: 'system',
                 sender_name: 'Sistema'
             } as any);
@@ -85,7 +85,7 @@ const MediaPlanView = () => {
                 console.error("Error sending approval notification:", emailErr);
             }
 
-            toast.success("Plan de medios aprobado");
+            toast.success("Plan de medios (BETA) aprobado");
             fetchData();
         } catch (error) {
             console.error("Error approving plan:", error);
@@ -108,7 +108,7 @@ const MediaPlanView = () => {
             // Add system notification
             await supabase.from('campaign_messages').insert({
                 campaign_id: id,
-                message: `❌ El plan de medios ha sido rechazado con sugerencias: "${feedback}"`,
+                message: `❌ El plan de medios (BETA) ha sido rechazado con sugerencias: "${feedback}"`,
                 sender_role: 'system',
                 sender_name: 'Sistema'
             } as any);
@@ -156,7 +156,7 @@ const MediaPlanView = () => {
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Volver a mis estrenos
                         </Button>
-                        <h1 className="font-cinema text-5xl text-primary">Plan de Medios</h1>
+                        <h1 className="font-cinema text-5xl text-primary">Plan de Medios (BETA)</h1>
                         <p className="text-cinema-ivory text-xl">{campaign?.films?.title}</p>
                     </div>
                 </div>
