@@ -190,16 +190,14 @@ export const validateInvestment = (
   feeMode: FeeMode = 'additional',
   effectiveAdInvestment?: number
 ): { valid: boolean; error?: string } => {
-  // In integrated mode, check the effective ad investment (after fees)
-  const investmentToCheck = feeMode === 'integrated' && effectiveAdInvestment !== undefined
-    ? effectiveAdInvestment
-    : amount;
+  // Comparison is now always against the user-entered amount to allow 1000€ total budget
+  const investmentToCheck = amount;
 
   if (investmentToCheck < MIN_INVESTMENT) {
-    if (feeMode === 'integrated') {
+    if (feeMode === 'integrated' && effectiveAdInvestment !== undefined) {
       return {
         valid: false,
-        error: `Con los fees integrados, la inversión efectiva en medios sería de ${Math.round(investmentToCheck).toLocaleString("es-ES")}€. El mínimo requerido es de ${MIN_INVESTMENT.toLocaleString("es-ES")}€. Aumenta el presupuesto o cambia a fees adicionales.`,
+        error: `Con los fees integrados, la inversión efectiva en medios sería de ${Math.round(effectiveAdInvestment).toLocaleString("es-ES")}€. El mínimo requerido es de ${MIN_INVESTMENT.toLocaleString("es-ES")}€. Aumenta el presupuesto o cambia a fees adicionales.`,
       };
     }
     return {
