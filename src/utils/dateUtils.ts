@@ -34,6 +34,48 @@ const getFridayOfWeek = (date: Date): Date => {
   return addDays(date, daysToFriday);
 };
 
+const isSpanishHoliday = (date: Date): boolean => {
+  const month = date.getMonth() + 1; // 1-12
+  const day = date.getDate();
+
+  // Festivos fijos (mes, día): (1, 1), (1, 6), (5, 1), (8, 15), (10, 12), (11, 1), (12, 6), (12, 8), (12, 25)
+  const holidays = [
+    [1, 1], [1, 6], [5, 1], [8, 15], [10, 12],
+    [11, 1], [12, 6], [12, 8], [12, 25]
+  ];
+
+  return holidays.some(([m, d]) => m === month && d === day);
+};
+
+export const addBusinessDaysWithHolidays = (startDate: Date, daysToAdd: number): Date => {
+  let currentDate = new Date(startDate);
+  let daysAdded = 0;
+  const step = daysToAdd >= 0 ? 1 : -1;
+  const targetDays = Math.abs(daysToAdd);
+
+  while (daysAdded < targetDays) {
+    currentDate = addDays(currentDate, step);
+    const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isSpanishHoliday(currentDate)) {
+      daysAdded++;
+    }
+  }
+
+  // Caso especial: Cuando el resultado cae en miércoles 7 de diciembre y el 6 de diciembre es martes,
+  // mover al viernes 9 de diciembre (sumar 2 días). Solo aplica si estamos sumando días (post-campaña).
+  if (
+    daysToAdd > 0 &&
+    currentDate.getMonth() + 1 === 12 &&
+    currentDate.getDate() === 7 &&
+    currentDate.getDay() === 3 // Wednesday
+  ) {
+    currentDate = addDays(currentDate, 2);
+  }
+
+  return currentDate;
+};
+
 export const calculateCampaignDates = (
   releaseDate: Date,
   hasAdaptationAddon: boolean,
@@ -53,11 +95,11 @@ export const calculateCampaignDates = (
   // Campaign end date (user selected or default to premiere weekend end)
   const endDate = campaignEndDate ? startOfDay(campaignEndDate) : premiereWeekendEnd;
 
-  // Final report: 3 business days after campaign end date
-  const finalReportDate = addBusinessDays(endDate, 3);
+  // Final report: 3 business days after campaign end date skipping holidays
+  const finalReportDate = addBusinessDaysWithHolidays(endDate, 3);
 
   // Creatives deadline: 3 business days before pre-campaign start
-  const creativesDeadline = addBusinessDays(preStartDate, -3);
+  const creativesDeadline = addBusinessDaysWithHolidays(preStartDate, -3);
 
   return {
     releaseDate: release,
