@@ -1665,7 +1665,7 @@ const QuickWizard = () => {
                           <span className="font-cinema text-lg text-muted-foreground">Este día recibirás el informe final</span>
                         </div>
                         <div className="text-2xl font-teko text-cinema-ivory">
-                          {formatDateEs(addDays(campaignDates.premiereWeekendEnd, 3))}
+                          {formatDateEs(campaignDates.finalReportDate)}
                         </div>
                       </div>
                     </div>
