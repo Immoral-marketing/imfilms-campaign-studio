@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bell, X, FileImage, Pencil, CheckCircle2, MessageSquare, Loader2 } from 'lucide-react';
+import { Bell, X, FileImage, Pencil, CheckCircle2, MessageSquare, Loader2, FileBarChart } from 'lucide-react';
 import { useGlobalNotifications } from '@/hooks/useGlobalNotifications';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -110,6 +110,7 @@ const GlobalNotificationWidget = ({ position = 'top' }: GlobalNotificationWidget
                                 const isMediaPlanReady = notif.message.startsWith('📅');
                                 const isMediaPlanApproved = notif.message.startsWith('✅');
                                 const isMediaPlanRejected = notif.message.startsWith('❌');
+                                const isReportReady = notif.message.startsWith('📊');
 
                                 let NotifIcon = FileImage;
                                 let notifTitle = 'Nuevas creatividades';
@@ -151,6 +152,11 @@ const GlobalNotificationWidget = ({ position = 'top' }: GlobalNotificationWidget
                                     notifTitle = notif.message.includes('(BETA)') ? 'Sugerencias en Plan de Medios (BETA)' : 'Sugerencias en Plan de Medios';
                                     iconColor = 'text-red-500';
                                     iconBg = 'bg-red-500/10';
+                                } else if (isReportReady) {
+                                    NotifIcon = FileBarChart;
+                                    notifTitle = 'Informe Listo';
+                                    iconColor = 'text-primary';
+                                    iconBg = 'bg-primary/10';
                                 }
 
                                 return (

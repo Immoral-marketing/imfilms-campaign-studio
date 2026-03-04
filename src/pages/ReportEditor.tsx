@@ -49,7 +49,7 @@ const ReportEditor = () => {
 
     const handleSave = async (isSubmitting = false) => {
         if (isSubmitting && !url) {
-            toast.error("Debes ingresar un enlace antes de enviar a revisión");
+            toast.error("Debes ingresar un enlace antes de enviar el informe");
             return;
         }
 
@@ -60,7 +60,7 @@ const ReportEditor = () => {
             };
 
             if (isSubmitting) {
-                updates.report_status = 'pendiente_aprobacion';
+                updates.report_status = 'aprobado';
             }
 
             const { error: updateError } = await supabase
@@ -90,12 +90,12 @@ const ReportEditor = () => {
                 // Add system notification
                 await supabase.from('campaign_messages').insert({
                     campaign_id: campaignId,
-                    message: `📊 Informe listo para revisión: ${campaign?.films?.title || 'Campaña'}`,
+                    message: `📊 Informe listo para lectura: ${campaign?.films?.title || 'Campaña'}`,
                     sender_role: 'system',
                     sender_name: 'Sistema'
                 } as any);
 
-                toast.success("Informe enviado para aprobación");
+                toast.success("Informe enviado correctamente");
             } else {
                 toast.success("Enlace guardado correctamente");
             }
@@ -151,7 +151,7 @@ const ReportEditor = () => {
                                 disabled={saving}
                             >
                                 <Send className="w-4 h-4 mr-2" />
-                                {saving ? 'Enviando...' : 'Enviar para aprobación'}
+                                {saving ? 'Enviando...' : 'Enviar informe'}
                             </Button>
                         </div>
                     </div>
@@ -193,7 +193,7 @@ const ReportEditor = () => {
                             <div>
                                 <h4 className="font-bold text-primary mb-1">Nota para la Distribuidora</h4>
                                 <p className="text-sm text-cinema-ivory/80">
-                                    Asegúrate de que el enlace sea accesible para la distribuidora. Al enviar para aprobación, se le notificará vía email y en su panel.
+                                    Asegúrate de que el enlace sea accesible para la distribuidora. Al enviar el informe, se le notificará vía email y en su panel.
                                 </p>
                             </div>
                         </div>

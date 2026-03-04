@@ -12,8 +12,6 @@ const ReportView = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [campaign, setCampaign] = useState<any>(null);
-    const [feedback, setFeedback] = useState("");
-    const [showRejectForm, setShowRejectForm] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -35,103 +33,12 @@ const ReportView = () => {
 
             if (campaignError) throw campaignError;
             setCampaign(campaignData);
-            setFeedback((campaignData as any).report_feedback || "");
 
         } catch (error) {
             console.error("Error fetching data:", error);
             toast.error("Error al cargar el informe");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleApprove = async () => {
-        try {
-            const { error } = await supabase
-                .from('campaigns')
-                .update({
-                    report_status: 'aprobado',
-                    report_feedback: null
-                } as any)
-                .eq('id', id);
-
-            if (error) throw error;
-
-            // Add system notification
-            await supabase.from('campaign_messages').insert({
-                campaign_id: id,
-                message: "✅ El informe ha sido aprobado por la distribuidora.",
-                sender_role: 'system',
-                sender_name: 'Sistema'
-            } as any);
-
-            // Send Email Notification
-            try {
-                await supabase.functions.invoke('send-email', {
-                    body: {
-                        type: 'report_approved',
-                        campaignId: id,
-                        campaignTitle: campaign?.films?.title || 'Campaña',
-                        distributorName: campaign?.distributors?.company_name || 'Distribuidora'
-                    }
-                });
-            } catch (emailErr) {
-                console.error("Error sending approval notification:", emailErr);
-            }
-
-            toast.success("Informe aprobado");
-            fetchData();
-        } catch (error) {
-            console.error("Error approving report:", error);
-            toast.error("Error al aprobar el informe");
-        }
-    };
-
-    const handleReject = async () => {
-        if (!feedback) {
-            toast.error("Por favor, ingresa tus sugerencias o motivos del rechazo");
-            return;
-        }
-
-        try {
-            const { error } = await supabase
-                .from('campaigns')
-                .update({
-                    report_status: 'rechazado',
-                    report_feedback: feedback
-                } as any)
-                .eq('id', id);
-
-            if (error) throw error;
-
-            // Add system notification
-            await supabase.from('campaign_messages').insert({
-                campaign_id: id,
-                message: `❌ El informe ha sido rechazado con sugerencias: "${feedback}"`,
-                sender_role: 'system',
-                sender_name: 'Sistema'
-            } as any);
-
-            // Send Email Notification
-            try {
-                await supabase.functions.invoke('send-email', {
-                    body: {
-                        type: 'report_rejected',
-                        campaignId: id,
-                        campaignTitle: campaign?.films?.title || 'Campaña',
-                        distributorName: campaign?.distributors?.company_name || 'Distribuidora'
-                    }
-                });
-            } catch (emailErr) {
-                console.error("Error sending rejection notification:", emailErr);
-            }
-
-            toast.success("Sugerencias enviadas correctamente");
-            setShowRejectForm(false);
-            fetchData();
-        } catch (error) {
-            console.error("Error rejecting report:", error);
-            toast.error("Error al enviar sugerencias");
         }
     };
 
@@ -169,17 +76,11 @@ const ReportView = () => {
                             'bg-primary/10'
                         }`}>
                         <div className="flex items-center gap-3">
-                            <AlertCircle className={`w-5 h-5 ${status === 'aprobado' ? 'text-green-500' :
-                                status === 'rechazado' ? 'text-red-500' :
-                                    'text-primary'
-                                }`} />
+                            <CheckCircle2 className={`w-5 h-5 ${status === 'aprobado' ? 'text-green-500' : 'text-primary'}`} />
                             <div>
                                 <span className="text-sm uppercase tracking-wider font-bold text-cinema-ivory/60">Estado del Informe:</span>
                                 <p className="font-cinema text-xl text-cinema-ivory">
-                                    {status === 'borrador' && 'Borrador'}
-                                    {status === 'pendiente_aprobacion' && 'Pendiente de Revisión'}
-                                    {status === 'aprobado' && 'Aprobado'}
-                                    {status === 'rechazado' && 'Rechazado con Sugerencias'}
+                                    {status === 'borrador' ? 'Borrador' : 'Disponible para Lectura'}
                                 </p>
                             </div>
                         </div>
@@ -205,60 +106,6 @@ const ReportView = () => {
                                 <p className="text-red-400 italic">No se ha proporcionado un enlace para este informe.</p>
                             )}
                         </div>
-
-                        {status === 'pendiente_aprobacion' && !showRejectForm && (
-                            <div className="pt-6 border-t border-cinema-gold/20 flex flex-wrap gap-4">
-                                <Button
-                                    className="bg-green-600 hover:bg-green-700 text-white min-w-[160px] font-bold transition-all"
-                                    onClick={handleApprove}
-                                >
-                                    <CheckCircle2 className="w-5 h-5 mr-2" />
-                                    Aprobar Informe
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="border-red-500 text-red-500 hover:bg-red-500/10 min-w-[160px] font-bold transition-all"
-                                    onClick={() => setShowRejectForm(true)}
-                                >
-                                    <MessageSquare className="w-5 h-5 mr-2" />
-                                    Sugerir Cambios
-                                </Button>
-                            </div>
-                        )}
-
-                        {showRejectForm && (
-                            <div className="pt-6 border-t border-cinema-gold/20 space-y-4">
-                                <h4 className="text-cinema-gold font-bold uppercase text-sm tracking-widest">Sugerencias o Motivo de Rechazo</h4>
-                                <Textarea
-                                    placeholder="Escribe aquí tus comentarios para el equipo de administración..."
-                                    className="bg-cinema-deep/50 border-cinema-gold/30 text-cinema-ivory min-h-[120px]"
-                                    value={feedback}
-                                    onChange={(e) => setFeedback(e.target.value)}
-                                />
-                                <div className="flex gap-3">
-                                    <Button
-                                        className="bg-red-600 hover:bg-red-700 text-white"
-                                        onClick={handleReject}
-                                    >
-                                        Enviar Sugerencias
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        className="text-cinema-ivory/60"
-                                        onClick={() => setShowRejectForm(false)}
-                                    >
-                                        Cancelar
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {status === 'rechazado' && !showRejectForm && (
-                            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                                <h4 className="text-red-400 font-bold mb-1 uppercase text-xs">Tus sugerencias enviadas:</h4>
-                                <p className="text-cinema-ivory/80 italic text-sm">"{(campaign as any).report_feedback}"</p>
-                            </div>
-                        )}
                     </div>
                 </Card>
             </div>

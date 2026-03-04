@@ -1345,17 +1345,12 @@ const CampaignsHistory = () => {
                                     e.stopPropagation();
                                     navigate(`/campaigns/${campaign.id}/report`);
                                   }}
-                                  className={`font-bold ${campaign.report_status === 'pendiente_aprobacion'
-                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 animate-pulse outline outline-2 outline-primary outline-offset-2'
-                                    : 'border-primary text-primary hover:bg-primary/10'
-                                    }`}
-                                  variant={campaign.report_status === 'pendiente_aprobacion' ? 'default' : 'outline'}
+                                  className="font-bold border-primary text-primary hover:bg-primary/10"
+                                  variant="outline"
                                   size="sm"
                                 >
                                   <FileBarChart className="w-4 h-4 mr-2" />
-                                  {campaign.report_status === 'pendiente_aprobacion'
-                                    ? 'Revisar Informe'
-                                    : 'Ver Informe'}
+                                  Ver Informe
                                 </Button>
                               )}
 
