@@ -193,16 +193,16 @@ const DemoWizard = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee variable (10%)</span>
-                    <span>500€</span>
+                    <span className="text-muted-foreground">Fee variable (20%)</span>
+                    <span>1.000€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee plataformas</span>
-                    <span>700€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
+                    <span>800€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Setup inicial *</span>
-                    <span>150€</span>
+                    <span className="text-muted-foreground">Fee fijo de gestión</span>
+                    <span>0€</span>
                   </div>
                 </div>
 
@@ -210,12 +210,9 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      6.350€
+                      6.800€
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Solo en tu primer lanzamiento
-                  </p>
                 </div>
               </Card>
 
@@ -238,16 +235,16 @@ const DemoWizard = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between p-2 bg-background/50 rounded">
-                    <span className="text-muted-foreground">Fee variable (10%)</span>
-                    <span>1.500€</span>
+                    <span className="text-muted-foreground">Fee variable (15%)</span>
+                    <span>2.250€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-background/50 rounded">
-                    <span className="text-muted-foreground">Fee plataformas</span>
-                    <span>700€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
+                    <span>800€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-background/50 rounded">
-                    <span className="text-muted-foreground">Setup inicial *</span>
-                    <span>600€</span>
+                    <span className="text-muted-foreground">Fee fijo de gestión</span>
+                    <span>0€</span>
                   </div>
                 </div>
 
@@ -255,12 +252,9 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      17.800€
+                      18.050€
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Solo en tu primer lanzamiento
-                  </p>
                 </div>
               </Card>
 
@@ -280,16 +274,16 @@ const DemoWizard = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee variable (6%)</span>
-                    <span>1.800€</span>
+                    <span className="text-muted-foreground">Fee variable (12%)</span>
+                    <span>3.600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee plataformas</span>
-                    <span>700€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
+                    <span>800€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Setup inicial *</span>
-                    <span>600€</span>
+                    <span className="text-muted-foreground">Fee fijo de gestión</span>
+                    <span>0€</span>
                   </div>
                 </div>
 
@@ -297,12 +291,9 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-cinema-yellow">
-                      33.100€
+                      34.400€
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    * Solo en tu primer lanzamiento
-                  </p>
                 </div>
               </Card>
             </div>
@@ -310,19 +301,19 @@ const DemoWizard = () => {
             <div className="space-y-3">
               <Card className="p-4 bg-blue-500/5 border-blue-500/20">
                 <p className="text-sm text-blue-600 dark:text-blue-400">
-                  <strong>Setup inicial:</strong> Solo se cobra en tu primer lanzamiento con nosotros. A partir del segundo, ya no se incluye.
+                  <strong>Fee de Setup:</strong> Aplicamos un fee fijo de 200€ por cada plataforma activa para la configuración inicial y optimización técnica.
                 </p>
               </Card>
 
               <Card className="p-4 bg-green-500/5 border-green-500/20">
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  <strong>Descuento por volumen:</strong> A partir del tercer lanzamiento, se aplica un 20% de descuento sobre el fee total (fijo y variable).
+                  <strong>Fees Flexibles:</strong> Nuestra estructura de fees se ajusta según el volumen de inversión, reduciendo el porcentaje variable a medida que crece el presupuesto.
                 </p>
               </Card>
 
               <Card className="p-4 bg-purple-500/5 border-purple-500/20">
                 <p className="text-sm text-purple-600 dark:text-purple-400">
-                  <strong>Grandes inversiones:</strong> Inversiones superiores a 100.000€ tienen un 6% de fee variable sin fees fijos adicionales, solo el 6% de variable.
+                  <strong>Inversiones Reducidas:</strong> Para campañas de hasta 3.000€, aplicamos un fee fijo de gestión de 500€ sin porcentaje variable adicional.
                 </p>
               </Card>
             </div>

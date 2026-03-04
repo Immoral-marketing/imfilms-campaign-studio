@@ -1,18 +1,20 @@
 import { useMemo } from "react";
+import { useFeeThresholds, FeeThreshold } from "./useFeeThresholds";
 
 export type FeeMode = 'additional' | 'integrated';
 
 export interface CampaignCosts {
   adInvestment: number;
-  effectiveAdInvestment: number; // Real ad spend after fee deduction (in integrated mode)
+  effectiveAdInvestment: number;
   fixedFeePlatforms: number;
   variableFeeInvestment: number;
   setupFee: number;
-  totalFees: number; // Sum of all fees (fixed + variable + setup)
+  totalFees: number;
   addonsBaseCost: number;
   totalEstimated: number;
   feeMode: FeeMode;
-  variableFeeRate?: number; // Optional for backward compatibility if needed, but we always return it now
+  variableFeeRate?: number;
+  isLoading?: boolean;
 }
 
 export interface CampaignConfig {
@@ -33,91 +35,71 @@ const ADDON_PRICES = {
   emailWhatsapp: 390,
 };
 
-const PLATFORM_SETUP_FEE = 200; // Updated to 200
-const FIXED_FEE = 500;          // Updated to 500
-export const MIN_INVESTMENT = 1000; // Updated to 1000
+// Default fallbacks (current rules)
+const DEFAULT_THRESHOLDS: FeeThreshold[] = [
+  { id: '1', min_investment: 0, max_investment: 3000, variable_fee_rate: 0, fixed_fee_amount: 500, setup_fee_per_platform: 200, is_variable_fee_enabled: false, is_fixed_fee_enabled: true, is_setup_fee_enabled: true },
+  { id: '2', min_investment: 3001, max_investment: 8000, variable_fee_rate: 0.20, fixed_fee_amount: 0, setup_fee_per_platform: 200, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: true },
+  { id: '3', min_investment: 8001, max_investment: 15000, variable_fee_rate: 0.15, fixed_fee_amount: 0, setup_fee_per_platform: 200, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: true },
+  { id: '4', min_investment: 15001, max_investment: 30000, variable_fee_rate: 0.12, fixed_fee_amount: 0, setup_fee_per_platform: 200, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: true },
+  { id: '5', min_investment: 30001, max_investment: null, variable_fee_rate: 0.08, fixed_fee_amount: 0, setup_fee_per_platform: 200, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: true },
+];
 
-// Variable fee percentage based on investment tier
-const getVariableFeeRate = (investment: number): number => {
-  if (investment >= 100000) {
-    return 0.06; // 6% for 100k+
-  }
-  if (investment >= 50000) {
-    return 0.08; // 8% for 50k - 100k
-  }
-  if (investment >= 35000) {
-    return 0.09; // 9% for 35k - 50k
-  }
-  return 0.10; // 10% for < 35k
+export const MIN_INVESTMENT = 1000;
+
+const getThresholdForInvestment = (investment: number, thresholds: FeeThreshold[]): FeeThreshold => {
+  return thresholds.find(t =>
+    investment >= t.min_investment && (t.max_investment === null || investment <= t.max_investment)
+  ) || thresholds[thresholds.length - 1]; // Fallback to last tier
 };
 
-// Calculate variable fee based on investment
-const calculateVariableFee = (investment: number): number => {
-  return investment * getVariableFeeRate(investment);
+const getApplicableFees = (investment: number, numPlatforms: number, thresholds: FeeThreshold[]) => {
+  const threshold = getThresholdForInvestment(investment, thresholds);
+
+  const setupFee = threshold.is_setup_fee_enabled ? numPlatforms * threshold.setup_fee_per_platform : 0;
+  const fixedFee = threshold.is_fixed_fee_enabled ? threshold.fixed_fee_amount : 0;
+  const variableRate = threshold.is_variable_fee_enabled ? threshold.variable_fee_rate : 0;
+
+  return { fixedFee, setupFee, variableRate };
 };
 
-// Determine applied fees based on investment tiers
-const getApplicableFees = (investment: number, numPlatforms: number) => {
-  let fixedFee = 0;
-  let setupFee = 0;
-
-  if (investment < 11000) {
-    // Tier 1 (1k - 10999): Fixed + Setup + Variable
-    if (numPlatforms > 0) fixedFee = FIXED_FEE;
-    setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
-  } else if (investment < 30000) {
-    // Tier 2 (11k - 29999): Setup + Variable (No Fixed)
-    fixedFee = 0;
-    setupFee = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
-  } else {
-    // Tier 3 (30k+): Variable only (No Fixed, No Setup)
-    fixedFee = 0;
-    setupFee = 0;
-  }
-
-  return { fixedFee, setupFee };
-};
-
-
-// For integrated mode: calculate effective investment from total budget
-// We need to reverse calculate, accounting for the tiers
 const calculateEffectiveInvestmentFromBudget = (
   totalBudget: number,
-  numPlatforms: number
+  numPlatforms: number,
+  thresholds: FeeThreshold[]
 ): number => {
-  // Strategy: Try tiers from highest to lowest.
-  // E = (B - F - S) / (1 + R)
+  // We need to iterate through thresholds to find which one fits when reverse-calculating
+  // We'll try from highest to lowest to avoid overlap issues
+  const sortedThresholds = [...thresholds].sort((a, b) => (b.min_investment - a.min_investment));
 
-  const setupFeeForTier12 = Math.max(0, numPlatforms - 1) * PLATFORM_SETUP_FEE;
-  const fixedFeeForTier1 = FIXED_FEE;
+  for (const t of sortedThresholds) {
+    const setupFee = t.is_setup_fee_enabled ? numPlatforms * t.setup_fee_per_platform : 0;
+    const fixedFee = t.is_fixed_fee_enabled ? t.fixed_fee_amount : 0;
+    const variableRate = t.is_variable_fee_enabled ? t.variable_fee_rate : 0;
 
-  let effectiveInvestment: number;
+    const effectiveAdInvestment = (totalBudget - setupFee - fixedFee) / (1 + variableRate);
 
-  // Try Tier 4 (Effective >= 100k) -> No Fixed, No Setup, 6% Variable
-  effectiveInvestment = totalBudget / (1 + 0.06);
-  if (effectiveInvestment >= 100000) return effectiveInvestment;
+    // Check if the resulting investment falls within this threshold's range
+    if (effectiveAdInvestment >= t.min_investment && (t.max_investment === null || effectiveAdInvestment <= t.max_investment)) {
+      return Math.max(0, effectiveAdInvestment);
+    }
+  }
 
-  // Try Tier 3 (Effective 50k - 99999) -> No Fixed, No Setup, 8% Variable
-  effectiveInvestment = totalBudget / (1 + 0.08);
-  if (effectiveInvestment >= 50000) return effectiveInvestment;
-
-  // Try Tier 1 (Effective 11k - 29999) -> No Fixed, Setup, 10% Variable
-  effectiveInvestment = (totalBudget - setupFeeForTier12) / (1 + 0.10);
-  if (effectiveInvestment >= 11000) return Math.max(0, effectiveInvestment);
-
-  // Fallback: Effective < 11k -> Fixed, Setup, 10% Variable
-  effectiveInvestment = (totalBudget - fixedFeeForTier1 - setupFeeForTier12) / (1 + 0.10);
-  return Math.max(0, effectiveInvestment);
+  // Final fallback (safety)
+  return Math.max(0, totalBudget - 500 - (numPlatforms * 200));
 };
 
 export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & { variableFeeRate: number } => {
   const { adInvestment, isFirstRelease, selectedAddons, platforms, feeMode } = config;
+  const { data: dbThresholds, isLoading } = useFeeThresholds();
+
+  const thresholds = useMemo(() => {
+    return (dbThresholds && dbThresholds.length > 0) ? dbThresholds : DEFAULT_THRESHOLDS;
+  }, [dbThresholds]);
 
   return useMemo(() => {
     const numPlatforms = platforms.length;
     const inputAmount = adInvestment;
 
-    // Calculate addons base cost
     let addonsBaseCost = 0;
     if (selectedAddons.adaptacion) addonsBaseCost += ADDON_PRICES.adaptacion;
     if (selectedAddons.microsite) addonsBaseCost += ADDON_PRICES.microsite;
@@ -132,30 +114,28 @@ export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & {
     let variableFeeRate: number;
 
     if (feeMode === 'integrated') {
-      // Input is TOTAL budget
       effectiveAdInvestment = calculateEffectiveInvestmentFromBudget(
         inputAmount,
-        numPlatforms
+        numPlatforms,
+        thresholds
       );
 
-      // Now calculate fees forward based on the determined effective investment
-      const fees = getApplicableFees(effectiveAdInvestment, numPlatforms);
+      const fees = getApplicableFees(effectiveAdInvestment, numPlatforms, thresholds);
       fixedFeePlatforms = fees.fixedFee;
       setupFee = fees.setupFee;
-      variableFeeRate = getVariableFeeRate(effectiveAdInvestment);
+      variableFeeRate = fees.variableRate;
       variableFeeInvestment = effectiveAdInvestment * variableFeeRate;
 
       totalFees = fixedFeePlatforms + setupFee + variableFeeInvestment;
       totalEstimated = inputAmount + addonsBaseCost;
 
     } else {
-      // Input is INVESTMENT
       effectiveAdInvestment = inputAmount;
 
-      const fees = getApplicableFees(effectiveAdInvestment, numPlatforms);
+      const fees = getApplicableFees(effectiveAdInvestment, numPlatforms, thresholds);
       fixedFeePlatforms = fees.fixedFee;
       setupFee = fees.setupFee;
-      variableFeeRate = getVariableFeeRate(effectiveAdInvestment);
+      variableFeeRate = fees.variableRate;
       variableFeeInvestment = effectiveAdInvestment * variableFeeRate;
 
       totalFees = fixedFeePlatforms + setupFee + variableFeeInvestment;
@@ -173,6 +153,7 @@ export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & {
       totalEstimated,
       feeMode,
       variableFeeRate,
+      isLoading,
     };
   }, [
     adInvestment,
@@ -182,6 +163,8 @@ export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & {
     selectedAddons.emailWhatsapp,
     platforms.length,
     feeMode,
+    thresholds,
+    isLoading
   ]);
 };
 

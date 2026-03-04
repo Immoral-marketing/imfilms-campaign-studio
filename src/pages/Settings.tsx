@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { User, Camera, Save, Lock, ArrowLeft, Loader2, Eye, EyeOff, Settings as SettingsIcon, Mail, Zap } from 'lucide-react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { FeeThresholdManager } from '@/components/FeeThresholdManager';
 
 type SettingsTab = 'account' | 'notifications' | 'features';
 
@@ -463,6 +464,10 @@ const Settings = () => {
                                     disabled={flagsLoading}
                                     className="data-[state=checked]:bg-primary"
                                 />
+                            </div>
+
+                            <div className="border-t border-white/5 pt-8 mt-4">
+                                <FeeThresholdManager />
                             </div>
                         </div>
                     </CardContent>
