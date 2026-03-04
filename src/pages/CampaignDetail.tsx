@@ -379,6 +379,7 @@ const CampaignDetail = () => {
                   film={film}
                   platforms={campaign.campaign_platforms}
                   campaignId={campaign.id}
+                  creativesDeadline={campaign.creatives_deadline}
                   totalBudget={campaign.ad_investment_amount}
                   feeDetails={{
                     fixed_fee_amount: campaign.fixed_fee_amount,

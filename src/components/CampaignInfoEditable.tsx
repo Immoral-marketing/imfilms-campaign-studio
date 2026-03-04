@@ -29,6 +29,9 @@ import { toast } from "sonner";
 import { useCampaignCalculator, FeeMode } from "@/hooks/useCampaignCalculator";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getRelativeTime } from "@/utils/dateUtils";
+import { AlertTriangle, Clock } from "lucide-react";
 
 const formSchema = z.object({
     title: z.string().min(1, "El título es obligatorio"),
@@ -78,6 +81,7 @@ interface CampaignInfoEditableProps {
     };
     disabled?: boolean;
     isAdmin?: boolean;
+    creativesDeadline?: string;
     onEditingChange?: (isEditing: boolean) => void;
 }
 
@@ -89,6 +93,7 @@ export const CampaignInfoEditable = ({
     feeDetails,
     disabled,
     isAdmin,
+    creativesDeadline,
     onEditingChange
 }: CampaignInfoEditableProps) => {
     const formRef = useRef<HTMLFormElement>(null);
@@ -100,6 +105,13 @@ export const CampaignInfoEditable = ({
     const [budgetMode, setBudgetMode] = useState<'percent' | 'amount'>('percent');
     const { mutate: createProposal, isPending } = useCreateFilmProposal();
     const [uploadingFiles, setUploadingFiles] = useState(false);
+
+    const deadlineInfo = useMemo(() => {
+        if (!creativesDeadline) return null;
+        return getRelativeTime(new Date(creativesDeadline));
+    }, [creativesDeadline]);
+
+    const isDeadlinePassed = deadlineInfo?.isPast && !isAdmin;
 
     // Infer initial fee mode
     // If Total Est ~= Ad Inv + Addons -> Integrated
@@ -387,17 +399,35 @@ export const CampaignInfoEditable = ({
         return (
             <div className="space-y-6">
                 <div className="flex items-center justify-between border-b pb-4">
-                    <h3 className="font-cinema text-xl text-primary">Información de la Película</h3>
+                    <div className="flex flex-col gap-1">
+                        <h3 className="font-cinema text-xl text-primary">Información de la Película</h3>
+                        {deadlineInfo && !isAdmin && (
+                            <div className={`flex items-center gap-2 text-xs font-medium ${deadlineInfo.isPast ? 'text-red-400' : 'text-yellow-400'}`}>
+                                <Clock className="h-3 w-3" />
+                                <span>Fecha límite de cambios: {deadlineInfo.text.toLowerCase() === 'hoy' ? 'Hoy' : deadlineInfo.text}</span>
+                            </div>
+                        )}
+                    </div>
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setIsEditing(true)}
-                        disabled={disabled}
+                        disabled={disabled || isDeadlinePassed}
                     >
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
                     </Button>
                 </div>
+
+                {isDeadlinePassed && (
+                    <Alert variant="destructive" className="bg-red-500/10 border-red-500/30 text-red-400">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle className="font-cinema">Edición deshabilitada</AlertTitle>
+                        <AlertDescription>
+                            La fecha límite para realizar cambios en esta campaña ha superado (Deadline de Creativos). Solo un administrador puede realizar modificaciones ahora.
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
