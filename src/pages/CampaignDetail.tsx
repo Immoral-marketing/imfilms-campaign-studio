@@ -222,7 +222,7 @@ const CampaignDetail = () => {
                   className="bg-primary text-primary-foreground"
                 >
                   <Save className="h-4 w-4 mr-1" />
-                  Guardar Propuesta
+                  {userRole === 'admin' ? 'Guardar Cambios' : 'Guardar Propuesta'}
                 </Button>
               </div>
             )}
@@ -387,7 +387,8 @@ const CampaignDetail = () => {
                     addons_base_amount: campaign.addons_base_amount,
                     total_estimated_amount: campaign.total_estimated_amount
                   }}
-                  disabled={!!pendingProposal || userRole !== 'distributor'}
+                  disabled={!!pendingProposal}
+                  isAdmin={userRole === 'admin'}
                   onEditingChange={setIsDetailsEditing}
                 />
               </div>

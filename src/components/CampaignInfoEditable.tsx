@@ -77,6 +77,7 @@ interface CampaignInfoEditableProps {
         total_estimated_amount: number;
     };
     disabled?: boolean;
+    isAdmin?: boolean;
     onEditingChange?: (isEditing: boolean) => void;
 }
 
@@ -87,6 +88,7 @@ export const CampaignInfoEditable = ({
     totalBudget,
     feeDetails,
     disabled,
+    isAdmin,
     onEditingChange
 }: CampaignInfoEditableProps) => {
     const formRef = useRef<HTMLFormElement>(null);
@@ -104,13 +106,6 @@ export const CampaignInfoEditable = ({
     // If Total Est > Ad Inv + Addons -> Additional (because fees are on top)
     const initialFeeModeIntegrated = useMemo(() => {
         const estimatedFees = (feeDetails.fixed_fee_amount || 0) + (feeDetails.variable_fee_amount || 0) + (feeDetails.setup_fee_amount || 0);
-        const totalWithFees = totalBudget + estimatedFees + (feeDetails.addons_base_amount || 0);
-        return Math.abs(totalWithFees - feeDetails.total_estimated_amount) > 1; // If stored total is different from sum, it implies integrated (where TotalEst is just the budget input)
-        // Wait, let's reverse logic:
-        // Integrated: User says "I have 1000". We take fees FROM it. Total Est = 1000 (plus addons maybe). 
-        // Additional: User says "I want 1000 ads". We ADD fees. Total Est = 1000 + Fees + Addons.
-
-        // So if Total Est approx equals Ad Inv + Addons -> Integrated.
         const expectedIntegratedTotal = totalBudget + (feeDetails.addons_base_amount || 0);
         const diffIntegrated = Math.abs(expectedIntegratedTotal - feeDetails.total_estimated_amount);
 
@@ -369,7 +364,8 @@ export const CampaignInfoEditable = ({
         createProposal({
             filmId: film.id,
             campaignId,
-            proposedData: changes
+            proposedData: changes as any,
+            autoApprove: isAdmin
         }, {
             onSuccess: () => {
                 setIsEditing(false);

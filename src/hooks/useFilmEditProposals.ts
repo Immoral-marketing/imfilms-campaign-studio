@@ -41,7 +41,13 @@ export interface CreateProposalInput {
             platform_name: string;
             budget_percent: number;
         }[];
+        ad_investment_amount?: number;
+        fixed_fee_amount?: number;
+        variable_fee_amount?: number;
+        setup_fee_amount?: number;
+        total_estimated_amount?: number;
     };
+    autoApprove?: boolean;
 }
 
 // Query keys
@@ -81,26 +87,37 @@ export const useCreateFilmProposal = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ filmId, campaignId, proposedData }: CreateProposalInput) => {
+        mutationFn: async ({ filmId, campaignId, proposedData, autoApprove = false }: CreateProposalInput) => {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
                 throw new Error('Usuario no autenticado');
             }
 
+            // 1. Insert the proposal
             const { data, error } = await supabase
                 .from('film_edit_proposals')
                 .insert({
                     film_id: filmId,
                     campaign_id: campaignId,
                     proposed_data: proposedData,
-                    status: 'pending',
+                    status: autoApprove ? 'approved' : 'pending',
                     created_by: user.id,
+                    reviewed_by: autoApprove ? user.id : null,
+                    reviewed_at: autoApprove ? new Date().toISOString() : null,
                 })
                 .select()
                 .single();
 
             if (error) throw error;
+
+            // 2. If autoApprove, apply changes immediately using RPC
+            if (autoApprove) {
+                const { error: applyError } = await supabase.rpc('apply_approved_film_edit', {
+                    proposal_id: data.id,
+                });
+                if (applyError) throw applyError;
+            }
 
             // Insert system notification message into campaign chat
             try {
@@ -118,11 +135,14 @@ export const useCreateFilmProposal = () => {
                     secondary_genre: 'Género secundario',
                     target_audience_text: 'Público objetivo',
                     main_goals: 'Objetivos',
+                    ad_investment_amount: 'Presupuesto',
                 };
                 const fieldNames = changedFields.map(k => fieldLabels[k] || k).join(', ');
                 const platformsPart = proposedData.platforms ? ' y plataformas' : '';
 
-                const chatMessage = `✏️ ${userName} ha propuesto cambios en la campaña (${fieldNames}${platformsPart}). Pendiente de aprobación.`;
+                const chatMessage = autoApprove
+                    ? `✅ ${userName} ha actualizado directamente la campaña (${fieldNames}${platformsPart}).`
+                    : `✏️ ${userName} ha propuesto cambios en la campaña (${fieldNames}${platformsPart}). Pendiente de aprobación.`;
 
                 await supabase
                     .from("campaign_messages")
@@ -133,34 +153,36 @@ export const useCreateFilmProposal = () => {
                         message: chatMessage,
                     } as any);
 
-                // --- Trigger Email Notification to Admins ---
-                try {
-                    // Fetch campaign and distributor info for the email
-                    const { data: campaignData } = await supabase
-                        .from('campaigns')
-                        .select(`
-                            id,
-                            films (title),
-                            distributors (company_name)
-                        `)
-                        .eq('id', campaignId)
-                        .single();
+                // --- Trigger Email Notification to Admins (only if NOT autoApprove) ---
+                if (!autoApprove) {
+                    try {
+                        // Fetch campaign and distributor info for the email
+                        const { data: campaignData } = await supabase
+                            .from('campaigns')
+                            .select(`
+                                id,
+                                films (title),
+                                distributors (company_name)
+                            `)
+                            .eq('id', campaignId)
+                            .single();
 
-                    if (campaignData) {
-                        const filmTitle = (campaignData.films as any)?.title || 'Campaña sin título';
-                        const companyName = (campaignData.distributors as any)?.company_name || userName;
+                        if (campaignData) {
+                            const filmTitle = (campaignData.films as any)?.title || 'Campaña sin título';
+                            const companyName = (campaignData.distributors as any)?.company_name || userName;
 
-                        await supabase.functions.invoke('send-email', {
-                            body: {
-                                type: 'edit_proposal_created',
-                                campaignId: campaignId,
-                                campaignTitle: filmTitle,
-                                distributorName: companyName
-                            }
-                        });
+                            await supabase.functions.invoke('send-email', {
+                                body: {
+                                    type: 'edit_proposal_created',
+                                    campaignId: campaignId,
+                                    campaignTitle: filmTitle,
+                                    distributorName: companyName
+                                }
+                            });
+                        }
+                    } catch (emailErr) {
+                        console.error("Email notification error (non-fatal):", emailErr);
                     }
-                } catch (emailErr) {
-                    console.error("Email notification error (non-fatal):", emailErr);
                 }
             } catch (sysErr) {
                 console.error("System message/email error (non-fatal):", sysErr);
@@ -168,15 +190,24 @@ export const useCreateFilmProposal = () => {
 
             return data as unknown as FilmEditProposal;
         },
-        onSuccess: (data) => {
-            // Invalidate queries to refetch pending proposals
+        onSuccess: (data, variables) => {
+            // Invalidate queries to refetch pending proposals and campaign data
             queryClient.invalidateQueries({
                 queryKey: filmEditProposalKeys.byFilm(data.film_id)
             });
 
-            toast.success('Propuesta enviada', {
-                description: 'Los cambios están pendientes de revisión por un administrador.',
-            });
+            if (variables.autoApprove) {
+                queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                queryClient.invalidateQueries({ queryKey: ['films'] });
+
+                toast.success('Cambios aplicados', {
+                    description: 'La campaña ha sido actualizada correctamente.',
+                });
+            } else {
+                toast.success('Propuesta enviada', {
+                    description: 'Los cambios están pendientes de revisión por un administrador.',
+                });
+            }
         },
         onError: (error: any) => {
             console.error('Error creating proposal:', error);

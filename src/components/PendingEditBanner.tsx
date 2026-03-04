@@ -222,7 +222,7 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
                         ) : (
                             <div className="space-y-3">
                                 <div className="space-y-2">
-                                    <Label htmlFor="reject-comment" className="text-black font-medium">
+                                    <Label htmlFor="reject-comment" className="text-white font-medium">
                                         Comentario de rechazo (opcional)
                                     </Label>
                                     <Textarea
@@ -231,7 +231,7 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
                                         onChange={(e) => setRejectComment(e.target.value)}
                                         placeholder="Explica por qué se rechazan estos cambios..."
                                         rows={3}
-                                        className="resize-none bg-white border-gray-300"
+                                        className="resize-none bg-black/40 border-cinema-yellow/30 text-white placeholder:text-gray-500"
                                     />
                                 </div>
                                 <div className="flex gap-3">
