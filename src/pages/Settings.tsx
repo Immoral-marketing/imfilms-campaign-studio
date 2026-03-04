@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { User, Camera, Save, Lock, ArrowLeft, Loader2, Eye, EyeOff, Settings as SettingsIcon, Mail, Zap } from 'lucide-react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { FeeThresholdManager } from '@/components/FeeThresholdManager';
+import { CalendlySetting } from '@/components/CalendlySetting';
 
 type SettingsTab = 'account' | 'notifications' | 'features';
 
@@ -419,57 +420,82 @@ const Settings = () => {
         const metricsEnabled = isEnabled('show_metrics_comparative', true);
 
         return (
-            <div className="space-y-6">
+            <div className="space-y-8">
                 <div>
                     <h2 className="font-cinema text-2xl tracking-wide text-cinema-ivory">Funciones</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Activa o desactiva funciones de la plataforma. Los cambios aplican para todos los usuarios.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Administra las capacidades globales de la plataforma.</p>
                 </div>
+
+                {/* Section: Feature Flags */}
                 <Card className="bg-[#1f1f22] border-cinema-gold/10">
-                    <CardContent className="pt-6">
-                        <div className="space-y-1">
-                            {/* Feature: BETA Media Plan */}
-                            <div className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors">
-                                <div className="flex-1 min-w-0 pr-4">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-cinema-ivory">Plan de Medios (BETA)</p>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">BETA</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Muestra el botón "Agregar plan (BETA)" en el dashboard de campañas para administradores y distribuidoras.
-                                    </p>
+                    <CardHeader>
+                        <CardTitle className="text-cinema-ivory font-body font-normal text-lg tracking-wide flex items-center gap-2">
+                            Interruptores de Funciones
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1">
+                        {/* Feature: BETA Media Plan */}
+                        <div className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors">
+                            <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium text-cinema-ivory">Plan de Medios (BETA)</p>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">BETA</span>
                                 </div>
-                                <Switch
-                                    checked={betaEnabled}
-                                    onCheckedChange={() => handleToggleFlag('show_beta_media_plan', betaEnabled)}
-                                    disabled={flagsLoading}
-                                    className="data-[state=checked]:bg-primary"
-                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Muestra el botón "Agregar plan (BETA)" en el dashboard de campañas.
+                                </p>
                             </div>
-
-                            <div className="border-t border-white/5" />
-
-                            {/* Feature: Metrics / Comparative */}
-                            <div className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors">
-                                <div className="flex-1 min-w-0 pr-4">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium text-cinema-ivory">Métricas / Comparativas</p>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Muestra la pestaña "Métricas / Comparativas" en el dashboard para todos los usuarios.
-                                    </p>
-                                </div>
-                                <Switch
-                                    checked={metricsEnabled}
-                                    onCheckedChange={() => handleToggleFlag('show_metrics_comparative', metricsEnabled)}
-                                    disabled={flagsLoading}
-                                    className="data-[state=checked]:bg-primary"
-                                />
-                            </div>
-
-                            <div className="border-t border-white/5 pt-8 mt-4">
-                                <FeeThresholdManager />
-                            </div>
+                            <Switch
+                                checked={betaEnabled}
+                                onCheckedChange={() => handleToggleFlag('show_beta_media_plan', betaEnabled)}
+                                disabled={flagsLoading}
+                                className="data-[state=checked]:bg-primary"
+                            />
                         </div>
+
+                        <div className="border-t border-white/5" />
+
+                        {/* Feature: Metrics / Comparative */}
+                        <div className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors">
+                            <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium text-cinema-ivory">Métricas / Comparativas</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Muestra la pestaña "Métricas / Comparativas" en el dashboard.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={metricsEnabled}
+                                onCheckedChange={() => handleToggleFlag('show_metrics_comparative', metricsEnabled)}
+                                disabled={flagsLoading}
+                                className="data-[state=checked]:bg-primary"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Section: Calendly */}
+                <Card className="bg-[#1f1f22] border-cinema-gold/10">
+                    <CardHeader>
+                        <CardTitle className="text-cinema-ivory font-body font-normal text-lg tracking-wide flex items-center gap-2">
+                            Calendly
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <CalendlySetting />
+                    </CardContent>
+                </Card>
+
+                {/* Section: Fees/Thresholds */}
+                <Card className="bg-[#1f1f22] border-cinema-gold/10">
+                    <CardHeader>
+                        <CardTitle className="text-cinema-ivory font-body font-normal text-lg tracking-wide flex items-center gap-2">
+                            Gestión de Umbrales (Fees)
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <FeeThresholdManager />
                     </CardContent>
                 </Card>
             </div>

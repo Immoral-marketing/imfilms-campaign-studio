@@ -60,7 +60,7 @@ export const FeeThresholdManager = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-cinema-ivory">Gestión de Umbrales de Fees</h3>
+                <h3 className="text-lg font-normal text-cinema-ivory">Gestión de Umbrales de Fees</h3>
                 {!isAdding && (
                     <Button onClick={handleAdd} size="sm" className="bg-primary hover:bg-primary/90 text-black">
                         <Plus className="h-4 w-4 mr-2" />

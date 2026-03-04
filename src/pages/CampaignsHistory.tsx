@@ -23,6 +23,7 @@ import CampaignNotesModal from "@/components/CampaignNotesModal";
 import CampaignLabels from "@/components/CampaignLabels";
 import { NavbarAdmin } from "@/components/NavbarAdmin";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import CalendlyModal from "@/components/CalendlyModal";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -59,6 +60,7 @@ const CampaignsHistory = () => {
 
   // KPI Modal State
   const [showKPIModal, setShowKPIModal] = useState(false);
+  const [showCalendly, setShowCalendly] = useState(false);
   const [selectedCampaignForKPI, setSelectedCampaignForKPI] = useState<any>(null);
   const [kpiData, setKPIData] = useState({
     reach: "",
@@ -817,6 +819,16 @@ const CampaignsHistory = () => {
               >
                 <Shield className="w-4 h-4 mr-2 cinema-icon" />
                 Invitar Admin
+              </Button>
+            )}
+            {!isAdmin && (
+              <Button
+                onClick={() => setShowCalendly(true)}
+                variant="outline"
+                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+              >
+                <Calendar className="w-4 h-4 mr-2 cinema-icon" />
+                Agenda una reunión
               </Button>
             )}
             <div className="flex rounded-md shadow-sm">
@@ -1600,6 +1612,10 @@ const CampaignsHistory = () => {
       )}
 
 
+      <CalendlyModal
+        isOpen={showCalendly}
+        onClose={() => setShowCalendly(false)}
+      />
     </div>
   );
 };
