@@ -795,8 +795,17 @@ export const CampaignInfoEditable = ({
                                                                 max={budgetMode === 'percent' ? 100 : undefined}
                                                                 {...field}
                                                                 onChange={e => {
-                                                                    const val = parseFloat(e.target.value) || 0;
-                                                                    field.onChange(val);
+                                                                    const rawValue = e.target.value;
+
+                                                                    // If empty, let the field be empty for UI but use 0 for calculations
+                                                                    const val = rawValue === "" ? 0 : parseFloat(rawValue);
+
+                                                                    // Force field to reflect empty string if that's what user typed
+                                                                    if (rawValue === "") {
+                                                                        field.onChange("" as any);
+                                                                    } else {
+                                                                        field.onChange(val);
+                                                                    }
 
                                                                     const currentTotal = form.getValues("ad_investment_amount");
 
@@ -806,11 +815,7 @@ export const CampaignInfoEditable = ({
                                                                         form.setValue(`platforms.${index}.budget_amount`, amount);
                                                                     } else {
                                                                         // Amount Mode: Update Total Budget and ALL Percentages
-                                                                        // 1. Calculate new total from all platform amounts
                                                                         const allPlatforms = form.getValues("platforms");
-                                                                        // Note: form.getValues gives us the current state. 
-                                                                        // Since we just called field.onChange(val), react-hook-form *should* have the new value in state OR we rely on the object reference if not yet committed.
-                                                                        // Safer to explicitly update the value in our calculation array
                                                                         allPlatforms[index].budget_amount = val;
 
                                                                         const newSum = allPlatforms.reduce((acc, p) => acc + (p.budget_amount || 0), 0);

@@ -240,9 +240,9 @@ const Wizard = () => {
     }
   }, [releaseDate, manualEndDateMode, selectedAddons.adaptacion]);
 
-  // Check for conflicts when key data changes (Step 2 onwards)
+  // Check for conflicts when key data changes (Step 2 onwards) - ONLY in edit mode
   useEffect(() => {
-    if (currentStep >= 2 && releaseDate && filmData.genre) {
+    if (isEditMode && currentStep >= 2 && releaseDate && filmData.genre) {
       setHasCheckedConflicts(false); // Reset status on change
       const delayCheck = setTimeout(async () => {
         const dates = calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate);
@@ -259,7 +259,7 @@ const Wizard = () => {
 
       return () => clearTimeout(delayCheck);
     }
-  }, [releaseDate, filmData.genre, filmData.otherGenre, filmData.targetAudience, filmData.country, currentStep]);
+  }, [releaseDate, filmData.genre, filmData.otherGenre, filmData.targetAudience, filmData.country, currentStep, isEditMode]);
 
 
   // Load campaign data for admin review mode
@@ -1556,7 +1556,11 @@ const Wizard = () => {
                           <HelpTooltip
                             fieldId="film_genre"
                             title="¿Por qué te preguntamos el género?"
-                            content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                            content={
+                              isEditMode
+                                ? "El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                                : "El género nos ayuda a definir las audiencias correctas e influye en el tipo de creatividad y plataformas recomendadas para tu estreno."
+                            }
                           />
                         </div>
                         <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>
@@ -1831,7 +1835,11 @@ const Wizard = () => {
                       <HelpTooltip
                         fieldId="campaign_phases"
                         title="¿Por qué te preguntamos las fechas?"
-                        content="Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima. Nuestro algoritmo también las usa para evitar conflictos con otras campañas similares."
+                        content={
+                          isEditMode
+                            ? "Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima. Nuestro algoritmo también las usa para evitar conflictos con otras campañas similares."
+                            : "Las fechas nos permiten definir la pre-campaña, el fin de semana del estreno y la duración óptima de tu estrategia digital."
+                        }
                       />
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
@@ -1895,8 +1903,8 @@ const Wizard = () => {
                   </div>
                 </div>
 
-                {/* Conflict Detection Alert */}
-                {releaseDate && hasCheckedConflicts && conflictResult && (
+                {/* Conflict Detection Alert - ONLY in Edit Mode */}
+                {isEditMode && releaseDate && hasCheckedConflicts && conflictResult && (
                   <div className="animate-in fade-in duration-500">
                     <ConflictAlert
                       level={conflictResult.level}

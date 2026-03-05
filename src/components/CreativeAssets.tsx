@@ -330,17 +330,66 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
 
   const handleStatusChange = async (assetId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
+      const { data: asset, error: updateError } = await supabase
         .from("campaign_assets")
         .update({ status: newStatus })
-        .eq("id", assetId);
+        .eq("id", assetId)
+        .select(`
+          name,
+          original_filename,
+          campaigns (
+            contact_email,
+            films (title)
+          )
+        `)
+        .single();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       toast({
         title: "Estado actualizado",
         description: `Creativo marcado como ${newStatus}`,
       });
+
+      // Send notifications if Approved or Rejected
+      if (newStatus === "aprobado" || newStatus === "rechazado") {
+        const assetName = asset.name || asset.original_filename || "un creativo";
+        const campaignTitle = (asset.campaigns as any)?.films?.title || "Campaña";
+        const recipientEmail = (asset.campaigns as any)?.contact_email;
+
+        // 1. In-app Notification (System Message)
+        try {
+          const emoji = newStatus === "aprobado" ? "✅" : "❌";
+          const statusText = newStatus === "aprobado" ? "Aprobado" : "Rechazado";
+          const systemMsg = `${emoji} Creativo ${statusText}: ${assetName}`;
+
+          await supabase.from("campaign_messages").insert({
+            campaign_id: campaignId,
+            sender_role: "system",
+            sender_name: "Sistema",
+            message: systemMsg,
+          } as any);
+        } catch (sysErr) {
+          console.error("System message error:", sysErr);
+        }
+
+        // 2. Email Notification
+        if (recipientEmail) {
+          try {
+            await supabase.functions.invoke("send-email", {
+              body: {
+                type: newStatus === "aprobado" ? "creative_approved" : "creative_rejected",
+                campaignId: campaignId,
+                campaignTitle: campaignTitle,
+                recipientEmail: recipientEmail,
+                assetName: assetName,
+              },
+            });
+          } catch (emailErr) {
+            console.error("Email notification error:", emailErr);
+          }
+        }
+      }
 
       loadAssets();
     } catch (error: any) {

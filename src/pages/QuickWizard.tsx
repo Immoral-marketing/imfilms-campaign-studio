@@ -19,7 +19,6 @@ import WizardProgress from "@/components/WizardProgress";
 import PlatformCard from "@/components/PlatformCard";
 import AddonCard from "@/components/AddonCard";
 import CostSummary from "@/components/CostSummary";
-import ConflictAlert from "@/components/ConflictAlert";
 import HelpTooltip from "@/components/HelpTooltip";
 import AuthModal from "@/components/AuthModal";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
@@ -151,9 +150,7 @@ const QuickWizard = () => {
     checkAdmin();
   }, [user]);
 
-  // Conflict detection
-  const { checkConflicts, isChecking: isCheckingConflicts, lastResult: conflictResult } = useConflictDetection();
-  const [hasCheckedConflicts, setHasCheckedConflicts] = useState(false);
+  const [suggestedChanges, setSuggestedChanges] = useState<string | null>(null);
 
   // Step 1: Film data
   const [filmData, setFilmData] = useState({
@@ -231,26 +228,6 @@ const QuickWizard = () => {
     }
   }, [releaseDate, manualEndDateMode, selectedAddons.adaptacion]);
 
-  // Check for conflicts when key data changes (Step 2 onwards)
-  useEffect(() => {
-    if (currentStep >= 2 && releaseDate && filmData.genre) {
-      setHasCheckedConflicts(false); // Reset status on change
-      const delayCheck = setTimeout(async () => {
-        const dates = calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate);
-        await checkConflicts({
-          filmGenre: filmData.genre === 'Otro' ? filmData.otherGenre : filmData.genre,
-          targetAudience: filmData.targetAudience,
-          territory: filmData.country,
-          premiereStart: dates.premiereWeekendStart.toISOString(),
-          premiereEnd: dates.premiereWeekendEnd.toISOString(),
-          platforms: selectedPlatforms,
-        });
-        setHasCheckedConflicts(true);
-      }, 500); // Debounce for 500ms
-
-      return () => clearTimeout(delayCheck);
-    }
-  }, [releaseDate, filmData.genre, filmData.otherGenre, filmData.targetAudience, filmData.country, currentStep]);
 
 
   // Check for saved draft on mount
@@ -1243,7 +1220,7 @@ const QuickWizard = () => {
                         <HelpTooltip
                           fieldId="film_genre"
                           title="¿Por qué te preguntamos el género?"
-                          content="El género nos ayuda a identificar conflictos con otras campañas similares y a definir las audiencias correctas. También influye en el tipo de creatividad y plataformas recomendadas."
+                          content="El género nos ayuda a definir las audiencias correctas e influye en el tipo de creatividad y plataformas recomendadas para tu estreno."
                         />
                       </div>
                       <Select value={filmData.genre} onValueChange={(v) => setFilmData({ ...filmData, genre: v })}>

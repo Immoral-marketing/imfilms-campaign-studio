@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileImage, Pencil, Loader2, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Bell, FileImage, Pencil, Loader2, CheckCircle2, MessageSquare, X } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -162,8 +162,10 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                     const isProposalApproved = notif.message.startsWith('🟢');
                     const isProposalChanges = notif.message.startsWith('🟡');
                     const isMediaPlanReady = notif.message.startsWith('📅');
-                    const isMediaPlanApproved = notif.message.startsWith('✅');
-                    const isMediaPlanRejected = notif.message.startsWith('❌');
+                    const isMediaPlanApproved = notif.message.startsWith('✅') && !notif.message.includes('Creativo');
+                    const isMediaPlanRejected = notif.message.startsWith('❌') && !notif.message.includes('Creativo');
+                    const isCreativeApproved = notif.message.startsWith('✅') && notif.message.includes('Creativo');
+                    const isCreativeRejected = notif.message.startsWith('❌') && notif.message.includes('Creativo');
 
                     let NotifIcon = FileImage;
                     let notifTitle = 'Nuevas creatividades subidas';
@@ -203,6 +205,16 @@ const CampaignNotifications = ({ campaignId }: CampaignNotificationsProps) => {
                     } else if (isMediaPlanRejected) {
                         NotifIcon = MessageSquare;
                         notifTitle = notif.message.includes('(BETA)') ? 'Sugerencias en Plan de Medios (BETA)' : 'Sugerencias en Plan de Medios';
+                        iconColor = 'text-red-500';
+                        iconBg = 'bg-red-500/10';
+                    } else if (isCreativeApproved) {
+                        NotifIcon = CheckCircle2;
+                        notifTitle = 'Creativo Aprobado';
+                        iconColor = 'text-green-500';
+                        iconBg = 'bg-green-500/10';
+                    } else if (isCreativeRejected) {
+                        NotifIcon = X;
+                        notifTitle = 'Creativo Rechazado';
                         iconColor = 'text-red-500';
                         iconBg = 'bg-red-500/10';
                     }

@@ -12,13 +12,14 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected" | "report_ready" | "report_approved" | "report_rejected";
+    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected" | "report_ready" | "report_approved" | "report_rejected" | "creative_approved" | "creative_rejected";
     campaignId?: string;
     campaignTitle?: string;
     distributorName?: string;
     newStatus?: string;
     recipientEmail?: string;
     code?: string; // For verification
+    assetName?: string; // For creativity notifications
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -997,6 +998,149 @@ const handler = async (req: Request): Promise<Response> => {
                         to: reportRejectedAdminEmails,
                         subject: subject,
                         html: emailHtml,
+                    });
+                }
+                break;
+            }
+            case "creative_approved": {
+                console.log("Branch: creative_approved matched");
+                if (payload.recipientEmail) {
+                    const subject = `✅ Creativo Aprobado: ${payload.assetName}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #22C55E; overflow: hidden;">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">¡Creativo Aprobado!</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Tu material para la campaña <strong>${payload.campaignTitle}</strong> ha sido aprobado:
+                                                </p>
+                                                <p style="margin: 0 0 30px 0; color: #22C55E; font-size: 18px; font-weight: bold; text-align: center;">
+                                                    ${payload.assetName}
+                                                </p>
+                                                <!-- Button -->
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #22C55E; color: #FFFFFF; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver en mi Dashboard
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
+                    });
+                }
+                break;
+            }
+            case "creative_rejected": {
+                console.log("Branch: creative_rejected matched");
+                if (payload.recipientEmail) {
+                    const subject = `❌ Creativo Rechazado: ${payload.assetName}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #EF4444; overflow: hidden;">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Creativo con Ajustes Pendientes</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Lamentablemente, el creativo para la campaña <strong>${payload.campaignTitle}</strong> necesita ajustes:
+                                                </p>
+                                                <p style="margin: 0 0 30px 0; color: #EF4444; font-size: 18px; font-weight: bold; text-align: center;">
+                                                    ${payload.assetName}
+                                                </p>
+                                                <p style="margin: 0 0 30px 0; color: #F5F2EB; opacity: 0.7; font-size: 14px; line-height: 1.6; text-align: center;">
+                                                    Por favor, revisa las notas en el dashboard y sube una nueva versión corregida.
+                                                </p>
+                                                <!-- Button -->
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #EF4444; color: #FFFFFF; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver Notas y Re-subir
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: payload.recipientEmail,
+                        subject: subject,
+                        html: emailHtml
                     });
                 }
                 break;
