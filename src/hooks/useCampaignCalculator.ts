@@ -55,7 +55,7 @@ const getThresholdForInvestment = (investment: number, thresholds: FeeThreshold[
 const getApplicableFees = (investment: number, numPlatforms: number, thresholds: FeeThreshold[]) => {
   const threshold = getThresholdForInvestment(investment, thresholds);
 
-  const setupFee = threshold.is_setup_fee_enabled ? numPlatforms * threshold.setup_fee_per_platform : 0;
+  const setupFee = threshold.is_setup_fee_enabled ? Math.max(0, numPlatforms - 1) * threshold.setup_fee_per_platform : 0;
   const fixedFee = threshold.is_fixed_fee_enabled ? threshold.fixed_fee_amount : 0;
   const variableRate = threshold.is_variable_fee_enabled ? threshold.variable_fee_rate : 0;
 
@@ -72,7 +72,7 @@ const calculateEffectiveInvestmentFromBudget = (
   const sortedThresholds = [...thresholds].sort((a, b) => (b.min_investment - a.min_investment));
 
   for (const t of sortedThresholds) {
-    const setupFee = t.is_setup_fee_enabled ? numPlatforms * t.setup_fee_per_platform : 0;
+    const setupFee = t.is_setup_fee_enabled ? Math.max(0, numPlatforms - 1) * t.setup_fee_per_platform : 0;
     const fixedFee = t.is_fixed_fee_enabled ? t.fixed_fee_amount : 0;
     const variableRate = t.is_variable_fee_enabled ? t.variable_fee_rate : 0;
 
@@ -85,7 +85,7 @@ const calculateEffectiveInvestmentFromBudget = (
   }
 
   // Final fallback (safety)
-  return Math.max(0, totalBudget - 500 - (numPlatforms * 200));
+  return Math.max(0, totalBudget - 500 - (Math.max(0, numPlatforms - 1) * 200));
 };
 
 export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & { variableFeeRate: number } => {

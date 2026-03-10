@@ -197,8 +197,8 @@ const DemoWizard = () => {
                     <span>1.000€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
-                    <span>800€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas, 1ª gratis)</span>
+                    <span>600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee fijo de gestión</span>
@@ -210,7 +210,7 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      6.800€
+                      6.600€
                     </span>
                   </div>
                 </div>
@@ -239,8 +239,8 @@ const DemoWizard = () => {
                     <span>2.250€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-background/50 rounded">
-                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
-                    <span>800€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas, 1ª gratis)</span>
+                    <span>600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-background/50 rounded">
                     <span className="text-muted-foreground">Fee fijo de gestión</span>
@@ -252,7 +252,7 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      18.050€
+                      17.850€
                     </span>
                   </div>
                 </div>
@@ -278,8 +278,8 @@ const DemoWizard = () => {
                     <span>3.600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
-                    <span className="text-muted-foreground">Fee setup (4 plataformas)</span>
-                    <span>800€</span>
+                    <span className="text-muted-foreground">Fee setup (4 plataformas, 1ª gratis)</span>
+                    <span>600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee fijo de gestión</span>
@@ -291,7 +291,7 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-cinema-yellow">
-                      34.400€
+                      34.200€
                     </span>
                   </div>
                 </div>
@@ -301,7 +301,7 @@ const DemoWizard = () => {
             <div className="space-y-3">
               <Card className="p-4 bg-blue-500/5 border-blue-500/20">
                 <p className="text-sm text-blue-600 dark:text-blue-400">
-                  <strong>Fee de Setup:</strong> Aplicamos un fee fijo de 200€ por cada plataforma activa para la configuración inicial y optimización técnica.
+                  <strong>Fee de Setup:</strong> Aplicamos un fee fijo de 200€ por cada plataforma activa (la primera plataforma es bonificada) para la configuración inicial y optimización técnica.
                 </p>
               </Card>
 

@@ -107,9 +107,9 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
             <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.variableFeeInvestment)}</span>
           </div>
 
-          {costs.setupFee > 0 && (
+          {costs.setupFee >= 0 && (
             <div className="flex justify-between items-center py-1">
-              <span className="text-cinema-ivory text-sm">Fee de setup ({costs.setupFee / 200} plataformas):</span>
+              <span className="text-cinema-ivory text-sm">Fee de setup ({Math.max(0, costs.setupFee / 200)} plataformas adicionales):</span>
               <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.setupFee)}</span>
             </div>
           )}
@@ -148,9 +148,9 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       </div>
 
       <div className="pt-4 space-y-2">
-        {costs.setupFee > 0 && (
+        {costs.setupFee >= 0 && (
           <p className="text-xs text-primary bg-primary/10 p-3 rounded border border-primary/30">
-            ℹ️ Aplicamos un fee de setup de 200€ por cada plataforma seleccionada.
+            ℹ️ Aplicamos un fee de setup de 200€ por cada plataforma adicional (primera plataforma bonificada).
           </p>
         )}
 
