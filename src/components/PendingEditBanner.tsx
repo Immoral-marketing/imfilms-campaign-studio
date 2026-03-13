@@ -20,12 +20,33 @@ interface PendingEditBannerProps {
         platform_name: string;
         budget_percent: number;
     }[];
+    currentCampaign?: {
+        ad_investment_amount?: number;
+        fixed_fee_amount?: number;
+        variable_fee_amount?: number;
+        setup_fee_amount?: number;
+        total_estimated_amount?: number;
+        pre_start_date?: string;
+        pre_end_date?: string;
+        premiere_weekend_start?: string;
+        premiere_weekend_end?: string;
+        final_report_date?: string;
+        creatives_deadline?: string;
+    };
     isAdmin?: boolean;
     onApproved?: () => void;
     onRejected?: () => void;
 }
 
-const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdmin = false, onApproved, onRejected }: PendingEditBannerProps) => {
+const PendingEditBanner = ({ 
+    proposal, 
+    currentFilm, 
+    currentPlatforms = [], 
+    currentCampaign = {},
+    isAdmin = false, 
+    onApproved, 
+    onRejected 
+}: PendingEditBannerProps) => {
     const [expanded, setExpanded] = useState(false);
     const [showRejectForm, setShowRejectForm] = useState(false);
     const [rejectComment, setRejectComment] = useState('');
@@ -34,6 +55,26 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
     const rejectProposal = useRejectFilmProposal();
 
     const proposed = proposal.proposed_data;
+
+    // Helper to get current value for comparison and display
+    const getCurrentValue = (field: keyof typeof proposed) => {
+        // Platform fields
+        if (field === 'platforms') return currentPlatforms;
+        
+        // Campaign fields
+        const campaignFields: (keyof typeof proposed)[] = [
+            'ad_investment_amount', 'fixed_fee_amount', 'variable_fee_amount', 
+            'setup_fee_amount', 'total_estimated_amount', 'pre_start_date', 
+            'pre_end_date', 'premiere_weekend_start', 'premiere_weekend_end', 
+            'final_report_date', 'creatives_deadline'
+        ];
+        if (campaignFields.includes(field)) {
+            return (currentCampaign as any)[field];
+        }
+
+        // Film fields
+        return (currentFilm as any)[field];
+    };
 
     // Helper to check if field changed
     const hasChanged = (field: keyof typeof proposed) => {
@@ -48,24 +89,37 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
             return JSON.stringify(sortedCurrent) !== JSON.stringify(sortedUpdate);
         }
 
-        const currentValue = currentFilm[field as keyof typeof currentFilm];
+        const currentValue = getCurrentValue(field);
         const proposedValue = proposed[field];
 
         if (Array.isArray(currentValue) && Array.isArray(proposedValue)) {
+            // Sort arrays for comparison if they are string arrays (like main_goals)
+            if (typeof currentValue[0] === 'string') {
+                return JSON.stringify([...currentValue].sort()) !== JSON.stringify([...proposedValue].sort());
+            }
             return JSON.stringify(currentValue) !== JSON.stringify(proposedValue);
         }
 
         // Handle undefined vs empty string cases or null
-        const normCurrent = currentValue || '';
-        const normProposed = proposedValue || '';
+        const normCurrent = currentValue === null || currentValue === undefined ? '' : String(currentValue);
+        const normProposed = proposedValue === null || proposedValue === undefined ? '' : String(proposedValue);
 
         return normCurrent !== normProposed;
     };
 
     // Get list of changed fields
-    const changedFields = (Object.keys(proposed) as Array<keyof typeof proposed>).filter(
+    let changedFields = (Object.keys(proposed) as Array<keyof typeof proposed>).filter(
         (field) => hasChanged(field)
     );
+
+    // Simplification: if release_date is changing, hide the recalculated/technical campaign dates
+    if (changedFields.includes('release_date')) {
+        const technicalDates: (keyof typeof proposed)[] = [
+            'pre_start_date', 'pre_end_date', 'premiere_weekend_start', 
+            'premiere_weekend_end', 'final_report_date', 'creatives_deadline'
+        ];
+        changedFields = changedFields.filter(f => !technicalDates.includes(f));
+    }
 
     const fieldLabels: Record<keyof typeof proposed, string> = {
         title: 'Título',
@@ -73,8 +127,22 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
         genre: 'Género',
         secondary_genre: 'Género Secundario',
         target_audience_text: 'Audiencia Objetivo',
+        target_audience_urls: 'Enlaces de Audiencia',
+        target_audience_files: 'Archivos de Audiencia',
         main_goals: 'Objetivos Principales',
         platforms: 'Distribución de Presupuesto',
+        ad_investment_amount: 'Presupuesto Ads',
+        fixed_fee_amount: 'Fee Fijo',
+        variable_fee_amount: 'Fee Variable',
+        setup_fee_amount: 'Fee Setup',
+        total_estimated_amount: 'Total Estimado',
+        release_date: 'Fecha de Estreno',
+        pre_start_date: 'Inicio Pre-campaña',
+        pre_end_date: 'Fin Pre-campaña',
+        premiere_weekend_start: 'Inicio Finde Estreno',
+        premiere_weekend_end: 'Fin Finde Estreno',
+        final_report_date: 'Reporte Final',
+        creatives_deadline: 'Deadline Creativos',
     };
 
     const renderValue = (field: keyof typeof proposed, value: any, isCurrent: boolean) => {
@@ -120,10 +188,6 @@ const PendingEditBanner = ({ proposal, currentFilm, currentPlatforms = [], isAdm
         );
     };
 
-    const getCurrentValue = (field: keyof typeof proposed) => {
-        if (field === 'platforms') return currentPlatforms;
-        return currentFilm[field as keyof typeof currentFilm];
-    };
 
     return (
         <Alert className="border-cinema-yellow bg-cinema-yellow/20">

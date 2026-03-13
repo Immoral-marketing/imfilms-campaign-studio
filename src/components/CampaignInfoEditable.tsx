@@ -31,7 +31,13 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getRelativeTime } from "@/utils/dateUtils";
-import { AlertTriangle, Clock } from "lucide-react";
+import { AlertTriangle, Clock, CalendarIcon } from "lucide-react";
+import { calculateCampaignDates } from "@/utils/dateUtils";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const formSchema = z.object({
     title: z.string().min(1, "El título es obligatorio"),
@@ -42,6 +48,9 @@ const formSchema = z.object({
     target_audience_urls: z.array(z.string()).optional(),
     target_audience_files: z.array(z.string()).optional(), // URLs/Paths to files
     main_goals: z.array(z.string()).min(1, "Debes seleccionar al menos un objetivo"),
+    release_date: z.date({
+        required_error: "La fecha de estreno es obligatoria",
+    }),
     ad_investment_amount: z.number().min(0, "El presupuesto debe ser mayor o igual a 0"),
     fee_mode_integrated: z.boolean(), // Checkbox for fee mode
     platforms: z.array(
@@ -82,8 +91,18 @@ interface CampaignInfoEditableProps {
     disabled?: boolean;
     isAdmin?: boolean;
     creativesDeadline?: string;
+    premiereWeekend?: string;
     onEditingChange?: (isEditing: boolean) => void;
 }
+
+export const getCleanDate = (dateInput: string | Date | undefined | null) => {
+    if (!dateInput) return new Date();
+    const date = typeof dateInput === 'string' 
+        ? new Date(dateInput.includes('T') ? dateInput : dateInput + 'T12:00:00') 
+        : new Date(dateInput);
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
 
 export const CampaignInfoEditable = ({
     film,
@@ -94,6 +113,7 @@ export const CampaignInfoEditable = ({
     disabled,
     isAdmin,
     creativesDeadline,
+    premiereWeekend,
     onEditingChange
 }: CampaignInfoEditableProps) => {
     const formRef = useRef<HTMLFormElement>(null);
@@ -135,6 +155,7 @@ export const CampaignInfoEditable = ({
             target_audience_urls: film.target_audience_urls || [],
             target_audience_files: film.target_audience_files || [],
             main_goals: film.main_goals || [],
+            release_date: getCleanDate(film.release_date || premiereWeekend),
             ad_investment_amount: totalBudget || 0,
             fee_mode_integrated: initialFeeModeIntegrated,
             platforms: platforms?.map((p: any) => ({
@@ -149,6 +170,10 @@ export const CampaignInfoEditable = ({
         control: form.control,
         name: "platforms",
     });
+
+    const [calendarMonth, setCalendarMonth] = useState<Date>(
+        getCleanDate(film.release_date || premiereWeekend)
+    );
 
     // Calculate fees dynamically based on form state
     const watchedInvestment = form.watch("ad_investment_amount");
@@ -186,6 +211,7 @@ export const CampaignInfoEditable = ({
                 target_audience_urls: film.target_audience_urls || [],
                 target_audience_files: film.target_audience_files || [],
                 main_goals: film.main_goals || [],
+                release_date: getCleanDate(film.release_date || premiereWeekend),
                 ad_investment_amount: totalBudget || 0,
                 fee_mode_integrated: initialFeeModeIntegrated,
                 platforms: platforms?.map((p: any) => ({
@@ -194,6 +220,10 @@ export const CampaignInfoEditable = ({
                     budget_amount: parseFloat(((totalBudget * (p.budget_percent / 100)) || 0).toFixed(2))
                 })) || []
             });
+
+            if (film.release_date || premiereWeekend) {
+                setCalendarMonth(getCleanDate(film.release_date || premiereWeekend));
+            }
             setBudgetMode('percent');
         }
     }, [isEditing, film, platforms, totalBudget, form, initialFeeModeIntegrated]);
@@ -364,6 +394,24 @@ export const CampaignInfoEditable = ({
 
         if (JSON.stringify(currentPlatforms) !== JSON.stringify(newPlatforms)) {
             changes.platforms = newPlatforms;
+            hasChanges = true;
+        }
+
+        // If release_date changed, recalculate all campaign dates
+        const currentFilmDate = film.release_date ? film.release_date : new Date().toISOString().split('T')[0];
+        const newReleaseDate = values.release_date.toISOString().split('T')[0];
+        
+        if (newReleaseDate !== currentFilmDate) {
+            const newDates = calculateCampaignDates(values.release_date, false); // Adaptation addon handled on creation usually
+            
+            changes.release_date = newReleaseDate;
+            changes.pre_start_date = newDates.preStartDate.toISOString().split('T')[0];
+            changes.pre_end_date = newDates.preEndDate.toISOString().split('T')[0];
+            changes.premiere_weekend_start = newDates.premiereWeekendStart.toISOString().split('T')[0];
+            changes.premiere_weekend_end = newDates.premiereWeekendEnd.toISOString().split('T')[0];
+            changes.final_report_date = newDates.finalReportDate.toISOString().split('T')[0];
+            changes.creatives_deadline = newDates.creativesDeadline.toISOString().split('T')[0];
+            
             hasChanges = true;
         }
 
@@ -573,6 +621,7 @@ export const CampaignInfoEditable = ({
                             )}
                         />
                     </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
@@ -895,6 +944,38 @@ export const CampaignInfoEditable = ({
                                             className="h-32"
                                             placeholder="Describe el público objetivo de la película..."
                                         />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <div className="pt-4 border-t border-primary/20">
+                        <FormField
+                            control={form.control}
+                            name="release_date"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col items-center">
+                                    <FormLabel className="text-base mb-2 self-start">Fecha de Estreno</FormLabel>
+                                    <FormControl>
+                                        <div className="bg-muted p-4 rounded-md border border-primary/10 w-full flex justify-center">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={(date) => {
+                                                    field.onChange(date);
+                                                    if (date) setCalendarMonth(date);
+                                                }}
+                                                month={calendarMonth}
+                                                onMonthChange={setCalendarMonth}
+                                                className="rounded-md border border-border bg-background"
+                                                weekStartsOn={1}
+                                                disabled={(date) =>
+                                                    date < new Date("1900-01-01")
+                                                }
+                                            />
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

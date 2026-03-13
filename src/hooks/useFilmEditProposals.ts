@@ -13,11 +13,25 @@ export interface FilmEditProposal {
         genre?: string;
         secondary_genre?: string;
         target_audience_text?: string;
+        target_audience_urls?: string[];
+        target_audience_files?: string[];
         main_goals?: string[];
         platforms?: {
             platform_name: string;
             budget_percent: number;
         }[];
+        ad_investment_amount?: number;
+        fixed_fee_amount?: number;
+        variable_fee_amount?: number;
+        setup_fee_amount?: number;
+        total_estimated_amount?: number;
+        release_date?: string;
+        pre_start_date?: string;
+        pre_end_date?: string;
+        premiere_weekend_start?: string;
+        premiere_weekend_end?: string;
+        final_report_date?: string;
+        creatives_deadline?: string;
     };
     status: 'pending' | 'approved' | 'rejected';
     created_by: string;
@@ -36,6 +50,8 @@ export interface CreateProposalInput {
         genre: string;
         secondary_genre?: string;
         target_audience_text?: string;
+        target_audience_urls?: string[];
+        target_audience_files?: string[];
         main_goals?: string[];
         platforms?: {
             platform_name: string;
@@ -46,6 +62,13 @@ export interface CreateProposalInput {
         variable_fee_amount?: number;
         setup_fee_amount?: number;
         total_estimated_amount?: number;
+        release_date?: string;
+        pre_start_date?: string;
+        pre_end_date?: string;
+        premiere_weekend_start?: string;
+        premiere_weekend_end?: string;
+        final_report_date?: string;
+        creatives_deadline?: string;
     };
     autoApprove?: boolean;
 }

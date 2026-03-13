@@ -81,6 +81,7 @@ const CampaignDetail = () => {
             genre,
             secondary_genre,
             country,
+            release_date,
             target_audience_text,
             target_audience_urls,
             target_audience_files,
@@ -367,6 +368,7 @@ const CampaignDetail = () => {
                     <PendingEditBanner
                       proposal={pendingProposal}
                       currentFilm={film}
+                      currentCampaign={campaign}
                       currentPlatforms={campaign.campaign_platforms}
                       isAdmin={userRole === 'admin'}
                       onApproved={() => loadCampaign()}
@@ -380,6 +382,7 @@ const CampaignDetail = () => {
                   platforms={campaign.campaign_platforms}
                   campaignId={campaign.id}
                   creativesDeadline={campaign.creatives_deadline}
+                  premiereWeekend={campaign.premiere_weekend_start}
                   totalBudget={campaign.ad_investment_amount}
                   feeDetails={{
                     fixed_fee_amount: campaign.fixed_fee_amount,
