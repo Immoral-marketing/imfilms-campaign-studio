@@ -24,6 +24,7 @@ import AuthModal from "@/components/AuthModal";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useAuth } from "@/hooks/useAuth";
 import { useCampaignCalculator, validateInvestment, FeeMode } from "@/hooks/useCampaignCalculator";
 import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { calculateCampaignDates, formatDateEs, formatDateShort } from "@/utils/dateUtils";
@@ -111,15 +112,12 @@ const QuickWizard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(1);
-  const [user, setUser] = useState<any>(null);
-  const [distributor, setDistributor] = useState<any>(null);
+  const { user, distributor, loading: authLoading, isAdmin, isDistributor } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
-  const [isDistributor, setIsDistributor] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Step 5 Email Verification
@@ -132,23 +130,6 @@ const QuickWizard = () => {
   // Onboarding
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
 
-  // Check admin status
-  useEffect(() => {
-    const checkAdmin = async () => {
-      if (!user) {
-        setIsAdmin(false);
-        return;
-      }
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-      setIsAdmin(!!data);
-    };
-    checkAdmin();
-  }, [user]);
 
   const [suggestedChanges, setSuggestedChanges] = useState<string | null>(null);
 
@@ -237,32 +218,28 @@ const QuickWizard = () => {
       setHasDraft(true);
       setShowDraftDialog(true);
     }
-
-    // Check authentication
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        setUser(session.user);
-        await fetchDistributorProfile(session.user.id);
-        // Check if user is a distributor
-        await checkDistributorRole(session.user.id);
-      }
-    });
-
-    // Listen for auth state changes (e.g., after registration from modal)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setUser(session.user);
-        await fetchDistributorProfile(session.user.id);
-        await checkDistributorRole(session.user.id);
-        setJustRegistered(true);
-        toast.success("¡Ahora puedes ver tu presupuesto completo!");
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
+
+  // Handle auth data auto-fill
+  useEffect(() => {
+    if (distributor) {
+      setSignupData(prev => ({
+        ...prev,
+        companyName: distributor.company_name || "",
+        contactName: distributor.contact_name || "",
+        contactEmail: distributor.contact_email || "",
+        contactPhone: distributor.contact_phone || "",
+      }));
+
+      // Auto-fill distributor name in Step 1 if field is empty
+      setFilmData(prev => {
+        if (!prev.distributorName && distributor.company_name) {
+          return { ...prev, distributorName: distributor.company_name };
+        }
+        return prev;
+      });
+    }
+  }, [distributor]);
 
   // Auto-save draft whenever state changes
   useEffect(() => {
@@ -303,43 +280,6 @@ const QuickWizard = () => {
     hasDraft,
   ]);
 
-  const checkDistributorRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("distributors")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    setIsDistributor(!!data);
-  };
-
-  const fetchDistributorProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("distributors")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (data) {
-      setDistributor(data);
-      setSignupData({
-        companyName: data.company_name || "",
-        contactName: data.contact_name || "",
-        contactEmail: data.contact_email || "",
-        contactPhone: data.contact_phone || "",
-        password: "",
-        comments: "",
-      });
-
-      // Auto-fill distributor name in Step 1 if user is logged in and field is empty
-      setFilmData(prev => {
-        if (!prev.distributorName && data.company_name) {
-          return { ...prev, distributorName: data.company_name };
-        }
-        return prev;
-      });
-    }
-  };
 
   const uploadTargetAudienceFiles = async (userId: string, campaignId?: string) => {
     if (selectedFiles.length === 0) return [];
@@ -886,8 +826,8 @@ const QuickWizard = () => {
           duration: 6000,
         });
       } else {
-        setUser(authData.user);
-        setIsDistributor(true);
+        // useAuth will pick up the new session automatically
+        setJustRegistered(true);
       }
 
       clearDraft();
@@ -902,13 +842,14 @@ const QuickWizard = () => {
   };
 
   const handleSubmit = async () => {
-    if (!releaseDate || !campaignDates) {
-      toast.error("Faltan datos necesarios");
+    if (authLoading) {
+      toast.info("Cargando información de tu cuenta...");
       return;
     }
 
     if (!user || !isDistributor) {
-      toast.error("Debes crear una cuenta primero");
+      toast.error("Debes iniciar sesión para completar la campaña.");
+      setShowAuthModal(true);
       return;
     }
 
