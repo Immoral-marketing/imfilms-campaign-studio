@@ -61,6 +61,7 @@ const CampaignsHistory = () => {
   // KPI Modal State
   const [showKPIModal, setShowKPIModal] = useState(false);
   const [showCalendly, setShowCalendly] = useState(false);
+  const [meetingType, setMeetingType] = useState<'admin' | 'paid_media'>('admin');
   const [selectedCampaignForKPI, setSelectedCampaignForKPI] = useState<any>(null);
   const [kpiData, setKPIData] = useState({
     reach: "",
@@ -822,14 +823,49 @@ const CampaignsHistory = () => {
               </Button>
             )}
             {!isAdmin && (
-              <Button
-                onClick={() => setShowCalendly(true)}
-                variant="outline"
-                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
-              >
-                <Calendar className="w-4 h-4 mr-2 cinema-icon" />
-                Agenda una reunión
-              </Button>
+              <div className="flex rounded-md shadow-sm">
+                <Button
+                  onClick={() => {
+                    setMeetingType('admin');
+                    setShowCalendly(true);
+                  }}
+                  variant="outline"
+                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10 rounded-r-none border-r-0"
+                >
+                  <Calendar className="w-4 h-4 mr-2 cinema-icon" />
+                  Agenda una reunión
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10 rounded-l-none px-2"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-[#1f1f22] border-cinema-yellow/20">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setMeetingType('admin');
+                        setShowCalendly(true);
+                      }}
+                      className="text-cinema-yellow hover:bg-cinema-yellow hover:text-black focus:text-black focus:bg-cinema-yellow cursor-pointer"
+                    >
+                      Reunión con Administración
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setMeetingType('paid_media');
+                        setShowCalendly(true);
+                      }}
+                      className="text-cinema-yellow hover:bg-cinema-yellow hover:text-black focus:text-black focus:bg-cinema-yellow mt-1 cursor-pointer"
+                    >
+                      Reunión Equipo Paid Media
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             )}
             <div className="flex rounded-md shadow-sm">
               <Button
@@ -1615,6 +1651,7 @@ const CampaignsHistory = () => {
       <CalendlyModal
         isOpen={showCalendly}
         onClose={() => setShowCalendly(false)}
+        type={meetingType}
       />
     </div>
   );
