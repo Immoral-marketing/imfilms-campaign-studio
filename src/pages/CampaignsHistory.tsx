@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid, FileBarChart } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid, FileBarChart, Edit2 } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -24,6 +24,7 @@ import CampaignLabels from "@/components/CampaignLabels";
 import { NavbarAdmin } from "@/components/NavbarAdmin";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import CalendlyModal from "@/components/CalendlyModal";
+import ChangeDistributorModal from "@/components/distributors/ChangeDistributorModal";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -70,6 +71,10 @@ const CampaignsHistory = () => {
     ctr: "",
     cpm: ""
   });
+
+  // Change Distributor State
+  const [showEditDistributorModal, setShowEditDistributorModal] = useState(false);
+  const [selectedCampaignForDistributorEdit, setSelectedCampaignForDistributorEdit] = useState<any>(null);
 
   // Report Modal State (removed - replaced with dedicated page)
 
@@ -1136,9 +1141,22 @@ const CampaignsHistory = () => {
                             </div>
                             <div className="flex flex-col gap-1">
                               {isAdmin && campaign.distributors && (
-                                <p className="text-sm font-semibold text-cinema-yellow">
-                                  {campaign.distributors.company_name}
-                                </p>
+                                <div className="flex items-center gap-2 group/dist">
+                                  <p className="text-sm font-semibold text-cinema-yellow">
+                                    {campaign.distributors.company_name}
+                                  </p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedCampaignForDistributorEdit(campaign);
+                                      setShowEditDistributorModal(true);
+                                    }}
+                                    className="opacity-0 group-hover/dist:opacity-100 transition-opacity p-1 text-muted-foreground hover:text-primary"
+                                    title="Cambiar distribuidora"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                </div>
                               )}
                               <p className="text-sm text-muted-foreground">
                                 {campaign.films?.genre}
@@ -1652,6 +1670,15 @@ const CampaignsHistory = () => {
         isOpen={showCalendly}
         onClose={() => setShowCalendly(false)}
         type={meetingType}
+      />
+
+      <ChangeDistributorModal
+        open={showEditDistributorModal}
+        onOpenChange={setShowEditDistributorModal}
+        campaignId={selectedCampaignForDistributorEdit?.id || null}
+        campaignTitle={selectedCampaignForDistributorEdit?.films?.title || "Campaña"}
+        currentDistributorId={selectedCampaignForDistributorEdit?.distributor_id || null}
+        onSuccess={() => loadData(user.id, isAdmin)}
       />
     </div>
   );
