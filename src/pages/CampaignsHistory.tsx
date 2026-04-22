@@ -18,6 +18,7 @@ import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminDistributors from "./AdminDistributors";
+import AdminPartners from "./AdminPartners";
 import CampaignComparator from "@/components/CampaignComparator";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
 import CampaignLabels from "@/components/CampaignLabels";
@@ -919,6 +920,12 @@ const CampaignsHistory = () => {
                 Distribuidoras
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger value="partners" className="data-[state=active]:bg-primary data-[state=active]:text-black">
+                <Users className="w-4 h-4 mr-2" />
+                Afiliados
+              </TabsTrigger>
+            )}
             {isEnabled('show_metrics_comparative') && (
               <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black">
                 <BarChart className="w-4 h-4 mr-2" />
@@ -926,6 +933,12 @@ const CampaignsHistory = () => {
               </TabsTrigger>
             )}
           </TabsList>
+
+          {isAdmin && (
+            <TabsContent value="partners" className="space-y-6">
+              <AdminPartners />
+            </TabsContent>
+          )}
 
           <TabsContent value="campaigns" className="space-y-8">
             {loading && (

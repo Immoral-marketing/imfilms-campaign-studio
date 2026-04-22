@@ -21,6 +21,7 @@ import MediaPlanSimpleEditor from "./pages/MediaPlanSimpleEditor";
 import MediaPlanView from "./pages/MediaPlanView";
 import MediaPlanSimpleView from "./pages/MediaPlanSimpleView";
 import NotFound from "./pages/NotFound";
+import AfiliadoPage from "./pages/AfiliadoPage";
 import Settings from "./pages/Settings";
 import ReportEditor from "./pages/ReportEditor";
 import ReportView from "./pages/ReportView";
@@ -29,6 +30,7 @@ import GlobalChatWidget from "./components/chat/GlobalChatWidget";
 import GlobalNotificationWidget from "./components/chat/GlobalNotificationWidget";
 import { ChatRealtimeListener } from "./components/chat/ChatRealtimeListener";
 import { useAccessLogger } from "./hooks/useAccessLogger";
+import { ReferralTracker } from "./components/ReferralTracker";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,7 @@ const AppContent = () => {
 
       <SmoothScroll>
         <BrowserRouter>
+          <ReferralTracker />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/wizard" element={<Wizard />} />
@@ -67,6 +70,7 @@ const AppContent = () => {
             <Route path="/demo" element={<DemoWizard />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/afiliado" element={<AfiliadoPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GlobalChatWidget showFloatingButton={false} />

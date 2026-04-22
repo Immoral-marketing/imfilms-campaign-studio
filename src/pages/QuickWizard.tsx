@@ -35,6 +35,8 @@ import tiktokLogo from "@/assets/tiktok-logo.png";
 import facebookLogo from "@/assets/facebook-logo.png";
 import instagramLogo from "@/assets/instagram-logo.png";
 import youtubeLogo from "@/assets/youtube-logo.png";
+// Sistema de afiliados — tracking de conversiones
+import { getReferralSlug, clearReferralCookie } from "@/lib/referral";
 
 const WIZARD_DRAFT_KEY = "imfilms_wizard_draft";
 
@@ -788,6 +790,19 @@ const QuickWizard = () => {
         targetAudienceFiles: uploadedFileUrls
       };
 
+      // === REFERRAL TRACKING: resolver partner_id antes del submit ===
+      let referralPartnerId: string | null = null;
+      const referralSlug = getReferralSlug();
+      if (referralSlug) {
+        try {
+          const { data: partnerId } = await supabase.rpc('get_partner_id_by_slug', { p_slug: referralSlug });
+          if (partnerId) referralPartnerId = partnerId;
+        } catch {
+          // Silencioso — no bloquear el submit si falla la resolución del slug
+        }
+      }
+      // === FIN REFERRAL TRACKING ===
+
       const { error: submitError } = await supabase.functions.invoke('submit-campaign', {
         body: campaignPayload
       });
@@ -831,6 +846,27 @@ const QuickWizard = () => {
       }
 
       clearDraft();
+
+      // === REFERRAL TRACKING: registrar solicitud_afiliado si vino referido ===
+      if (referralPartnerId) {
+        try {
+          await supabase.from('solicitudes_afiliado').insert({
+            partner_id: referralPartnerId,
+            datos_formulario: {
+              company: signupData.companyName,
+              contact: signupData.contactName,
+              email: signupData.contactEmail,
+              film_title: filmData.title,
+            },
+            estado: 'pendiente',
+          });
+          clearReferralCookie();
+        } catch {
+          // Silencioso — no bloquear la navegación si falla el registro
+        }
+      }
+      // === FIN REFERRAL TRACKING ===
+
       navigate("/confirmation");
 
     } catch (error: any) {
