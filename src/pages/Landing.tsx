@@ -33,6 +33,7 @@ const Landing = () => {
 
     // Scroll Animations
     const ctx = gsap.context(() => {
+      try {
 
       // Interactive "Slide" transition using Observer
       // This detects user intent immediately (onDown/onUp) to trigger navigation
@@ -124,40 +125,52 @@ const Landing = () => {
       });
 
       // Staggered Items (Features)
-      gsap.from(".feature-item", {
-        y: 30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.2,
-        scrollTrigger: {
-          trigger: ".features-grid",
-          start: "top 75%"
-        }
-      });
+      if (mainRef.current?.querySelector(".features-grid")) {
+        gsap.from(".feature-item", {
+          y: 30,
+          opacity: 0,
+          duration: 0.8,
+          stagger: 0.2,
+          scrollTrigger: {
+            trigger: ".features-grid",
+            start: "top 75%"
+          }
+        });
+      }
 
       // Process Steps
-      gsap.from(".process-step", {
-        x: -30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.2,
-        scrollTrigger: {
-          trigger: ".process-container",
-          start: "top 70%"
-        }
-      });
+      if (mainRef.current?.querySelector(".process-container")) {
+        gsap.from(".process-step", {
+          x: -30,
+          opacity: 0,
+          duration: 0.8,
+          stagger: 0.2,
+          scrollTrigger: {
+            trigger: ".process-container",
+            start: "top 70%"
+          }
+        });
+      }
 
       // Infinite Marquee - Why Work With Us
-      gsap.to(".infinite-marquee", {
-        xPercent: -50,
-        duration: 20,
-        ease: "none",
-        repeat: -1
-      });
+      if (mainRef.current?.querySelector(".infinite-marquee")) {
+        gsap.to(".infinite-marquee", {
+          xPercent: -50,
+          duration: 20,
+          ease: "none",
+          repeat: -1
+        });
+      }
+
+      } catch (e) {
+        console.warn("GSAP animation init failed:", e);
+      }
 
     }, mainRef);
 
-    return () => ctx.revert();
+    return () => {
+      try { ctx.revert(); } catch (e) { /* extension interference */ }
+    };
   }, [loading]);
 
   const checkAuth = async () => {

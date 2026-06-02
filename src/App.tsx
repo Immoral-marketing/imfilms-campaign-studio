@@ -31,6 +31,7 @@ import GlobalNotificationWidget from "./components/chat/GlobalNotificationWidget
 import { ChatRealtimeListener } from "./components/chat/ChatRealtimeListener";
 import { useAccessLogger } from "./hooks/useAccessLogger";
 import { ReferralTracker } from "./components/ReferralTracker";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
 
+      <ErrorBoundary>
       <SmoothScroll>
         <BrowserRouter>
           <ReferralTracker />
@@ -77,6 +79,7 @@ const AppContent = () => {
           <GlobalNotificationWidget position="top" />
         </BrowserRouter>
       </SmoothScroll>
+      </ErrorBoundary>
     </TooltipProvider>
   );
 };
