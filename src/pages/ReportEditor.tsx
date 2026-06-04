@@ -49,7 +49,7 @@ const ReportEditor = () => {
 
     const handleSave = async (isSubmitting = false) => {
         if (isSubmitting && !url) {
-            toast.error("Debes ingresar un enlace antes de enviar el informe");
+            toast.error("Debes ingresar un enlace antes de enviar el reporte");
             return;
         }
 
@@ -90,12 +90,12 @@ const ReportEditor = () => {
                 // Add system notification
                 await supabase.from('campaign_messages').insert({
                     campaign_id: campaignId,
-                    message: `📊 Informe listo para lectura: ${campaign?.films?.title || 'Campaña'}`,
+                    message: `📊 Reporte listo para lectura: ${campaign?.films?.title || 'Campaña'}`,
                     sender_role: 'system',
                     sender_name: 'Sistema'
                 } as any);
 
-                toast.success("Informe enviado correctamente");
+                toast.success("Reporte enviado correctamente");
             } else {
                 toast.success("Enlace guardado correctamente");
             }
@@ -103,7 +103,7 @@ const ReportEditor = () => {
             fetchData();
         } catch (error: any) {
             console.error("Error saving report:", error);
-            toast.error("Error al guardar el informe: " + error.message);
+            toast.error("Error al guardar el reporte: " + error.message);
         } finally {
             setSaving(false);
         }
@@ -132,7 +132,7 @@ const ReportEditor = () => {
                     </Button>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="font-cinema text-5xl text-primary">Informe</h1>
+                            <h1 className="font-cinema text-5xl text-primary">Reporte</h1>
                             <p className="text-cinema-ivory text-xl">{campaign?.films?.title}</p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -151,7 +151,7 @@ const ReportEditor = () => {
                                 disabled={saving}
                             >
                                 <Send className="w-4 h-4 mr-2" />
-                                {saving ? 'Enviando...' : 'Enviar informe'}
+                                {saving ? 'Enviando...' : 'Enviar reporte'}
                             </Button>
                         </div>
                     </div>
@@ -160,9 +160,9 @@ const ReportEditor = () => {
                 <Card className="cinema-card p-8 border-cinema-gold/30">
                     <div className="max-w-3xl space-y-6">
                         <div className="space-y-2">
-                            <Label htmlFor="url" className="text-cinema-ivory text-lg">Enlace al Informe</Label>
+                            <Label htmlFor="url" className="text-cinema-ivory text-lg">Enlace al Reporte</Label>
                             <p className="text-sm text-cinema-ivory/60 mb-4">
-                                Ingresa el enlace directo (Google Slides, PDF en la nube, etc.) donde se encuentra el informe de la campaña.
+                                Ingresa el enlace directo (Google Slides, PDF en la nube, etc.) donde se encuentra el reporte de la campaña.
                             </p>
                             <div className="flex gap-2">
                                 <Input
@@ -193,7 +193,7 @@ const ReportEditor = () => {
                             <div>
                                 <h4 className="font-bold text-primary mb-1">Nota para la Distribuidora</h4>
                                 <p className="text-sm text-cinema-ivory/80">
-                                    Asegúrate de que el enlace sea accesible para la distribuidora. Al enviar el informe, se le notificará vía email y en su panel.
+                                    Asegúrate de que el enlace sea accesible para la distribuidora. Al enviar el reporte, se le notificará vía email y en su panel.
                                 </p>
                             </div>
                         </div>

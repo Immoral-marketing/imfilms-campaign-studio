@@ -36,7 +36,7 @@ const ReportView = () => {
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Error al cargar el informe");
+            toast.error("Error al cargar el reporte");
         } finally {
             setLoading(false);
         }
@@ -65,7 +65,7 @@ const ReportView = () => {
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Volver a mis estrenos
                         </Button>
-                        <h1 className="font-cinema text-5xl text-primary">Informe</h1>
+                        <h1 className="font-cinema text-5xl text-primary">Reporte</h1>
                         <p className="text-cinema-ivory text-xl">{campaign?.films?.title}</p>
                     </div>
                 </div>
@@ -78,7 +78,7 @@ const ReportView = () => {
                         <div className="flex items-center gap-3">
                             <CheckCircle2 className={`w-5 h-5 ${status === 'aprobado' ? 'text-green-500' : 'text-primary'}`} />
                             <div>
-                                <span className="text-sm uppercase tracking-wider font-bold text-cinema-ivory/60">Estado del Informe:</span>
+                                <span className="text-sm uppercase tracking-wider font-bold text-cinema-ivory/60">Estado del Reporte:</span>
                                 <p className="font-cinema text-xl text-cinema-ivory">
                                     {status === 'borrador' ? 'Borrador' : 'Disponible para Lectura'}
                                 </p>
@@ -88,9 +88,9 @@ const ReportView = () => {
 
                     <div className="p-8 space-y-8">
                         <div>
-                            <h3 className="font-cinema text-2xl text-cinema-gold mb-2 uppercase">Informe de Campaña</h3>
+                            <h3 className="font-cinema text-2xl text-cinema-gold mb-2 uppercase">Reporte de Campaña</h3>
                             <p className="text-cinema-ivory/80 mb-6">
-                                Haz clic en el botón a continuación para abrir el documento externo con el informe completo de la campaña.
+                                Haz clic en el botón a continuación para abrir el documento externo con el reporte completo de la campaña.
                             </p>
 
                             {(campaign as any)?.report_url ? (
@@ -100,10 +100,10 @@ const ReportView = () => {
                                     onClick={() => window.open((campaign as any).report_url, '_blank')}
                                 >
                                     <ExternalLink className="w-5 h-5 mr-3" />
-                                    Abrir Informe
+                                    Abrir Reporte
                                 </Button>
                             ) : (
-                                <p className="text-red-400 italic">No se ha proporcionado un enlace para este informe.</p>
+                                <p className="text-red-400 italic">No se ha proporcionado un enlace para este reporte.</p>
                             )}
                         </div>
                     </div>

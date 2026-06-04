@@ -505,9 +505,9 @@ const CampaignsHistory = () => {
     };
 
     const labels: any = {
-      pendiente_aprobacion: "Informe Revisión",
-      aprobado: "Informe Aprobado",
-      rechazado: "Informe Rechazado",
+      pendiente_aprobacion: "Reporte Revisión",
+      aprobado: "Reporte Aprobado",
+      rechazado: "Reporte Rechazado",
     };
 
     return (
@@ -1331,7 +1331,7 @@ const CampaignsHistory = () => {
                                 size="sm"
                               >
                                 <FileBarChart className="w-4 h-4 mr-2" />
-                                Agregar informe
+                                Agregar reporte
                               </Button>
                             </div>
 
@@ -1429,7 +1429,7 @@ const CampaignsHistory = () => {
                                   size="sm"
                                 >
                                   <FileBarChart className="w-4 h-4 mr-2" />
-                                  Ver Informe
+                                  Ver Reporte
                                 </Button>
                               )}
 
