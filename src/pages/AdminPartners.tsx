@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, Plus, Users, Link2, FileText, Euro, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plus, Users, Link2, FileText, Euro, RefreshCw } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -46,18 +46,20 @@ interface Comision {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+const isComPendiente = (estado: string) => estado === 'pendiente' || estado === 'confirmada';
+
 const ESTADO_SOL: Record<string, string> = {
-  pendiente: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  pendiente:  'bg-amber-500/15 text-amber-400 border-amber-500/30',
   en_proceso: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  aprobada: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  cerrada: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
-  pagada: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  aprobada:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  cerrada:    'bg-slate-500/15 text-slate-400 border-slate-500/30',
+  pagada:     'bg-purple-500/15 text-purple-400 border-purple-500/30',
 };
 
-const ESTADO_COM: Record<string, string> = {
-  pendiente: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  confirmada: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  pagada: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+const ESTADO_COM_CLASS: Record<string, string> = {
+  pendiente:  'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  confirmada: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  pagada:     'bg-purple-500/15 text-purple-400 border-purple-500/30',
 };
 
 const fmt = (n: number) =>
@@ -73,6 +75,7 @@ export default function AdminPartners() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [comisiones, setComisiones] = useState<Comision[]>([]);
+  const [clicksByPartner, setClicksByPartner] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<'partners' | 'solicitudes' | 'comisiones'>('partners');
 
@@ -83,14 +86,22 @@ export default function AdminPartners() {
 
   // Modal editar solicitud
   const [editSolicitud, setEditSolicitud] = useState<Solicitud | null>(null);
-  const [editImporte, setEditImporte] = useState('');
   const [editEstado, setEditEstado] = useState('');
+  const [editImporte, setEditImporte] = useState('');
+  const [editPartnerId, setEditPartnerId] = useState<string>('none');
   const [saving, setSaving] = useState(false);
 
+  // Filtros tab Comisiones
+  const [filterComPartner, setFilterComPartner] = useState<string>('all');
+  const [filterComEstado, setFilterComEstado] = useState<string>('all');
+
+  // ---------------------------------------------------------------------------
+  // Carga de datos
+  // ---------------------------------------------------------------------------
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, s, c] = await Promise.all([
+      const [p, s, c, clicks] = await Promise.all([
         supabase.from('partners').select('*').order('created_at', { ascending: false }),
         supabase.from('solicitudes_afiliado')
           .select('*, partners(nombre, slug)')
@@ -98,11 +109,19 @@ export default function AdminPartners() {
         supabase.from('comisiones')
           .select('*, partners(nombre)')
           .order('created_at', { ascending: false }),
+        supabase.from('referral_clicks').select('partner_id'),
       ]);
+
       setPartners(p.data ?? []);
       setSolicitudes(s.data ?? []);
       setComisiones(c.data ?? []);
-    } catch (e) {
+
+      const counts: Record<string, number> = {};
+      for (const row of clicks.data ?? []) {
+        counts[row.partner_id] = (counts[row.partner_id] ?? 0) + 1;
+      }
+      setClicksByPartner(counts);
+    } catch {
       toast.error('Error al cargar datos de afiliados');
     } finally {
       setLoading(false);
@@ -111,9 +130,29 @@ export default function AdminPartners() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // Métricas rápidas
+  // ---------------------------------------------------------------------------
+  // Derivados
+  // ---------------------------------------------------------------------------
+  const comisionesFiltradas = useMemo(() =>
+    comisiones.filter(c => {
+      if (filterComPartner !== 'all' && c.partner_id !== filterComPartner) return false;
+      if (filterComEstado === 'pendiente' && !isComPendiente(c.estado)) return false;
+      if (filterComEstado === 'pagada' && c.estado !== 'pagada') return false;
+      return true;
+    }),
+    [comisiones, filterComPartner, filterComEstado]
+  );
+
   const totalComisionesPendientes = comisiones
-    .filter(c => c.estado !== 'pagada')
+    .filter(c => isComPendiente(c.estado))
+    .reduce((s, c) => s + c.importe_comision, 0);
+
+  const totalsFiltradosPendiente = comisionesFiltradas
+    .filter(c => isComPendiente(c.estado))
+    .reduce((s, c) => s + c.importe_comision, 0);
+
+  const totalsFiltradosPagada = comisionesFiltradas
+    .filter(c => c.estado === 'pagada')
     .reduce((s, c) => s + c.importe_comision, 0);
 
   // ---------------------------------------------------------------------------
@@ -134,7 +173,6 @@ export default function AdminPartners() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      // Extraer el mensaje real del cuerpo de la respuesta de la Edge Function
       if (error) {
         let realMessage = error.message;
         try {
@@ -174,13 +212,16 @@ export default function AdminPartners() {
   };
 
   // ---------------------------------------------------------------------------
-  // Guardar solicitud (estado + importe)
+  // Guardar solicitud (estado + importe + partner)
   // ---------------------------------------------------------------------------
   const handleSaveSolicitud = async () => {
     if (!editSolicitud) return;
     setSaving(true);
     try {
-      const updates: any = { estado: editEstado };
+      const updates: Record<string, any> = {
+        estado: editEstado,
+        partner_id: editPartnerId === 'none' ? null : editPartnerId,
+      };
       if (editImporte !== '') updates.importe_cobrado = parseFloat(editImporte);
 
       const { error } = await supabase
@@ -200,50 +241,25 @@ export default function AdminPartners() {
   };
 
   // ---------------------------------------------------------------------------
-  // Crear comisión desde solicitud aprobada
+  // Marcar comisión como pagada
   // ---------------------------------------------------------------------------
-  const handleCrearComision = async (sol: Solicitud) => {
-    if (!sol.partner_id || !sol.importe_cobrado) {
-      toast.error('La solicitud debe tener partner e importe cobrado para crear comisión');
-      return;
-    }
-    const existente = comisiones.find(c => c.solicitud_id === sol.id);
-    if (existente) {
-      toast.error('Ya existe una comisión para esta solicitud');
-      return;
-    }
+  const handleComisionPagada = async (com: Comision) => {
     try {
-      const { error } = await supabase.from('comisiones').insert({
-        solicitud_id: sol.id,
-        partner_id: sol.partner_id,
-        importe_base: sol.importe_cobrado,
-        importe_comision: sol.importe_cobrado * 0.15,
-        estado: 'pendiente',
-      });
+      const { error } = await supabase
+        .from('comisiones')
+        .update({ estado: 'pagada', pagada_at: new Date().toISOString() })
+        .eq('id', com.id);
       if (error) throw error;
-      toast.success(`Comisión de ${fmt(sol.importe_cobrado * 0.15)} creada`);
-      loadAll();
-    } catch {
-      toast.error('Error al crear comisión');
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Cambiar estado comisión
-  // ---------------------------------------------------------------------------
-  const handleComisionEstado = async (com: Comision, newEstado: string) => {
-    try {
-      const updates: any = { estado: newEstado };
-      if (newEstado === 'pagada') updates.pagada_at = new Date().toISOString();
-      const { error } = await supabase.from('comisiones').update(updates).eq('id', com.id);
-      if (error) throw error;
-      toast.success('Estado de comisión actualizado');
+      toast.success('Comisión marcada como pagada');
       loadAll();
     } catch {
       toast.error('Error al actualizar comisión');
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -310,7 +326,7 @@ export default function AdminPartners() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  {['Nombre', 'Email', 'Slug / Link', 'Estado', 'Alta', 'Acciones'].map(h => (
+                  {['Nombre', 'Email', 'Slug / Link', 'Visitas', 'Estado', 'Alta', 'Acciones'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -325,6 +341,9 @@ export default function AdminPartners() {
                         <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span className="font-mono text-xs text-primary">?ref={p.slug}</span>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {(clicksByPartner[p.id] ?? 0).toLocaleString('es-ES')}
                     </td>
                     <td className="px-4 py-3">
                       <Badge className={`border ${p.activo ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-slate-500/15 text-slate-400 border-slate-500/30'}`}>
@@ -369,7 +388,11 @@ export default function AdminPartners() {
                     <tr key={sol.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{sol.id.slice(0, 8).toUpperCase()}</td>
                       <td className="px-4 py-3 text-foreground">{fmtDate(sol.created_at)}</td>
-                      <td className="px-4 py-3 text-foreground">{(sol as any).partners?.nombre ?? '—'}</td>
+                      <td className="px-4 py-3 text-foreground">
+                        {(sol as any).partners?.nombre
+                          ? (sol as any).partners.nombre
+                          : <span className="text-muted-foreground italic text-xs">Sin asignar</span>}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
                         {sol.datos_formulario?.company || sol.datos_formulario?.contact || '—'}
                       </td>
@@ -379,19 +402,22 @@ export default function AdminPartners() {
                       <td className="px-4 py-3 text-foreground">
                         {sol.importe_cobrado != null ? fmt(sol.importe_cobrado) : '—'}
                       </td>
-                      <td className="px-4 py-3 flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => {
-                          setEditSolicitud(sol);
-                          setEditEstado(sol.estado);
-                          setEditImporte(sol.importe_cobrado?.toString() ?? '');
-                        }}>
-                          Editar
-                        </Button>
-                        {sol.estado === 'aprobada' && sol.importe_cobrado && !tieneComision && (
-                          <Button size="sm" onClick={() => handleCrearComision(sol)}>
-                            Comisión
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setEditSolicitud(sol);
+                            setEditEstado(sol.estado);
+                            setEditImporte(sol.importe_cobrado?.toString() ?? '');
+                            setEditPartnerId(sol.partner_id ?? 'none');
+                          }}>
+                            Editar
                           </Button>
-                        )}
+                          {tieneComision && (
+                            <Badge className="border bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-xs">
+                              Comisión ✓
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -405,49 +431,92 @@ export default function AdminPartners() {
       {/* ── COMISIONES ── */}
       {activeSection === 'comisiones' && (
         <div className="rounded-xl border border-border overflow-hidden">
-          {comisiones.length === 0 ? (
+          {/* Filtros */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/20">
+            <Select value={filterComPartner} onValueChange={setFilterComPartner}>
+              <SelectTrigger className="w-44 h-8 text-xs">
+                <SelectValue placeholder="Todos los partners" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los partners</SelectItem>
+                {partners.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterComEstado} onValueChange={setFilterComEstado}>
+              <SelectTrigger className="w-36 h-8 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="pagada">Pagada</SelectItem>
+              </SelectContent>
+            </Select>
+            {(filterComPartner !== 'all' || filterComEstado !== 'all') && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs"
+                onClick={() => { setFilterComPartner('all'); setFilterComEstado('all'); }}>
+                Limpiar
+              </Button>
+            )}
+            <span className="ml-auto text-xs text-muted-foreground">
+              {comisionesFiltradas.length} resultado{comisionesFiltradas.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {comisionesFiltradas.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground">
               <Euro className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Sin comisiones aún</p>
+              <p className="font-medium">
+                {comisiones.length === 0 ? 'Sin comisiones aún' : 'Sin resultados para los filtros aplicados'}
+              </p>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  {['Fecha', 'Partner', 'Base', 'Comisión (15%)', 'Estado', 'Pagada el', 'Acciones'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {comisiones.map(com => (
-                  <tr key={com.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 text-foreground">{fmtDate(com.created_at)}</td>
-                    <td className="px-4 py-3 text-foreground">{(com as any).partners?.nombre ?? '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{fmt(com.importe_base)}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground">{fmt(com.importe_comision)}</td>
-                    <td className="px-4 py-3">
-                      <Badge className={`border ${ESTADO_COM[com.estado] ?? ESTADO_COM.pendiente}`}>{com.estado}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {com.pagada_at ? fmtDate(com.pagada_at) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {com.estado === 'pendiente' && (
-                        <Button variant="outline" size="sm" onClick={() => handleComisionEstado(com, 'confirmada')}>
-                          Confirmar
-                        </Button>
-                      )}
-                      {com.estado === 'confirmada' && (
-                        <Button size="sm" onClick={() => handleComisionEstado(com, 'pagada')}>
-                          Marcar pagada
-                        </Button>
-                      )}
-                    </td>
+            <>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    {['REF Solicitud', 'Fecha', 'Partner', 'Base', 'Comisión (10%)', 'Estado', 'Pagada el', 'Acciones'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {comisionesFiltradas.map(com => (
+                    <tr key={com.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{com.solicitud_id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-4 py-3 text-foreground">{fmtDate(com.created_at)}</td>
+                      <td className="px-4 py-3 text-foreground">{(com as any).partners?.nombre ?? '—'}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{fmt(com.importe_base)}</td>
+                      <td className="px-4 py-3 font-semibold text-foreground">{fmt(com.importe_comision)}</td>
+                      <td className="px-4 py-3">
+                        <Badge className={`border ${ESTADO_COM_CLASS[com.estado] ?? ESTADO_COM_CLASS.pendiente}`}>
+                          {isComPendiente(com.estado) ? 'Pendiente' : 'Pagada'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {com.pagada_at ? fmtDate(com.pagada_at) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isComPendiente(com.estado) && (
+                          <Button size="sm" onClick={() => handleComisionPagada(com)}>
+                            Marcar pagada
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {/* Totales */}
+              <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-end gap-4 text-sm">
+                <span className="text-xs text-muted-foreground">Pendiente:</span>
+                <span className="font-semibold text-amber-400">{fmt(totalsFiltradosPendiente)}</span>
+                <span className="text-xs text-muted-foreground ml-2">Pagado:</span>
+                <span className="font-semibold text-purple-400">{fmt(totalsFiltradosPagada)}</span>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -495,6 +564,18 @@ export default function AdminPartners() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
+              <Label>Partner asignado</Label>
+              <Select value={editPartnerId} onValueChange={setEditPartnerId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {partners.filter(p => p.activo).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Estado</Label>
               <Select value={editEstado} onValueChange={setEditEstado}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -510,6 +591,11 @@ export default function AdminPartners() {
               <Input id="importe" type="number" min="0" step="0.01" value={editImporte}
                 onChange={e => setEditImporte(e.target.value)} placeholder="0.00" />
             </div>
+            {editEstado === 'cerrada' && editPartnerId !== 'none' && parseFloat(editImporte) > 0 && (
+              <p className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                Al guardar se generará automáticamente una comisión de {fmt(parseFloat(editImporte || '0') * 0.10)} (10%).
+              </p>
+            )}
             {editSolicitud?.datos_formulario && (
               <div className="bg-muted/40 rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground mb-1">Datos del cliente</p>

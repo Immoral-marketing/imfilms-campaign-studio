@@ -9,10 +9,163 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
-import { Shield, LogOut, RefreshCw, Calendar, DollarSign, BarChart, Building2, Film, Eye } from "lucide-react";
+import { Shield, LogOut, RefreshCw, Calendar, DollarSign, BarChart, Building2, Film, Eye, PlayCircle, Plus, Pencil, Trash2, X, Check } from "lucide-react";
 import AdminDistributors from "./AdminDistributors";
 import { NavbarAdmin } from "@/components/NavbarAdmin";
+import { Textarea } from "@/components/ui/textarea";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+// ─── Video management component ─────────────────────────────────────────────
+const AdminVideos = () => {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: '', description: '', iframe_url: '', display_order: 0 });
+  const [saving, setSaving] = useState(false);
+
+  const { data: videos = [], isLoading } = useQuery({
+    queryKey: ['help_videos'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('help_videos').select('*').order('display_order');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const resetForm = () => {
+    setForm({ title: '', description: '', iframe_url: '', display_order: 0 });
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (video: any) => {
+    setForm({ title: video.title, description: video.description || '', iframe_url: video.iframe_url, display_order: video.display_order });
+    setEditingId(video.id);
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim() || !form.iframe_url.trim()) {
+      toast.error('Título y código iframe son obligatorios');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        const { error } = await supabase.from('help_videos').update(form).eq('id', editingId);
+        if (error) throw error;
+        toast.success('Vídeo actualizado');
+      } else {
+        const { error } = await supabase.from('help_videos').insert(form);
+        if (error) throw error;
+        toast.success('Vídeo añadido');
+      }
+      queryClient.invalidateQueries({ queryKey: ['help_videos'] });
+      resetForm();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!confirm(`¿Eliminar el vídeo "${title}"?`)) return;
+    const { error } = await supabase.from('help_videos').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Vídeo eliminado');
+    queryClient.invalidateQueries({ queryKey: ['help_videos'] });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-cinema text-xl text-foreground">Vídeos del Centro de Ayuda</h3>
+        {!showForm && (
+          <Button size="sm" onClick={() => setShowForm(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Añadir vídeo
+          </Button>
+        )}
+      </div>
+
+      {showForm && (
+        <Card className="p-5 space-y-4 border-primary/20">
+          <h4 className="font-semibold text-foreground">{editingId ? 'Editar vídeo' : 'Nuevo vídeo'}</h4>
+          <div className="space-y-3">
+            <div>
+              <Label>Título *</Label>
+              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ej: Cómo crear tu primera campaña" className="mt-1" />
+            </div>
+            <div>
+              <Label>Descripción</Label>
+              <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción breve del vídeo" className="mt-1" />
+            </div>
+            <div>
+              <Label>Código iframe *</Label>
+              <Textarea
+                value={form.iframe_url}
+                onChange={e => setForm(f => ({ ...f, iframe_url: e.target.value }))}
+                placeholder='<iframe src="https://..." width="100%" ...></iframe>'
+                className="mt-1 font-mono text-xs"
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Pega el código iframe de embed de tu plataforma de vídeo (Vimeo, YouTube, Loom, etc.)</p>
+            </div>
+            <div>
+              <Label>Orden de visualización</Label>
+              <Input type="number" value={form.display_order} onChange={e => setForm(f => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="mt-1 w-24" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving} className="gap-2">
+              <Check className="h-4 w-4" />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+            <Button variant="outline" onClick={resetForm} className="gap-2">
+              <X className="h-4 w-4" />
+              Cancelar
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <p className="text-muted-foreground text-sm">Cargando...</p>
+      ) : videos.length === 0 ? (
+        <Card className="p-8 text-center border-dashed border-border/40">
+          <PlayCircle className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">No hay vídeos aún. Añade el primero.</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {videos.map((video: any) => (
+            <Card key={video.id} className="p-4 flex items-start gap-4 bg-card/50">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">#{video.display_order}</span>
+                  <h4 className="font-semibold text-foreground truncate">{video.title}</h4>
+                </div>
+                {video.description && <p className="text-sm text-muted-foreground mt-0.5">{video.description}</p>}
+                <p className="text-xs text-muted-foreground/60 mt-1 truncate font-mono">{video.iframe_url.slice(0, 60)}…</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleEdit(video)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" variant="outline" className="h-8 w-8 hover:bg-red-500/10 hover:border-red-500/40 hover:text-red-500" onClick={() => handleDelete(video.id, video.title)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Admin component ────────────────────────────────────────────────────
 const Admin = () => {
   const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState(false);
@@ -256,6 +409,10 @@ const Admin = () => {
               <Building2 className="w-4 h-4 mr-2" />
               Distribuidoras
             </TabsTrigger>
+            <TabsTrigger value="videos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <PlayCircle className="w-4 h-4 mr-2" />
+              Vídeos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="campaigns" className="space-y-4">
@@ -401,6 +558,9 @@ const Admin = () => {
 
           <TabsContent value="distributors">
             <AdminDistributors />
+          </TabsContent>
+          <TabsContent value="videos">
+            <AdminVideos />
           </TabsContent>
         </Tabs>
       </div>

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import WizardProgress from '@/components/WizardProgress';
-import { ArrowLeft, Sparkles, Lock } from 'lucide-react';
+import { ArrowLeft, Sparkles, Lock, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import StrategyRecommender from '@/components/StrategyRecommender';
 import type { ReleaseSize, Genre } from '@/hooks/useStrategyRecommender';
@@ -13,19 +13,61 @@ const DemoWizard = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 
-  // Pre-filled demo data
+  // Pre-filled demo data — fechas siempre futuras, relativas a hoy
+  const buildDemoDates = () => {
+    const today = new Date();
+    // Estreno: ~10 semanas desde hoy
+    const releaseDate = new Date(today);
+    releaseDate.setDate(today.getDate() + 70);
+
+    // Pre-campaña: 3 semanas antes del estreno
+    const preStartDate = new Date(releaseDate);
+    preStartDate.setDate(releaseDate.getDate() - 21);
+    const preEndDate = new Date(releaseDate);
+    preEndDate.setDate(releaseDate.getDate() - 1);
+
+    // Fin de semana de estreno
+    const premiereWeekendStart = new Date(releaseDate);
+    const premiereWeekendEnd = new Date(releaseDate);
+    premiereWeekendEnd.setDate(releaseDate.getDate() + 6);
+
+    // Campaña completa: desde pre-campaña hasta fin del fin de semana estreno
+    const campaignEnd = new Date(premiereWeekendEnd);
+
+    // Entrega de report: 2 semanas después del estreno
+    const reportDate = new Date(releaseDate);
+    reportDate.setDate(releaseDate.getDate() + 14);
+
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    return {
+      releaseDate: fmt(releaseDate),
+      preStartDate: fmt(preStartDate),
+      preEndDate: fmt(preEndDate),
+      premiereWeekendStart: fmt(premiereWeekendStart),
+      premiereWeekendEnd: fmt(premiereWeekendEnd),
+      campaignStart: fmt(preStartDate),
+      campaignEnd: fmt(campaignEnd),
+      reportDate: fmt(reportDate),
+    };
+  };
+
+  const demoDates = buildDemoDates();
+
   const demoData = {
     filmTitle: 'Película Demo',
     genre: 'drama' as Genre,
-    releaseDate: '2025-06-15',
+    releaseDate: demoDates.releaseDate,
     releaseSize: 'mediano' as ReleaseSize,
     targetAudience: 'Público adulto 25-45 años, interesado en cine de autor y dramas contemporáneos',
     platforms: ['Instagram', 'TikTok', 'YouTube', 'Facebook'],
-    investment: 35000,
-    preStartDate: '2025-05-25',
-    preEndDate: '2025-06-14',
-    premiereWeekendStart: '2025-06-15',
-    premiereWeekendEnd: '2025-06-21',
+    investment: 15000,
+    preStartDate: demoDates.preStartDate,
+    preEndDate: demoDates.preEndDate,
+    premiereWeekendStart: demoDates.premiereWeekendStart,
+    premiereWeekendEnd: demoDates.premiereWeekendEnd,
+    campaignStart: demoDates.campaignStart,
+    campaignEnd: demoDates.campaignEnd,
+    reportDate: demoDates.reportDate,
   };
 
   const handleNext = () => {
@@ -148,15 +190,28 @@ const DemoWizard = () => {
                 <div>
                   <label className="text-sm font-medium mb-2 block">Pre-campaña</label>
                   <div className="p-3 bg-muted/20 rounded-md text-muted-foreground">
-                    {new Date(demoData.preStartDate).toLocaleDateString('es-ES')} -{' '}
+                    {new Date(demoData.preStartDate).toLocaleDateString('es-ES')} –{' '}
                     {new Date(demoData.preEndDate).toLocaleDateString('es-ES')}
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block">Fin de semana estreno</label>
                   <div className="p-3 bg-muted/20 rounded-md text-muted-foreground">
-                    {new Date(demoData.premiereWeekendStart).toLocaleDateString('es-ES')} -{' '}
+                    {new Date(demoData.premiereWeekendStart).toLocaleDateString('es-ES')} –{' '}
                     {new Date(demoData.premiereWeekendEnd).toLocaleDateString('es-ES')}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Campaña completa</label>
+                  <div className="p-3 bg-muted/20 rounded-md text-muted-foreground">
+                    {new Date(demoData.campaignStart).toLocaleDateString('es-ES')} –{' '}
+                    {new Date(demoData.campaignEnd).toLocaleDateString('es-ES')}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Entrega de report</label>
+                  <div className="p-3 bg-muted/20 rounded-md text-muted-foreground">
+                    {new Date(demoData.reportDate).toLocaleDateString('es-ES')}
                   </div>
                 </div>
               </div>
@@ -177,24 +232,24 @@ const DemoWizard = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Escenario Pequeño */}
+              {/* Escenario Conversadora */}
               <Card className="p-6 space-y-4 bg-card/50 backdrop-blur-sm hover:border-primary/40 transition-colors">
                 <div className="text-center">
                   <div className="inline-block px-3 py-1 bg-muted/20 rounded-full text-xs font-semibold text-muted-foreground mb-3">
-                    ESTRENO PEQUEÑO
+                    CONVERSADORA
                   </div>
-                  <div className="font-cinema text-4xl text-primary cinema-glow">
-                    5.000€
+                  <div className="font-cinema text-3xl text-primary cinema-glow">
+                    2.500€ – 8.000€
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Inversión publicitaria
+                    Rango de inversión
                   </div>
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee variable (20%)</span>
-                    <span>1.000€</span>
+                    <span>1.600€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee setup (4 plataformas, 1ª gratis)</span>
@@ -210,7 +265,7 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      6.600€
+                      10.200€
                     </span>
                   </div>
                 </div>
@@ -223,7 +278,7 @@ const DemoWizard = () => {
                 </div>
                 <div className="text-center">
                   <div className="inline-block px-3 py-1 bg-primary/20 rounded-full text-xs font-semibold text-primary mb-3">
-                    ESTRENO MEDIANO
+                    ESTÁNDAR
                   </div>
                   <div className="font-cinema text-5xl text-primary cinema-glow">
                     15.000€
@@ -262,7 +317,7 @@ const DemoWizard = () => {
               <Card className="p-6 space-y-4 bg-card/50 backdrop-blur-sm hover:border-primary/40 transition-colors">
                 <div className="text-center">
                   <div className="inline-block px-3 py-1 bg-cinema-yellow/20 rounded-full text-xs font-semibold text-cinema-yellow mb-3">
-                    ESTRENO GRANDE
+                    AGRESIVA
                   </div>
                   <div className="font-cinema text-4xl text-cinema-yellow cinema-glow">
                     30.000€
@@ -298,25 +353,6 @@ const DemoWizard = () => {
               </Card>
             </div>
 
-            <div className="space-y-3">
-              <Card className="p-4 bg-blue-500/5 border-blue-500/20">
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  <strong>Fee de Setup:</strong> Aplicamos un fee fijo de 200€ por cada plataforma activa (la primera plataforma es bonificada) para la configuración inicial y optimización técnica.
-                </p>
-              </Card>
-
-              <Card className="p-4 bg-green-500/5 border-green-500/20">
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  <strong>Fees Flexibles:</strong> Nuestra estructura de fees se ajusta según el volumen de inversión, reduciendo el porcentaje variable a medida que crece el presupuesto.
-                </p>
-              </Card>
-
-              <Card className="p-4 bg-purple-500/5 border-purple-500/20">
-                <p className="text-sm text-purple-600 dark:text-purple-400">
-                  <strong>Inversiones Reducidas:</strong> Para campañas de hasta 3.000€, aplicamos un fee fijo de gestión de 500€ sin porcentaje variable adicional.
-                </p>
-              </Card>
-            </div>
           </div>
         );
 
@@ -337,10 +373,10 @@ const DemoWizard = () => {
               <Card className="p-6 space-y-4 bg-card/50 backdrop-blur-sm">
                 <div className="text-center border-b border-border/40 pb-4">
                   <div className="inline-block px-3 py-1 bg-muted/20 rounded-full text-xs font-semibold text-muted-foreground mb-2">
-                    INVERSIÓN 5.000€
+                    2.500€ – 8.000€
                   </div>
                   <div className="font-cinema text-xl text-primary">
-                    Estreno Pequeño
+                    Conversadora
                   </div>
                 </div>
 
@@ -380,7 +416,7 @@ const DemoWizard = () => {
                     INVERSIÓN 15.000€
                   </div>
                   <div className="font-cinema text-xl text-primary">
-                    Estreno Mediano
+                    Estándar
                   </div>
                 </div>
 
@@ -417,7 +453,7 @@ const DemoWizard = () => {
                     INVERSIÓN 30.000€
                   </div>
                   <div className="font-cinema text-xl text-cinema-yellow">
-                    Estreno Grande
+                    Agresiva
                   </div>
                 </div>
 
@@ -529,16 +565,34 @@ const DemoWizard = () => {
               Salir del demo
             </Button>
           </Link>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
-              <Lock className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">MODO DEMO</span>
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                <Lock className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary">MODO DEMO</span>
+              </div>
+              <h1 className="font-cinema text-3xl text-foreground">
+                Configurador de Campaña - Película Demo
+              </h1>
             </div>
-            <h1 className="font-cinema text-3xl text-foreground">
-              Configurador de Campaña - Película Demo
-            </h1>
+            <Link to="/quick-wizard">
+              <Button size="sm" className="cinema-glow gap-2 font-semibold">
+                <Star className="h-4 w-4" />
+                Registra tu estreno
+              </Button>
+            </Link>
           </div>
-          <WizardProgress currentStep={currentStep} totalSteps={totalSteps} />
+          <WizardProgress
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            steps={[
+              { title: 'Película', subtitle: 'Datos del film' },
+              { title: 'Recomendación', subtitle: 'Estrategia IA' },
+              { title: 'Plataformas', subtitle: 'Canales y fechas' },
+              { title: 'Inversión', subtitle: 'Escenarios' },
+              { title: 'Resultados', subtitle: 'Proyecciones' },
+            ]}
+          />
         </div>
       </div>
 

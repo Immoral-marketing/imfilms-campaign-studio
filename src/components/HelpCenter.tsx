@@ -8,7 +8,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { HelpCircle, ChevronDown, ChevronUp, PlayCircle, BookOpen } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { HelpCircle, PlayCircle, BookOpen, Loader2, MessageSquare, CheckCircle2 } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
@@ -16,6 +19,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const faqs = [
   {
@@ -104,6 +110,50 @@ const glossary = [
 ];
 
 const HelpCenter = () => {
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [sendingSupport, setSendingSupport] = useState(false);
+  const [supportSent, setSupportSent] = useState(false);
+
+  const handleSendSupport = async () => {
+    if (!supportSubject.trim() || !supportMessage.trim()) {
+      toast.error('Por favor rellena el asunto y el mensaje');
+      return;
+    }
+    setSendingSupport(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'support_request',
+          subject: supportSubject,
+          message: supportMessage,
+          userEmail: session?.user?.email ?? 'Usuario no identificado',
+        },
+      });
+      if (error) throw error;
+      setSupportSent(true);
+      setSupportSubject('');
+      setSupportMessage('');
+    } catch (e: any) {
+      toast.error('Error al enviar el mensaje. Inténtalo de nuevo.');
+    } finally {
+      setSendingSupport(false);
+    }
+  };
+
+  const { data: videos = [], isLoading: videosLoading } = useQuery({
+    queryKey: ['help_videos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('help_videos')
+        .select('*')
+        .order('display_order', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -124,13 +174,17 @@ const HelpCenter = () => {
         </DialogHeader>
 
         <Tabs defaultValue="faq" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="faq">
               <BookOpen className="h-4 w-4 mr-2" />
               FAQ
             </TabsTrigger>
             <TabsTrigger value="glossary">Glosario</TabsTrigger>
             <TabsTrigger value="videos">Vídeos</TabsTrigger>
+            <TabsTrigger value="support">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Soporte
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="faq" className="mt-4 space-y-4">
@@ -172,42 +226,89 @@ const HelpCenter = () => {
             <p className="text-sm text-muted-foreground">
               Vídeos tutoriales para aprovechar al máximo imfilms
             </p>
-            <div className="space-y-4">
-              <div className="border border-border/40 rounded-lg p-6 text-center space-y-3">
-                <PlayCircle className="h-12 w-12 text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">
-                  Los vídeos tutoriales estarán disponibles próximamente.
+
+            {videosLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : videos.length === 0 ? (
+              <div className="border border-border/40 rounded-lg p-8 text-center space-y-2">
+                <PlayCircle className="h-10 w-10 text-muted-foreground mx-auto" />
+                <p className="text-muted-foreground text-sm">
+                  Pronto encontrarás aquí vídeos tutoriales del equipo imfilms.
                 </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {videos.map((video: any) => (
+                  <div key={video.id} className="space-y-2">
+                    <h4 className="font-semibold text-foreground">{video.title}</h4>
+                    {video.description && (
+                      <p className="text-sm text-muted-foreground">{video.description}</p>
+                    )}
+                    <div
+                      className="w-full rounded-lg overflow-hidden border border-border/40"
+                      style={{ aspectRatio: '16/9' }}
+                      dangerouslySetInnerHTML={{ __html: video.iframe_url }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="support" className="mt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              ¿Tienes alguna duda o problema? Escríbenos y te respondemos en menos de 24h.
+            </p>
+
+            {supportSent ? (
+              <div className="border border-green-500/30 bg-green-500/5 rounded-lg p-8 text-center space-y-3">
+                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+                <h4 className="font-semibold text-foreground">Mensaje enviado</h4>
                 <p className="text-sm text-muted-foreground">
-                  Mientras tanto, puedes usar nuestro chat de campaña para cualquier pregunta.
+                  Hemos recibido tu mensaje. Te responderemos en menos de 24 horas.
                 </p>
+                <Button variant="outline" size="sm" onClick={() => setSupportSent(false)}>
+                  Enviar otro mensaje
+                </Button>
               </div>
-              {/* Placeholder para futuros vídeos */}
-              <div className="grid gap-4 opacity-50">
-                <div className="border border-border/40 rounded-lg p-4 flex items-center gap-4">
-                  <div className="h-20 w-32 bg-muted rounded flex items-center justify-center">
-                    <PlayCircle className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold">Cómo crear tu primera campaña</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Tutorial paso a paso del wizard
-                    </p>
-                  </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="support-subject">Asunto *</Label>
+                  <Input
+                    id="support-subject"
+                    value={supportSubject}
+                    onChange={e => setSupportSubject(e.target.value)}
+                    placeholder="¿En qué podemos ayudarte?"
+                    className="mt-1"
+                  />
                 </div>
-                <div className="border border-border/40 rounded-lg p-4 flex items-center gap-4">
-                  <div className="h-20 w-32 bg-muted rounded flex items-center justify-center">
-                    <PlayCircle className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-semibold">Subida de creativos</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Qué materiales necesitamos y cómo subirlos
-                    </p>
-                  </div>
+                <div>
+                  <Label htmlFor="support-message">Mensaje *</Label>
+                  <Textarea
+                    id="support-message"
+                    value={supportMessage}
+                    onChange={e => setSupportMessage(e.target.value)}
+                    placeholder="Describe tu consulta o problema con el mayor detalle posible..."
+                    className="mt-1"
+                    rows={5}
+                  />
                 </div>
+                <Button
+                  onClick={handleSendSupport}
+                  disabled={sendingSupport}
+                  className="w-full gap-2"
+                >
+                  {sendingSupport ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4" />
+                  )}
+                  {sendingSupport ? 'Enviando...' : 'Enviar mensaje'}
+                </Button>
               </div>
-            </div>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
