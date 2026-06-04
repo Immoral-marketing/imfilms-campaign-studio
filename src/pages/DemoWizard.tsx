@@ -159,6 +159,7 @@ const DemoWizard = () => {
               releaseSize={demoData.releaseSize}
               genre={demoData.genre}
               targetAudience={demoData.targetAudience}
+              investmentOverrides={{ conservador: 5000, estandar: 15000, agresivo: 30000 }}
             />
           </div>
         );
@@ -238,18 +239,18 @@ const DemoWizard = () => {
                   <div className="inline-block px-3 py-1 bg-muted/20 rounded-full text-xs font-semibold text-muted-foreground mb-3">
                     CONVERSADORA
                   </div>
-                  <div className="font-cinema text-3xl text-primary cinema-glow">
-                    2.500€ – 8.000€
+                  <div className="font-cinema text-4xl text-primary cinema-glow">
+                    5.000€
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Rango de inversión
+                    Inversión publicitaria
                   </div>
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee variable (20%)</span>
-                    <span>1.600€</span>
+                    <span>1.000€</span>
                   </div>
                   <div className="flex justify-between p-2 bg-muted/10 rounded">
                     <span className="text-muted-foreground">Fee setup (4 plataformas, 1ª gratis)</span>
@@ -265,7 +266,7 @@ const DemoWizard = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Total</span>
                     <span className="font-cinema text-2xl text-primary">
-                      10.200€
+                      6.600€
                     </span>
                   </div>
                 </div>
@@ -373,7 +374,7 @@ const DemoWizard = () => {
               <Card className="p-6 space-y-4 bg-card/50 backdrop-blur-sm">
                 <div className="text-center border-b border-border/40 pb-4">
                   <div className="inline-block px-3 py-1 bg-muted/20 rounded-full text-xs font-semibold text-muted-foreground mb-2">
-                    2.500€ – 8.000€
+                    INVERSIÓN 5.000€
                   </div>
                   <div className="font-cinema text-xl text-primary">
                     Conversadora

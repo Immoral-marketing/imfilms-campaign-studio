@@ -10,6 +10,7 @@ interface StrategyRecommenderProps {
   genre?: Genre;
   targetAudience?: string;
   onApplyScenario?: (scenario: Scenario, investment: number, platforms: string[]) => void;
+  investmentOverrides?: Partial<Record<Scenario, number>>;
 }
 
 const StrategyRecommender = ({
@@ -17,6 +18,7 @@ const StrategyRecommender = ({
   genre,
   targetAudience,
   onApplyScenario,
+  investmentOverrides,
 }: StrategyRecommenderProps) => {
   const recommendation = useStrategyRecommender({ releaseSize, genre, targetAudience });
   const [selectedScenario, setSelectedScenario] = useState<Scenario>('estandar');
@@ -83,7 +85,7 @@ const StrategyRecommender = ({
                   <div>
                     <div className="text-xs text-muted-foreground mb-1">Inversión recomendada</div>
                     <div className="font-cinema text-2xl text-primary">
-                      {scenario.investment.recommended.toLocaleString('es-ES')}€
+                      {(investmentOverrides?.[scenario.scenario] ?? scenario.investment.recommended).toLocaleString('es-ES')}€
                     </div>
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -124,7 +126,7 @@ const StrategyRecommender = ({
               <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
                 <div className="text-xs text-primary mb-1">Recomendada</div>
                 <div className="font-cinema text-lg text-primary">
-                  {currentScenario.investment.recommended.toLocaleString('es-ES')}€
+                  {(investmentOverrides?.[selectedScenario] ?? currentScenario.investment.recommended).toLocaleString('es-ES')}€
                 </div>
               </div>
               <div className="text-center p-3 bg-muted/20 rounded-lg">
@@ -222,7 +224,7 @@ const StrategyRecommender = ({
               onClick={() =>
                 onApplyScenario(
                   selectedScenario,
-                  currentScenario.investment.recommended,
+                  investmentOverrides?.[selectedScenario] ?? currentScenario.investment.recommended,
                   currentScenario.platforms.map((p) => p.platform)
                 )
               }
