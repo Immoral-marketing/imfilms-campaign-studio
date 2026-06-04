@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Search, Play, BookOpen, MessageCircle, X } from 'lucide-react';
+import { Search, Play, BookOpen, MessageCircle, X, Send, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { trackEvent } from '@/utils/trackingUtils';
+import { toast } from 'sonner';
 
 interface HelpCenterProps {
   open: boolean;
@@ -30,6 +32,11 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
   const [filteredArticles, setFilteredArticles] = useState<HelpArticle[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSupport, setShowSupport] = useState(false);
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [sendingSupport, setSendingSupport] = useState(false);
+  const [supportSent, setSupportSent] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -99,6 +106,33 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
   const faqs = filteredArticles.filter(a => a.type === 'faq');
   const guides = filteredArticles.filter(a => a.type === 'article');
   const videos = filteredArticles.filter(a => a.type === 'video_placeholder');
+
+  const handleSendSupport = async () => {
+    if (!supportSubject.trim() || !supportMessage.trim()) {
+      toast.error('Por favor completa el asunto y el mensaje');
+      return;
+    }
+    setSendingSupport(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          type: 'support_request',
+          subject: supportSubject,
+          message: supportMessage,
+          userEmail: session?.user?.email ?? 'Usuario no identificado',
+        },
+      });
+      if (error) throw error;
+      setSupportSent(true);
+      toast.success('Mensaje enviado al equipo de soporte');
+    } catch (err) {
+      console.error(err);
+      toast.error('Error al enviar el mensaje. Inténtalo de nuevo.');
+    } finally {
+      setSendingSupport(false);
+    }
+  };
 
   const categoryGroups = faqs.reduce((acc, faq) => {
     if (!acc[faq.category]) acc[faq.category] = [];
@@ -241,13 +275,55 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
               </div>
             </Tabs>
 
-            <div className="border-t border-border pt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <span>¿No encuentras lo que buscas?</span>
-              <Button variant="outline" size="sm" className="gap-2">
-                <MessageCircle className="h-4 w-4" />
-                Contactar soporte
-              </Button>
-            </div>
+            {showSupport ? (
+              <div className="border-t border-border pt-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => { setShowSupport(false); setSupportSent(false); setSupportSubject(''); setSupportMessage(''); }}>
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Volver
+                  </Button>
+                  <span className="font-semibold text-sm">Contactar soporte</span>
+                </div>
+                {supportSent ? (
+                  <div className="text-center py-6 space-y-2">
+                    <div className="text-4xl">✅</div>
+                    <p className="font-semibold text-cinema-ivory">Mensaje enviado</p>
+                    <p className="text-sm text-muted-foreground">El equipo te responderá a la brevedad en tu email.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Input
+                      placeholder="Asunto — ej. No puedo crear una campaña"
+                      value={supportSubject}
+                      onChange={(e) => setSupportSubject(e.target.value)}
+                    />
+                    <Textarea
+                      placeholder="Describe tu problema con el mayor detalle posible..."
+                      value={supportMessage}
+                      onChange={(e) => setSupportMessage(e.target.value)}
+                      rows={5}
+                      className="resize-none"
+                    />
+                    <Button
+                      onClick={handleSendSupport}
+                      disabled={sendingSupport || !supportSubject.trim() || !supportMessage.trim()}
+                      className="w-full gap-2"
+                    >
+                      <Send className="h-4 w-4" />
+                      {sendingSupport ? 'Enviando...' : 'Enviar al soporte'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="border-t border-border pt-4 flex items-center justify-between text-sm text-muted-foreground">
+                <span>¿No encuentras lo que buscas?</span>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSupport(true)}>
+                  <MessageCircle className="h-4 w-4" />
+                  Contactar soporte
+                </Button>
+              </div>
+            )}
           </>
         )}
       </DialogContent>

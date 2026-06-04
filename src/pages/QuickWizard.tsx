@@ -1708,23 +1708,20 @@ const QuickWizard = () => {
                           <Input
                             id="investment"
                             type="number"
-                            min="3000"
+                            min="500"
                             step="500"
                             value={adInvestment}
                             onChange={(e) => setAdInvestment(e.target.value)}
                             className="bg-background border-primary/30 text-foreground text-3xl font-bold h-16"
-                            placeholder="Mínimo 3.000€"
+                            placeholder="Inversión publicitaria"
                           />
-                          <p className="text-xs text-muted-foreground">
-                            A partir de 3.000€ tu campaña empieza a tener el músculo necesario.
-                          </p>
                         </div>
 
 
                       </div>
 
                       {/* Fee Mode Toggle */}
-                      {parseFloat(adInvestment) >= 3000 && (
+                      {parseFloat(adInvestment) > 0 && (
                         <div className="space-y-3 pt-6 border-t border-border/10">
                           <div className="flex items-center gap-2">
                             <Label className="text-cinema-ivory text-lg">¿Cómo prefieres gestionar los fees?</Label>
@@ -1769,7 +1766,7 @@ const QuickWizard = () => {
                       )}
 
                       {/* Cost Summary */}
-                      {parseFloat(adInvestment) >= 3000 && (
+                      {parseFloat(adInvestment) > 0 && (
                         <div className="animate-in fade-in duration-500">
                           <CostSummary costs={costs} isFirstRelease={isFirstRelease} compact showPrices={isDistributor} feeMode={feeMode} />
                         </div>

@@ -4,17 +4,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { NavbarAdmin } from '@/components/NavbarAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Camera, Save, Lock, ArrowLeft, Loader2, Eye, EyeOff, Settings as SettingsIcon, Mail, Zap } from 'lucide-react';
+import { User, Camera, Save, Lock, ArrowLeft, Loader2, Eye, EyeOff, Settings as SettingsIcon, Mail, Zap, PlayCircle, Plus, Trash2, Pencil, X, Check, GripVertical } from 'lucide-react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { FeeThresholdManager } from '@/components/FeeThresholdManager';
 import { CalendlySetting } from '@/components/CalendlySetting';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { EmailPreviewPanel } from '@/components/EmailPreviewPanel';
 
-type SettingsTab = 'account' | 'notifications' | 'features';
+type SettingsTab = 'account' | 'notifications' | 'features' | 'help_center' | 'email_preview';
 
 const Settings = () => {
     const navigate = useNavigate();
@@ -202,11 +205,35 @@ const Settings = () => {
         }
     };
 
+    // ── Help Center hooks (must be before any early return) ─────────────────
+    const queryClient = useQueryClient();
+    const { data: helpVideos = [], isLoading: videosLoading } = useQuery({
+        queryKey: ['help_videos'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('help_videos')
+                .select('*')
+                .order('display_order', { ascending: true });
+            if (error) throw error;
+            return data as { id: string; title: string; description: string | null; iframe_url: string; display_order: number }[];
+        },
+        enabled: activeTab === 'help_center',
+    });
+
+    const [videoForm, setVideoForm] = useState({ title: '', description: '', iframe_url: '', display_order: 0 });
+    const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+    const [savingVideo, setSavingVideo] = useState(false);
+    const [showVideoForm, setShowVideoForm] = useState(false);
+
     // Build sidebar items based on role
     const sidebarItems: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
         { id: 'account', label: 'Ajustes de la cuenta', icon: SettingsIcon },
         { id: 'notifications', label: 'Notificaciones por mail', icon: Mail },
-        ...(userRole === 'admin' ? [{ id: 'features' as SettingsTab, label: 'Funciones', icon: Zap }] : []),
+        ...(userRole === 'admin' ? [
+            { id: 'features' as SettingsTab, label: 'Funciones', icon: Zap },
+            { id: 'help_center' as SettingsTab, label: 'Centro de Ayuda', icon: PlayCircle },
+            { id: 'email_preview' as SettingsTab, label: 'Preview Emails', icon: Mail },
+        ] : []),
     ];
 
     if (loading) {
@@ -502,6 +529,137 @@ const Settings = () => {
         );
     };
 
+    // ── Help Center tab (admin only) ─────────────────────────────────────────
+    const resetVideoForm = () => { setVideoForm({ title: '', description: '', iframe_url: '', display_order: 0 }); setEditingVideoId(null); setShowVideoForm(false); };
+
+    const handleSaveVideo = async () => {
+        if (!videoForm.title.trim() || !videoForm.iframe_url.trim()) { toast.error('Título e iframe son obligatorios'); return; }
+        setSavingVideo(true);
+        try {
+            if (editingVideoId) {
+                const { error } = await supabase.from('help_videos').update({ title: videoForm.title, description: videoForm.description || null, iframe_url: videoForm.iframe_url, display_order: videoForm.display_order }).eq('id', editingVideoId);
+                if (error) throw error;
+                toast.success('Vídeo actualizado');
+            } else {
+                const { error } = await supabase.from('help_videos').insert({ title: videoForm.title, description: videoForm.description || null, iframe_url: videoForm.iframe_url, display_order: videoForm.display_order });
+                if (error) throw error;
+                toast.success('Vídeo añadido');
+            }
+            queryClient.invalidateQueries({ queryKey: ['help_videos'] });
+            resetVideoForm();
+        } catch (e: any) { toast.error(e.message); } finally { setSavingVideo(false); }
+    };
+
+    const handleDeleteVideo = async (id: string) => {
+        if (!confirm('¿Eliminar este vídeo?')) return;
+        const { error } = await supabase.from('help_videos').delete().eq('id', id);
+        if (error) { toast.error(error.message); return; }
+        toast.success('Vídeo eliminado');
+        queryClient.invalidateQueries({ queryKey: ['help_videos'] });
+    };
+
+    const handleEditVideo = (v: typeof helpVideos[0]) => {
+        setVideoForm({ title: v.title, description: v.description ?? '', iframe_url: v.iframe_url, display_order: v.display_order });
+        setEditingVideoId(v.id);
+        setShowVideoForm(true);
+    };
+
+    const renderHelpCenterTab = () => (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="font-cinema text-2xl tracking-wide text-cinema-ivory">Centro de Ayuda</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Gestiona los vídeos tutoriales que ven los usuarios</p>
+                </div>
+                {!showVideoForm && (
+                    <Button onClick={() => setShowVideoForm(true)} size="sm" className="gap-2 bg-primary text-black hover:bg-primary/90">
+                        <Plus className="h-4 w-4" /> Añadir vídeo
+                    </Button>
+                )}
+            </div>
+
+            {/* Form */}
+            {showVideoForm && (
+                <Card className="bg-[#1f1f22] border-primary/20">
+                    <CardHeader>
+                        <CardTitle className="text-cinema-ivory font-cinema text-lg flex items-center justify-between">
+                            {editingVideoId ? 'Editar vídeo' : 'Nuevo vídeo'}
+                            <button onClick={resetVideoForm} className="text-muted-foreground hover:text-cinema-ivory transition-colors">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-cinema-ivory/80 text-sm">Título *</Label>
+                            <Input value={videoForm.title} onChange={e => setVideoForm(f => ({ ...f, title: e.target.value }))} placeholder="Cómo configurar tu campaña" className="bg-[#141416] border-white/10 focus:border-primary/50 text-cinema-ivory" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cinema-ivory/80 text-sm">Descripción</Label>
+                            <Input value={videoForm.description} onChange={e => setVideoForm(f => ({ ...f, description: e.target.value }))} placeholder="Breve descripción del vídeo (opcional)" className="bg-[#141416] border-white/10 focus:border-primary/50 text-cinema-ivory" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cinema-ivory/80 text-sm">Código iframe *</Label>
+                            <Textarea value={videoForm.iframe_url} onChange={e => setVideoForm(f => ({ ...f, iframe_url: e.target.value }))} placeholder='<iframe src="https://..." ...></iframe>' className="bg-[#141416] border-white/10 focus:border-primary/50 text-cinema-ivory font-mono text-xs" rows={3} />
+                            <p className="text-xs text-muted-foreground">Pega el código iframe completo de YouTube, Vimeo, Loom u otro servicio.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-cinema-ivory/80 text-sm">Orden de visualización</Label>
+                            <Input type="number" value={videoForm.display_order} onChange={e => setVideoForm(f => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="bg-[#141416] border-white/10 focus:border-primary/50 text-cinema-ivory w-24" />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <Button onClick={handleSaveVideo} disabled={savingVideo} className="bg-primary text-black hover:bg-primary/90 gap-2">
+                                {savingVideo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                {editingVideoId ? 'Guardar cambios' : 'Añadir vídeo'}
+                            </Button>
+                            <Button variant="ghost" onClick={resetVideoForm} className="text-muted-foreground hover:text-cinema-ivory">Cancelar</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* List */}
+            <Card className="bg-[#1f1f22] border-cinema-gold/10">
+                <CardContent className="pt-6">
+                    {videosLoading ? (
+                        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                    ) : helpVideos.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+                            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                <PlayCircle className="h-7 w-7 text-primary" />
+                            </div>
+                            <p className="text-muted-foreground text-sm">Aún no hay vídeos. Añade el primero.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {helpVideos.map(v => (
+                                <div key={v.id} className="flex items-start gap-4 p-4 rounded-xl bg-[#141416] border border-white/5 group hover:border-primary/20 transition-colors">
+                                    <GripVertical className="h-5 w-5 text-white/15 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs text-primary/60 font-mono">#{v.display_order}</span>
+                                            <p className="font-medium text-cinema-ivory text-sm">{v.title}</p>
+                                        </div>
+                                        {v.description && <p className="text-xs text-muted-foreground mb-2">{v.description}</p>}
+                                        <p className="text-xs text-white/20 font-mono truncate">{v.iframe_url.slice(0, 80)}…</p>
+                                    </div>
+                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button size="sm" variant="ghost" onClick={() => handleEditVideo(v)} className="h-8 w-8 p-0 text-muted-foreground hover:text-cinema-ivory hover:bg-white/10">
+                                            <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => handleDeleteVideo(v.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400 hover:bg-red-500/10">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-[#141416] text-cinema-ivory">
             <NavbarAdmin />
@@ -548,6 +706,16 @@ const Settings = () => {
                         {activeTab === 'account' && renderAccountSettings()}
                         {activeTab === 'notifications' && renderNotificationsTab()}
                         {activeTab === 'features' && userRole === 'admin' && renderFeaturesTab()}
+                        {activeTab === 'help_center' && userRole === 'admin' && renderHelpCenterTab()}
+                        {activeTab === 'email_preview' && userRole === 'admin' && (
+                            <div className="space-y-4">
+                                <div>
+                                    <h2 className="font-cinema text-2xl tracking-wide text-cinema-ivory">Preview de Emails</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">Vista previa de todos los emails transaccionales que se envían a los usuarios</p>
+                                </div>
+                                <EmailPreviewPanel height="calc(100vh - 320px)" />
+                            </div>
+                        )}
                     </main>
                 </div>
             </div>

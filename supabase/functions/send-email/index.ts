@@ -1217,6 +1217,67 @@ const handler = async (req: Request): Promise<Response> => {
                 }
                 break;
             }
+            case "support_request": {
+                // User contacted support from Help Center — notify all admins
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const subject = `💬 Mensaje de soporte: ${payload.subject ?? '(sin asunto)'}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+                    <body style="margin:0;padding:0;background-color:#191919;font-family:Arial,sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#191919;padding:40px 20px;">
+                            <tr><td align="center">
+                                <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#191919;border-radius:12px;border:1px solid #F5D849;overflow:hidden;">
+                                    <tr>
+                                        <td style="background:linear-gradient(135deg,#F5D849 0%,#B8A237 100%);padding:24px 30px;text-align:center;">
+                                            <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height:40px;width:auto;" />
+                                            <p style="margin:8px 0 0 0;color:#191919;font-size:13px;opacity:0.8;">Campaign Studio</p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px 30px;">
+                                            <h2 style="margin:0 0 16px 0;color:#F5F2EB;font-size:20px;">Nuevo mensaje de soporte</h2>
+                                            <table width="100%" cellpadding="0" cellspacing="0">
+                                                <tr><td style="padding:8px;background-color:#1a1a1a;border-radius:6px;margin-bottom:8px;">
+                                                    <p style="margin:0;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;">De</p>
+                                                    <p style="margin:4px 0 0 0;color:#F5F2EB;font-size:14px;">${payload.userEmail ?? 'Desconocido'}</p>
+                                                </td></tr>
+                                                <tr><td style="padding-top:8px;"></td></tr>
+                                                <tr><td style="padding:8px;background-color:#1a1a1a;border-radius:6px;">
+                                                    <p style="margin:0;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Asunto</p>
+                                                    <p style="margin:4px 0 0 0;color:#F5D849;font-size:15px;font-weight:bold;">${payload.subject ?? ''}</p>
+                                                </td></tr>
+                                                <tr><td style="padding-top:8px;"></td></tr>
+                                                <tr><td style="padding:16px;background-color:#1a1a1a;border-radius:6px;border-left:3px solid #F5D849;">
+                                                    <p style="margin:0;color:#F5F2EB;font-size:14px;line-height:1.7;white-space:pre-wrap;">${payload.message ?? ''}</p>
+                                                </td></tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="background-color:#0d0d0d;padding:20px 30px;border-top:1px solid #333;">
+                                            <p style="margin:0;color:#555;font-size:12px;text-align:center;">
+                                                Responde directamente a este email para contestar al usuario.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td></tr>
+                        </table>
+                    </body></html>`;
+
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject,
+                        html: emailHtml,
+                        reply_to: payload.userEmail,
+                    });
+                }
+                break;
+            }
             default: {
                 console.log(`Unknown payload type encountered: "${type}"`);
             }

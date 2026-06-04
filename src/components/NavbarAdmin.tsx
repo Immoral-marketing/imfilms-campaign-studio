@@ -10,7 +10,7 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Settings, Users, LayoutDashboard, MessageSquare, Bell, ChevronDown } from "lucide-react";
+import { LogOut, User, Settings, Users, LayoutDashboard, MessageSquare, Bell, ChevronDown, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export const NavbarAdmin = () => {
     const navigate = useNavigate();
     const [scrolled, setScrolled] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [hasPartner, setHasPartner] = useState(false);
 
     const location = useLocation();
     const { totalUnread: chatUnread } = useChatCampaigns();
@@ -34,11 +35,23 @@ export const NavbarAdmin = () => {
 
         // Get current user
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
+            const u = session?.user ?? null;
+            setUser(u);
+            if (u) {
+                supabase.from('partners').select('id').eq('user_id', u.id).maybeSingle()
+                    .then(({ data }) => setHasPartner(!!data));
+            }
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+            const u = session?.user ?? null;
+            setUser(u);
+            if (u) {
+                supabase.from('partners').select('id').eq('user_id', u.id).maybeSingle()
+                    .then(({ data }) => setHasPartner(!!data));
+            } else {
+                setHasPartner(false);
+            }
         });
 
         return () => {
@@ -160,6 +173,14 @@ export const NavbarAdmin = () => {
                         >
                             <Settings className="h-4 w-4" />
                             <span>Ajustes</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem
+                            onClick={() => navigate(hasPartner ? "/afiliado" : "/recomienda")}
+                            className="hover:bg-green-500 hover:text-white focus:bg-green-500 focus:text-white cursor-pointer gap-2 text-green-400"
+                        >
+                            <DollarSign className="h-4 w-4" />
+                            <span>{hasPartner ? "Mis comisiones" : "Recomienda y gana"}</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-white/10" />
                         <DropdownMenuItem

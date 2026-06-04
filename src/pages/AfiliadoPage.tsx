@@ -243,10 +243,10 @@ function Dashboard({ session }: { session: Session }) {
     setLoading(true);
     try {
       const { data: partnerData, error: partnerError } = await supabase
-        .from('partners').select('*').single();
+        .from('partners').select('*').eq('user_id', session.user.id).maybeSingle();
 
       if (partnerError || !partnerData) {
-        toast({ title: 'Error al cargar datos', description: 'No se encontró tu cuenta de afiliado. Contacta con el equipo.', variant: 'destructive' });
+        toast({ title: 'Cuenta de afiliado no encontrada', description: 'Ve a la página de Recomienda y activa tu cuenta primero.', variant: 'destructive' });
         setLoading(false);
         return;
       }

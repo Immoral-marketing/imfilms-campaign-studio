@@ -2,13 +2,21 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+};
 import Landing from "./pages/Landing";
 import Wizard from "./pages/Wizard";
 import QuickWizard from "./pages/QuickWizard";
 import Confirmation from "./pages/Confirmation";
 import CampaignsHistory from "./pages/CampaignsHistory";
-import Admin from "./pages/Admin";
 import AdminDistributors from "./pages/AdminDistributors";
 import CampaignDetail from "./pages/CampaignDetail";
 import ProposalView from "./pages/ProposalView";
@@ -22,9 +30,11 @@ import MediaPlanView from "./pages/MediaPlanView";
 import MediaPlanSimpleView from "./pages/MediaPlanSimpleView";
 import NotFound from "./pages/NotFound";
 import AfiliadoPage from "./pages/AfiliadoPage";
+import RecomiendaPage from "./pages/RecomiendaPage";
 import Settings from "./pages/Settings";
 import ReportEditor from "./pages/ReportEditor";
 import ReportView from "./pages/ReportView";
+import EmailPreview from "./pages/EmailPreview";
 import SmoothScroll from "./components/SmoothScroll";
 import GlobalChatWidget from "./components/chat/GlobalChatWidget";
 import GlobalNotificationWidget from "./components/chat/GlobalNotificationWidget";
@@ -49,6 +59,7 @@ const AppContent = () => {
       <ErrorBoundary>
       <SmoothScroll>
         <BrowserRouter>
+          <ScrollToTop />
           <ReferralTracker />
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -59,7 +70,6 @@ const AppContent = () => {
             <Route path="/campaigns/:id" element={<CampaignDetail />} />
             <Route path="/campaigns/:id/proposal" element={<ProposalView />} />
             <Route path="/confirmation" element={<Confirmation />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/admin/distributors" element={<AdminDistributors />} />
             <Route path="/admin/media-plan/:campaignId" element={<MediaPlanSimpleEditor />} />
             <Route path="/admin/media-plan-beta/:campaignId" element={<MediaPlanEditor />} />
@@ -73,6 +83,8 @@ const AppContent = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/afiliado" element={<AfiliadoPage />} />
+            <Route path="/recomienda" element={<RecomiendaPage />} />
+            <Route path="/email-preview" element={<EmailPreview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GlobalChatWidget showFloatingButton={false} />
