@@ -826,13 +826,8 @@ const Wizard = () => {
       }
     }
 
-    if (currentStep < 5) {
-      // In edit mode, skip Step 5 (registration) — go from Step 4 straight to Step 5 summary
-      if (isEditMode && currentStep === 4) {
-        setCurrentStep(5);
-      } else {
-        setCurrentStep(currentStep + 1);
-      }
+    if (currentStep < 4) {
+      setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -1441,7 +1436,7 @@ const Wizard = () => {
             </Card>
           )}
 
-          <WizardProgress currentStep={currentStep} totalSteps={5} onBack={handleBack} />
+          <WizardProgress currentStep={currentStep} totalSteps={4} onBack={handleBack} />
 
           {/* Step 1: Film Data */}
           {currentStep === 1 && (
@@ -2385,9 +2380,9 @@ const Wizard = () => {
             )
           }
 
-          {/* Step 4: Creative Assets */}
+          {/* Step 4: Creative Assets — REMOVED */}
           {
-            currentStep === 4 && (
+            false && (
               <Card className="cinema-card p-8 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-cinema text-3xl text-primary">Materiales y Creatividades</h2>
@@ -2488,9 +2483,9 @@ const Wizard = () => {
             )
           }
 
-          {/* Renumbered Step 5: Summary & Submit (previously Step 4) */}
+          {/* Step 4: Summary & Submit */}
           {
-            currentStep === 5 && (
+            currentStep === 4 && (
               <div className="space-y-6">
                 {isEditMode && (
                   <Card className="cinema-card p-6 bg-blue-500/10 border-blue-500/30">
@@ -2868,7 +2863,7 @@ const Wizard = () => {
               </Button>
             )}
 
-            {currentStep < 5 ? (
+            {currentStep < 4 ? (
               <Button
                 onClick={handleNext}
                 className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"

@@ -626,7 +626,7 @@ const QuickWizard = () => {
       }
     }
 
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1143,12 +1143,11 @@ const QuickWizard = () => {
 
           <WizardProgress
             currentStep={currentStep}
-            totalSteps={4}
+            totalSteps={3}
             onBack={handleBack}
             steps={[
               { title: "Película", subtitle: "Datos y Fechas" },
               { title: "Inversión", subtitle: "Plataformas" },
-              { title: "Materiales", subtitle: "Creatividades" },
               { title: "Resumen", subtitle: "Enviar campaña" },
             ]}
           />
@@ -1782,7 +1781,7 @@ const QuickWizard = () => {
 
           {/* Step 3: Creative Assets (formerly Step 4) */}
           {
-            currentStep === 3 && (
+            false && (
               <Card className="cinema-card p-8 space-y-6">
                 <div className="space-y-4">
                   <h2 className="font-cinema text-3xl text-primary">Materiales y Creatividades</h2>
@@ -1873,9 +1872,9 @@ const QuickWizard = () => {
             )
           }
 
-          {/* Step 4: Final Summary (formerly Step 5) */}
+          {/* Step 3: Final Summary */}
           {
-            currentStep === 4 && (
+            currentStep === 3 && (
               <div className="space-y-6">
                 {!isDistributor && (
                   <Card className="cinema-card p-6 bg-primary/5 border-primary/20">
@@ -2231,7 +2230,7 @@ const QuickWizard = () => {
               </Button>
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <Button
                 onClick={handleNext}
                 className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"
@@ -2287,8 +2286,7 @@ const QuickWizard = () => {
       <GlobalHelpButton context={
         currentStep === 1 ? "wizard" :
           currentStep === 2 ? "inversión" :
-            currentStep === 3 ? "creatividades" :
-              "campaña"
+            "campaña"
       } />
     </>
   );
