@@ -46,17 +46,8 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
   }, [open]);
 
   useEffect(() => {
-    if (initialContext && articles.length > 0) {
-      // Filter by context (category or keywords)
-      const contextFiltered = articles.filter(
-        a => a.category.toLowerCase().includes(initialContext.toLowerCase()) ||
-             a.keywords?.some(k => k.toLowerCase().includes(initialContext.toLowerCase()))
-      );
-      setFilteredArticles(contextFiltered.length > 0 ? contextFiltered : articles);
-    } else {
-      filterArticles(searchQuery);
-    }
-  }, [searchQuery, articles, initialContext]);
+    filterArticles(searchQuery);
+  }, [searchQuery, articles]);
 
   const fetchArticles = async () => {
     setLoading(true);
