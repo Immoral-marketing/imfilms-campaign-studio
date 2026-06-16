@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 interface EmailPayload {
-    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected" | "report_ready" | "report_approved" | "report_rejected" | "creative_approved" | "creative_rejected";
+    type: "new_campaign" | "status_update" | "verification_code" | "verify_code" | "proposal_ready" | "proposal_approved" | "proposal_changes_suggested" | "edit_proposal_created" | "media_plan_ready" | "media_plan_approved" | "media_plan_rejected" | "report_ready" | "report_approved" | "report_rejected" | "creative_approved" | "creative_rejected" | "post_estreno_updated";
     campaignId?: string;
     campaignTitle?: string;
     distributorName?: string;
@@ -21,6 +21,8 @@ interface EmailPayload {
     code?: string;
     assetName?: string;
     notifyAdmin?: boolean; // When false, skips admin notification (used in admin-wizard)
+    postEstrenoDate?: string;
+    finalReportDate?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -1214,6 +1216,87 @@ const handler = async (req: Request): Promise<Response> => {
                         to: payload.recipientEmail,
                         subject: subject,
                         html: emailHtml
+                    });
+                }
+                break;
+            }
+            case "post_estreno_updated": {
+                console.log("Branch: post_estreno_updated matched");
+                const adminEmails = await getAdminEmails();
+                if (adminEmails.length > 0) {
+                    const subject = `📅 Campaña post-estreno activada: ${payload.campaignTitle}`;
+                    const emailHtml = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    </head>
+                    <body style="margin: 0; padding: 0; background-color: #191919; font-family: Arial, sans-serif;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #191919; padding: 40px 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #191919; border-radius: 12px; border: 1px solid #F5D849; overflow: hidden;">
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #F5D849 0%, #B8A237 100%); padding: 24px 30px; text-align: center;">
+                                                <img src="https://estrenos.imfilms.es/logo-imfilms.png" alt="Imfilms" style="height: 40px; width: auto;" />
+                                                <p style="margin: 8px 0 0 0; color: #191919; font-size: 13px; opacity: 0.8;">Campaign Studio</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <h2 style="margin: 0 0 16px 0; color: #F5F2EB; font-size: 22px; text-align: center;">Campaña Post-Estreno Activada</h2>
+                                                <p style="margin: 0 0 20px 0; color: #F5F2EB; opacity: 0.7; font-size: 15px; line-height: 1.6; text-align: center;">
+                                                    Se ha activado una extensión post-estreno para la campaña:
+                                                </p>
+                                                <p style="margin: 0 0 24px 0; color: #F5D849; font-size: 18px; font-weight: bold; text-align: center;">
+                                                    ${payload.campaignTitle}
+                                                </p>
+                                                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px;">
+                                                    <tr>
+                                                        <td style="padding: 12px 16px; background-color: #1a1a1a; border-radius: 8px; border-left: 3px solid #F5D849;">
+                                                            <p style="margin: 0 0 6px 0; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Fin post-estreno</p>
+                                                            <p style="margin: 0; color: #F5F2EB; font-size: 16px; font-weight: bold;">${payload.postEstrenoDate}</p>
+                                                        </td>
+                                                    </tr>
+                                                    <tr><td style="padding-top: 8px;"></td></tr>
+                                                    <tr>
+                                                        <td style="padding: 12px 16px; background-color: #1a1a1a; border-radius: 8px; border-left: 3px solid #888;">
+                                                            <p style="margin: 0 0 6px 0; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Nuevo reporte final</p>
+                                                            <p style="margin: 0; color: #F5F2EB; font-size: 16px; font-weight: bold;">${payload.finalReportDate}</p>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <table width="100%" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <a href="https://estrenos.imfilms.es/campaigns/${payload.campaignId}" style="background-color: #F5D849; color: #191919; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">
+                                                                Ver Campaña
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background-color: #0d0d0d; padding: 20px 30px; border-top: 1px solid #333;">
+                                                <p style="margin: 0; color: #555555; font-size: 11px; text-align: center; line-height: 1.4;">
+                                                    Este es un aviso automático de Imfilms Campaign Studio.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    `;
+                    emailsToSend.push({
+                        from: fromEmail,
+                        to: adminEmails,
+                        subject,
+                        html: emailHtml,
                     });
                 }
                 break;

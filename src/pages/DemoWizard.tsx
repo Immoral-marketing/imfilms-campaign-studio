@@ -20,9 +20,9 @@ const DemoWizard = () => {
     const releaseDate = new Date(today);
     releaseDate.setDate(today.getDate() + 70);
 
-    // Pre-campaña: 3 semanas antes del estreno
+    // Pre-campaña: 1 mes antes del estreno
     const preStartDate = new Date(releaseDate);
-    preStartDate.setDate(releaseDate.getDate() - 21);
+    preStartDate.setDate(releaseDate.getDate() - 30);
     const preEndDate = new Date(releaseDate);
     preEndDate.setDate(releaseDate.getDate() - 1);
 

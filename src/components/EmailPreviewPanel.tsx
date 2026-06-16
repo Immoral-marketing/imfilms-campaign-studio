@@ -132,6 +132,8 @@ const DEMO = {
   subject: 'Problema con la factura del mes de mayo',
   message: 'Hola, necesito revisar el detalle de la factura porque hay un cargo que no reconozco. ¿Podéis ayudarme?',
   code: '7842',
+  postEstrenoDate: '30/06/2026',
+  finalReportDate: '07/07/2026',
 };
 
 const templates: { key: string; label: string; html: string; subject: string }[] = [
@@ -311,6 +313,21 @@ const templates: { key: string; label: string; html: string; subject: string }[]
       ]) +
       `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td style="background:#141418;border-left:3px solid #F5D849;border-radius:0 6px 6px 0;padding:16px 20px;"><p style="margin:0;color:#8a8a95;font-size:13px;line-height:1.75;">${DEMO.message}</p></td></tr></table>` +
       `<p style="margin:0;color:#3a3a45;font-size:11px;text-align:center;">Responde directamente a este email para contestar al usuario.</p>`
+    ),
+  },
+  {
+    key: 'post_estreno_updated',
+    label: '📅 Post-estreno activado (admin)',
+    subject: `📅 Post-estreno activado: ${DEMO.campaignTitle}`,
+    html: layout(
+      eyebrow('Campaña post-estreno') +
+      h2('Post-estreno<br>activado') +
+      p(`Se ha activado una extensión post-estreno para la campaña <strong style="color:#F0EDE6;">${DEMO.campaignTitle}</strong>.`) +
+      metaRow([
+        { label: 'Fin post-estreno', value: DEMO.postEstrenoDate },
+        { label: 'Nuevo reporte final', value: DEMO.finalReportDate },
+      ]) +
+      btn('Ver campaña', `https://estrenos.imfilms.es/campaigns/${DEMO.campaignId}`)
     ),
   },
   {
