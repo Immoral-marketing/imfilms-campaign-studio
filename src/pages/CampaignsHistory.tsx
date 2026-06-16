@@ -18,6 +18,7 @@ import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AdminDistributors from "./AdminDistributors";
+import CreateDistributorModal from "@/components/CreateDistributorModal";
 import AdminPartners from "./AdminPartners";
 import CampaignComparator from "@/components/CampaignComparator";
 import CampaignNotesModal from "@/components/CampaignNotesModal";
@@ -48,6 +49,7 @@ const CampaignsHistory = () => {
 
   // Admin Invite State
   const [showInviteAdmin, setShowInviteAdmin] = useState(false);
+  const [showCreateDistributor, setShowCreateDistributor] = useState(false);
   const [inviteAdminEmail, setInviteAdminEmail] = useState("");
   const [invitingAdmin, setInvitingAdmin] = useState(false);
 
@@ -869,6 +871,14 @@ const CampaignsHistory = () => {
           <div className="flex gap-3">
             {isAdmin && (
               <>
+                <Button
+                  onClick={() => setShowCreateDistributor(true)}
+                  variant="outline"
+                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                >
+                  <Building2 className="w-4 h-4 mr-2 cinema-icon" />
+                  Nueva Distribuidora
+                </Button>
                 <Button
                   onClick={() => setShowInviteAdmin(true)}
                   variant="outline"
@@ -1743,6 +1753,12 @@ const CampaignsHistory = () => {
         campaignTitle={selectedCampaignForDistributorEdit?.films?.title || "Campaña"}
         currentDistributorId={selectedCampaignForDistributorEdit?.distributor_id || null}
         onSuccess={() => loadData(user.id, isAdmin)}
+      />
+
+      <CreateDistributorModal
+        open={showCreateDistributor}
+        onOpenChange={setShowCreateDistributor}
+        onSuccess={() => loadData(user?.id, isAdmin)}
       />
     </div>
   );
