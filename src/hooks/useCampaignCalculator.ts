@@ -114,19 +114,15 @@ export const useCampaignCalculator = (config: CampaignConfig): CampaignCosts & {
     let variableFeeRate: number;
 
     if (feeMode === 'integrated') {
-      effectiveAdInvestment = calculateEffectiveInvestmentFromBudget(
-        inputAmount,
-        numPlatforms,
-        thresholds
-      );
-
-      const fees = getApplicableFees(effectiveAdInvestment, numPlatforms, thresholds);
+      // Tier determined by the gross total entered; fee = gross × rate
+      const fees = getApplicableFees(inputAmount, numPlatforms, thresholds);
       fixedFeePlatforms = fees.fixedFee;
       setupFee = fees.setupFee;
       variableFeeRate = fees.variableRate;
-      variableFeeInvestment = effectiveAdInvestment * variableFeeRate;
+      variableFeeInvestment = inputAmount * variableFeeRate;
 
       totalFees = fixedFeePlatforms + setupFee + variableFeeInvestment;
+      effectiveAdInvestment = Math.max(0, inputAmount - totalFees);
       totalEstimated = inputAmount + addonsBaseCost;
 
     } else {

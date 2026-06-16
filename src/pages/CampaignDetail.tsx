@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell, RefreshCw } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CampaignNotifications from '@/components/CampaignNotifications';
@@ -28,6 +28,7 @@ const CampaignDetail = () => {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'distributor'>('distributor');
   const [isDetailsEditing, setIsDetailsEditing] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   // Get pending film edit proposal
   const { data: pendingProposal } = usePendingFilmProposal(film?.id);
@@ -124,6 +125,61 @@ const CampaignDetail = () => {
     } catch (error: any) {
       console.error('Error updating status:', error);
       toast.error('Error al actualizar el estado');
+    }
+  };
+
+  const recalculateFees = async () => {
+    if (!campaign || !campaignId) return;
+    setRecalculating(true);
+    try {
+      // Load current thresholds from DB
+      const { data: thresholdsData } = await supabase.from('fee_thresholds').select('*').order('min_investment', { ascending: true });
+      const thresholds = thresholdsData && thresholdsData.length > 0 ? thresholdsData : [
+        { min_investment: 0, max_investment: 2500, variable_fee_rate: 0, fixed_fee_amount: 500, setup_fee_per_platform: 200, is_variable_fee_enabled: false, is_fixed_fee_enabled: true, is_setup_fee_enabled: true },
+        { min_investment: 2501, max_investment: 8000, variable_fee_rate: 0.20, fixed_fee_amount: 0, setup_fee_per_platform: 0, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: false },
+        { min_investment: 8001, max_investment: 15000, variable_fee_rate: 0.15, fixed_fee_amount: 0, setup_fee_per_platform: 0, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: false },
+        { min_investment: 15001, max_investment: 30000, variable_fee_rate: 0.12, fixed_fee_amount: 0, setup_fee_per_platform: 0, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: false },
+        { min_investment: 30001, max_investment: null, variable_fee_rate: 0.08, fixed_fee_amount: 0, setup_fee_per_platform: 0, is_variable_fee_enabled: true, is_fixed_fee_enabled: false, is_setup_fee_enabled: false },
+      ];
+
+      const grossBudget = campaign.ad_investment_amount || 0;
+      const addons = campaign.addons_base_amount || 0;
+      const numPlatforms = (campaign.campaign_platforms || []).length;
+      const isIntegrated = Math.abs((grossBudget + addons) - campaign.total_estimated_amount) < 5;
+
+      // Find applicable threshold based on gross budget
+      const threshold = thresholds.find((t: any) =>
+        grossBudget >= t.min_investment && (t.max_investment === null || grossBudget <= t.max_investment)
+      ) || thresholds[thresholds.length - 1];
+
+      const variableRate = threshold.is_variable_fee_enabled ? threshold.variable_fee_rate : 0;
+      const fixedFee = threshold.is_fixed_fee_enabled ? threshold.fixed_fee_amount : 0;
+      const setupFee = threshold.is_setup_fee_enabled ? Math.max(0, numPlatforms - 1) * threshold.setup_fee_per_platform : 0;
+      const variableFee = parseFloat((grossBudget * variableRate).toFixed(2));
+      const totalFees = parseFloat((fixedFee + setupFee + variableFee).toFixed(2));
+      const totalEstimated = isIntegrated
+        ? parseFloat((grossBudget + addons).toFixed(2))
+        : parseFloat((grossBudget + totalFees + addons).toFixed(2));
+
+      const { error } = await supabase
+        .from('campaigns')
+        .update({
+          fixed_fee_amount: fixedFee,
+          variable_fee_amount: variableFee,
+          setup_fee_amount: setupFee,
+          total_estimated_amount: totalEstimated,
+        })
+        .eq('id', campaignId);
+
+      if (error) throw error;
+
+      toast.success(`Fees actualizados: fee variable ${(variableRate * 100).toLocaleString('es-ES')}% → ${variableFee.toLocaleString('es-ES')}€`);
+      await loadCampaign();
+    } catch (error: any) {
+      console.error('Error recalculating fees:', error);
+      toast.error('Error al recalcular los fees');
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -428,7 +484,21 @@ const CampaignDetail = () => {
               </div>
 
               <div>
-                <h3 className="font-cinema text-xl text-primary mb-3">Desglose Económico</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-cinema text-xl text-primary">Desglose Económico</h3>
+                  {userRole === 'admin' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={recalculateFees}
+                      disabled={recalculating}
+                      className="gap-2 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${recalculating ? 'animate-spin' : ''}`} />
+                      {recalculating ? 'Actualizando...' : 'Actualizar fees'}
+                    </Button>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Inversión publicitaria</span>

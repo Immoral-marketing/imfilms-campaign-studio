@@ -137,12 +137,18 @@ export const CampaignInfoEditable = ({
     // If Total Est ~= Ad Inv + Addons -> Integrated
     // If Total Est > Ad Inv + Addons -> Additional (because fees are on top)
     const initialFeeModeIntegrated = useMemo(() => {
-        const estimatedFees = (feeDetails.fixed_fee_amount || 0) + (feeDetails.variable_fee_amount || 0) + (feeDetails.setup_fee_amount || 0);
         const expectedIntegratedTotal = totalBudget + (feeDetails.addons_base_amount || 0);
         const diffIntegrated = Math.abs(expectedIntegratedTotal - feeDetails.total_estimated_amount);
 
         return diffIntegrated < 5; // Tolerance
     }, [totalBudget, feeDetails]);
+
+    // Net investment for platform display: when fees are integrated, subtract them from totalBudget
+    const netPlatformBudget = useMemo(() => {
+        if (!initialFeeModeIntegrated) return totalBudget;
+        const totalFees = (feeDetails.fixed_fee_amount || 0) + (feeDetails.variable_fee_amount || 0) + (feeDetails.setup_fee_amount || 0);
+        return totalBudget - totalFees;
+    }, [initialFeeModeIntegrated, totalBudget, feeDetails]);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -514,7 +520,7 @@ export const CampaignInfoEditable = ({
                                             </span>
                                             {totalBudget > 0 && (
                                                 <span className="text-xs text-muted-foreground">
-                                                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(totalBudget * (platform.budget_percent / 100))}
+                                                    {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(netPlatformBudget * (platform.budget_percent / 100))}
                                                 </span>
                                             )}
                                         </div>
