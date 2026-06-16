@@ -18,8 +18,9 @@ interface EmailPayload {
     distributorName?: string;
     newStatus?: string;
     recipientEmail?: string;
-    code?: string; // For verification
-    assetName?: string; // For creativity notifications
+    code?: string;
+    assetName?: string;
+    notifyAdmin?: boolean; // When false, skips admin notification (used in admin-wizard)
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -220,8 +221,8 @@ const handler = async (req: Request): Promise<Response> => {
             case "new_campaign": {
                 console.log("Branch: new_campaign matched");
                 console.log("Branch: new_campaign");
-                // 1. Notify Admins
-                const adminEmails = await getAdminEmails();
+                // 1. Notify Admins (skipped when notifyAdmin === false)
+                const adminEmails = payload.notifyAdmin !== false ? await getAdminEmails() : [];
                 if (adminEmails.length > 0) {
                     const subject = `🚀 Nueva Campaña: ${payload.campaignTitle}`;
                     const emailHtml = `

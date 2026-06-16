@@ -15,6 +15,7 @@ const ScrollToTop = () => {
 import Landing from "./pages/Landing";
 import Wizard from "./pages/Wizard";
 import QuickWizard from "./pages/QuickWizard";
+import AdminWizard from "./pages/AdminWizard";
 import Confirmation from "./pages/Confirmation";
 import CampaignsHistory from "./pages/CampaignsHistory";
 import AdminDistributors from "./pages/AdminDistributors";
@@ -66,6 +67,7 @@ const AppContent = () => {
             <Route path="/wizard" element={<Wizard />} />
             <Route path="/wizard/review/:campaignId" element={<Wizard />} />
             <Route path="/quick-wizard" element={<QuickWizard />} />
+            <Route path="/admin-wizard" element={<AdminWizard />} />
             <Route path="/campaigns" element={<CampaignsHistory />} />
             <Route path="/campaigns/:id" element={<CampaignDetail />} />
             <Route path="/campaigns/:id/proposal" element={<ProposalView />} />

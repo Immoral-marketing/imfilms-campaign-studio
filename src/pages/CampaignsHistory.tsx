@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/utils/dateUtils";
 import logoImfilms from "@/assets/logo-imfilms.png";
 import { z } from "zod";
-import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, UserPlus, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid, FileBarChart, Edit2 } from "lucide-react";
+import { Film, Calendar, DollarSign, Plus, LogOut, BarChart, TrendingUp, Activity, Sparkles, Users, Building2, Shield, Eye, EyeOff, Trash2, StickyNote, ChevronDown, Bell, LayoutGrid, FileBarChart, Edit2 } from "lucide-react";
 import GlobalHelpButton from "@/components/GlobalHelpButton";
 import OnboardingTour from "@/components/OnboardingTour";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -50,6 +50,13 @@ const CampaignsHistory = () => {
   const [showInviteAdmin, setShowInviteAdmin] = useState(false);
   const [inviteAdminEmail, setInviteAdminEmail] = useState("");
   const [invitingAdmin, setInvitingAdmin] = useState(false);
+
+  // Create Distributor State
+  const [showCreateDistributor, setShowCreateDistributor] = useState(false);
+  const [createDistributorLoading, setCreateDistributorLoading] = useState(false);
+  const [createDistributorData, setCreateDistributorData] = useState({ email: "", companyName: "", contactName: "" });
+  const [createdMagicLink, setCreatedMagicLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Forgot Password State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -450,6 +457,48 @@ const CampaignsHistory = () => {
     }
   };
 
+  const handleCreateDistributor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { email, companyName, contactName } = createDistributorData;
+    if (!email || !companyName || !contactName) return;
+
+    setCreateDistributorLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { email, companyName, contactName },
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.message || data.error);
+
+      setCreatedMagicLink(data.magicLink || null);
+      toast.success("Cuenta creada correctamente");
+    } catch (error: any) {
+      console.error("Error creating distributor:", error);
+      toast.error(error.message || "Error al crear la cuenta");
+    } finally {
+      setCreateDistributorLoading(false);
+    }
+  };
+
+  const handleCopyMagicLink = () => {
+    if (!createdMagicLink) return;
+    navigator.clipboard.writeText(createdMagicLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const handleCloseCreateDistributor = () => {
+    setShowCreateDistributor(false);
+    setCreatedMagicLink(null);
+    setLinkCopied(false);
+    setCreateDistributorData({ email: "", companyName: "", contactName: "" });
+  };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -819,14 +868,16 @@ const CampaignsHistory = () => {
           </div>
           <div className="flex gap-3">
             {isAdmin && (
-              <Button
-                onClick={() => setShowInviteAdmin(true)}
-                variant="outline"
-                className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
-              >
-                <Shield className="w-4 h-4 mr-2 cinema-icon" />
-                Invitar Admin
-              </Button>
+              <>
+                <Button
+                  onClick={() => setShowInviteAdmin(true)}
+                  variant="outline"
+                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                >
+                  <Shield className="w-4 h-4 mr-2 cinema-icon" />
+                  Invitar Admin
+                </Button>
+              </>
             )}
             {!isAdmin && (
               <div className="flex rounded-md shadow-sm">

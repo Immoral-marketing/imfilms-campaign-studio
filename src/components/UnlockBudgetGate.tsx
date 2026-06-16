@@ -4,11 +4,13 @@ import AuthModal from "./AuthModal";
 interface UnlockBudgetGateProps {
   message?: string;
   onSuccess?: () => void;
+  skipOtp?: boolean;
 }
 
-const UnlockBudgetGate = ({ 
+const UnlockBudgetGate = ({
   message = "Cuando crees tu cuenta de distribuidora te mostraremos la estimación económica completa para esta configuración, sin compromiso.",
-  onSuccess
+  onSuccess,
+  skipOtp = false,
 }: UnlockBudgetGateProps) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -30,6 +32,7 @@ const UnlockBudgetGate = ({
         open={showAuthModal}
         onOpenChange={setShowAuthModal}
         onSuccess={handleSuccess}
+        skipOtp={skipOtp}
       />
     </>
   );

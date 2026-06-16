@@ -9,9 +9,10 @@ interface CostSummaryProps {
   compact?: boolean;
   showPrices?: boolean;
   feeMode?: FeeMode;
+  skipOtp?: boolean;
 }
 
-const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true, feeMode = 'additional' }: CostSummaryProps) => {
+const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true, feeMode = 'additional', skipOtp }: CostSummaryProps) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
@@ -30,7 +31,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       return (
         <Card className="cinema-card p-6 space-y-3 bg-primary/5 border-primary/20">
           <div className="text-center leading-relaxed">
-            <UnlockBudgetGate message="Crea tu cuenta de distribuidora para ver la estimación económica completa de esta configuración, sin compromiso." />
+            <UnlockBudgetGate message="Crea tu cuenta de distribuidora para ver la estimación económica completa de esta configuración, sin compromiso." skipOtp={skipOtp} />
           </div>
         </Card>
       );
@@ -64,7 +65,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
           <p className="text-cinema-ivory mb-4">
             Termina de configurar tu campaña.
           </p>
-          <UnlockBudgetGate message="Crea tu cuenta de distribuidora para ver la estimación económica completa, sin compromiso." />
+          <UnlockBudgetGate message="Crea tu cuenta de distribuidora para ver la estimación económica completa, sin compromiso." skipOtp={skipOtp} />
         </div>
         <p className="text-sm text-muted-foreground text-center italic">
           Tu presupuesto se calculará en base a las plataformas seleccionadas, inversión publicitaria y add-ons que elijas.

@@ -13,14 +13,15 @@ interface AuthModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  skipOtp?: boolean;
 }
 
 type AuthMode = "register" | "login" | "resetPassword";
 type RegisterStep = "email" | "verification" | "details";
 
-const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
+const AuthModal = ({ open, onOpenChange, onSuccess, skipOtp = false }: AuthModalProps) => {
   const [mode, setMode] = useState<AuthMode>("register");
-  const [registerStep, setRegisterStep] = useState<RegisterStep>("email");
+  const [registerStep, setRegisterStep] = useState<RegisterStep>(skipOtp ? "details" : "email");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [countryCode, setCountryCode] = useState("+34");
@@ -249,9 +250,10 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
           </div>
           <DialogDescription className="text-cinema-ivory">
             {mode === "register"
-              ? registerStep === "email" ? "Introduce tu email para comenzar. Te enviaremos un código de verificación."
-                : registerStep === "verification" ? `Introduce el código de 4 dígitos enviado a ${formData.email}`
-                  : "Completa tus datos para finalizar el registro."
+              ? skipOtp ? "Completa tus datos para crear la cuenta."
+                : registerStep === "email" ? "Introduce tu email para comenzar. Te enviaremos un código de verificación."
+                  : registerStep === "verification" ? `Introduce el código de 4 dígitos enviado a ${formData.email}`
+                    : "Completa tus datos para finalizar el registro."
               : mode === "login"
                 ? "Accede a tu cuenta para ver el presupuesto de tu campaña."
                 : "Ingresa tu email para recibir instrucciones de recuperación."}
@@ -318,6 +320,21 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
 
               {registerStep === "details" && (
                 <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                  {skipOtp && (
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-cinema-ivory">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        required
+                        autoFocus
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="bg-background/50 border-border"
+                        placeholder="tu@email.com"
+                      />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="companyName" className="text-cinema-ivory">Nombre de la distribuidora / empresa *</Label>
                     <Input
@@ -461,9 +478,10 @@ const AuthModal = ({ open, onOpenChange, onSuccess }: AuthModalProps) => {
               {loading
                 ? "Procesando..."
                 : mode === "register"
-                  ? (registerStep === "email" ? "Enviar código de verificación" :
-                    registerStep === "verification" ? "Verificar código" :
-                      "Crear cuenta y ver presupuesto")
+                  ? (skipOtp ? "Crear cuenta y ver presupuesto"
+                    : registerStep === "email" ? "Enviar código de verificación"
+                      : registerStep === "verification" ? "Verificar código"
+                        : "Crear cuenta y ver presupuesto")
                   : mode === "login"
                     ? "Entrar y ver presupuesto"
                     : "Enviar correo de recuperación"}
