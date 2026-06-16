@@ -109,12 +109,13 @@ const CreateDistributorModal = ({ open, onOpenChange, onSuccess }: CreateDistrib
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cd-password">Contraseña (opcional)</Label>
+            <Label htmlFor="cd-password">Contraseña *</Label>
             <div className="relative">
               <Input
                 id="cd-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Dejar vacío para enviar enlace de acceso"
+                required
+                placeholder="Contraseña de acceso"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
@@ -141,7 +142,7 @@ const CreateDistributorModal = ({ open, onOpenChange, onSuccess }: CreateDistrib
 
           <Button
             type="submit"
-            disabled={loading || !form.email || !form.companyName || !form.contactName}
+            disabled={loading || !form.email || !form.companyName || !form.contactName || !form.password}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
           >
             {loading ? "Creando cuenta..." : "Crear cuenta"}

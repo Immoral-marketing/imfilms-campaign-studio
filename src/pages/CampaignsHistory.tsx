@@ -827,17 +827,17 @@ const CampaignsHistory = () => {
                 <Button
                   onClick={() => setShowCreateDistributor(true)}
                   variant="outline"
-                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black hover:border-cinema-yellow"
                 >
-                  <Building2 className="w-4 h-4 mr-2 cinema-icon" />
+                  <Building2 className="w-4 h-4 mr-2" />
                   Nueva Distribuidora
                 </Button>
                 <Button
                   onClick={() => setShowInviteAdmin(true)}
                   variant="outline"
-                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow/10"
+                  className="border-cinema-yellow text-cinema-yellow hover:bg-cinema-yellow hover:text-black hover:border-cinema-yellow"
                 >
-                  <Shield className="w-4 h-4 mr-2 cinema-icon" />
+                  <Shield className="w-4 h-4 mr-2" />
                   Invitar Admin
                 </Button>
               </>
