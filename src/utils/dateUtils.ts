@@ -88,8 +88,8 @@ export const calculateCampaignDates = (
   const premiereWeekendStart = getFridayOfWeek(release);
   const premiereWeekendEnd = addDays(premiereWeekendStart, 2); // Sunday
 
-  // Pre-campaign: 30 days before premiere weekend start until day before
-  const preStartDate = subDays(premiereWeekendStart, 30);
+  // Pre-campaign: 14 days before premiere weekend start until day before
+  const preStartDate = subDays(premiereWeekendStart, 14);
   const preEndDate = subDays(premiereWeekendStart, 1);
 
   // Campaign end date (user selected or default to premiere weekend end)
