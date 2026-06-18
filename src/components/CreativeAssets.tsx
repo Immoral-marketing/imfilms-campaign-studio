@@ -8,8 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { FileVideo, FileImage, FileText, Download, Upload, Film, Trash2, ExternalLink } from "lucide-react";
-import { Progress } from "./ui/progress";
+import { FileVideo, FileImage, FileText, Download, Upload, Film, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { isAfter, isSameDay, parseISO, startOfDay } from "date-fns";
 
@@ -519,11 +518,12 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
             </div>
 
             {uploading && (
-              <div className="space-y-2">
-                <Progress value={uploadProgress} className="h-2" />
-                <p className="text-xs text-cinema-ivory/60 text-center">
-                  Subiendo... {Math.round(uploadProgress)}%
-                </p>
+              <div className="flex flex-col items-center gap-2 py-1">
+                <div className="flex items-center gap-2 text-cinema-ivory/80">
+                  <Loader2 className="h-4 w-4 animate-spin text-cinema-yellow" />
+                  <span className="text-sm font-medium">Subiendo archivos...</span>
+                </div>
+                <p className="text-xs text-cinema-ivory/50">Esto puede demorar unos minutos para archivos grandes</p>
               </div>
             )}
 
