@@ -39,7 +39,6 @@ const CreateDistributorModal = ({ open, onOpenChange, onSuccess }: CreateDistrib
           contactName: form.contactName,
           contactPhone: form.phone,
           tempPassword: form.password || undefined,
-          adminSecret: ADMIN_SECRET,
         },
       });
 

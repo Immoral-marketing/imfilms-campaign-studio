@@ -18,16 +18,40 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const { email, companyName, contactName, contactPhone, tempPassword, adminSecret } = await req.json()
-
-    // Verify shared secret (allows unauthenticated access from admin-wizard)
-    const expectedSecret = Deno.env.get('ADMIN_WIZARD_SECRET')
-    if (!expectedSecret || adminSecret !== expectedSecret) {
+    // Verify caller is an authenticated admin
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Forbidden' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+    const supabaseUser = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    )
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { data: adminRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle()
+    if (!adminRole) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { email, companyName, contactName, contactPhone, tempPassword } = await req.json()
 
     if (!email || !companyName || !contactName) {
       throw new Error('email, companyName y contactName son obligatorios')
