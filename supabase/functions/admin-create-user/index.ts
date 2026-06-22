@@ -57,6 +57,19 @@ serve(async (req) => {
       throw new Error('email, companyName y contactName son obligatorios')
     }
 
+    // Check for duplicate company name (normalized)
+    const { data: existing } = await supabaseAdmin
+      .from('distributors')
+      .select('id')
+      .eq('normalized_name', companyName.toLowerCase().trim().replace(/\s+/g, ' '))
+      .maybeSingle()
+    if (existing) {
+      return new Response(
+        JSON.stringify({ error: 'company_exists', message: 'Ya existe una distribuidora con ese nombre' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Create auth user (confirmed, no OTP needed)
     const createPayload: any = {
       email,

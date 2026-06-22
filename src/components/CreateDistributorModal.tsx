@@ -46,8 +46,10 @@ const CreateDistributorModal = ({ open, onOpenChange, onSuccess }: CreateDistrib
       if (data?.error) {
         if (data.error === "already_exists") {
           toast.error("Ya existe un usuario con ese email");
+        } else if (data.error === "company_exists") {
+          toast.error("Ya existe una distribuidora con ese nombre");
         } else {
-          throw new Error(data.error);
+          throw new Error(data.message || data.error);
         }
         return;
       }
