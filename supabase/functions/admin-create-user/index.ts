@@ -57,16 +57,6 @@ serve(async (req) => {
       throw new Error('email, companyName y contactName son obligatorios')
     }
 
-    // Check if user already exists
-    const { data: { users: existingUsers } } = await supabaseAdmin.auth.admin.listUsers()
-    const existingUser = existingUsers?.find(u => u.email === email)
-    if (existingUser) {
-      return new Response(
-        JSON.stringify({ error: 'already_exists', message: 'Ya existe un usuario con ese email' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Create auth user (confirmed, no OTP needed)
     const createPayload: any = {
       email,
@@ -79,11 +69,22 @@ serve(async (req) => {
     }
     if (tempPassword) createPayload.password = tempPassword
 
-    const { data: { user: newUser }, error: createError } = await supabaseAdmin.auth.admin.createUser(createPayload)
-    if (createError || !newUser) throw new Error(`Error creando usuario: ${createError?.message}`)
+    const createResult = await supabaseAdmin.auth.admin.createUser(createPayload)
+    if (createResult.error) {
+      const msg = createResult.error.message?.toLowerCase() ?? ''
+      if (msg.includes('already') || msg.includes('duplicate') || msg.includes('exists') || msg.includes('registered')) {
+        return new Response(
+          JSON.stringify({ error: 'already_exists', message: 'Ya existe un usuario con ese email' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      throw new Error(`Error creando usuario: ${createResult.error.message}`)
+    }
+    const newUser = createResult.data?.user
+    if (!newUser) throw new Error('No se pudo crear el usuario')
 
     // Upsert distributor profile
-    await supabaseAdmin
+    const { error: distError } = await supabaseAdmin
       .from('distributors')
       .upsert({
         id: newUser.id,
@@ -91,10 +92,12 @@ serve(async (req) => {
         contact_name: contactName,
         contact_phone: contactPhone || '',
         contact_email: email,
+        is_active: true,
       }, { onConflict: 'id' })
+    if (distError) throw new Error(`Error creando distribuidora: ${distError.message}`)
 
     // Ensure distributor_users owner link
-    await supabaseAdmin
+    const { error: duError } = await supabaseAdmin
       .from('distributor_users')
       .upsert({
         distributor_id: newUser.id,
@@ -106,7 +109,8 @@ serve(async (req) => {
         can_manage_billing: true,
         is_active: true,
         pending_approval: false,
-      }, { onConflict: 'distributor_id, user_id' })
+      }, { onConflict: 'distributor_id,user_id' })
+    if (duError) throw new Error(`Error creando vínculo distribuidor: ${duError.message}`)
 
     // Generate password reset / set-password magic link
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
