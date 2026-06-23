@@ -689,9 +689,24 @@ const CampaignDetail = () => {
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-muted-foreground">Reporte final</p>
                             {userRole === 'admin' && (
-                              <button onClick={() => setEditingFinalReport(true)} className="text-muted-foreground hover:text-primary transition-colors" title="Editar fecha">
-                                <Pencil className="h-3 w-3" />
-                              </button>
+                              <Popover open={editingFinalReport} onOpenChange={setEditingFinalReport}>
+                                <PopoverTrigger asChild>
+                                  <button className="text-muted-foreground hover:text-primary transition-colors" title="Editar fecha">
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="end">
+                                  <CalendarPicker
+                                    mode="single"
+                                    defaultMonth={repDate}
+                                    selected={repDate}
+                                    onSelect={saveFinalReportDate}
+                                    disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
+                                    initialFocus
+                                  />
+                                  <p className="text-xs text-muted-foreground text-center pb-3 px-3">Fecha en que se enviará el informe final.</p>
+                                </PopoverContent>
+                              </Popover>
                             )}
                           </div>
                           <div className="flex items-center justify-between">
@@ -780,23 +795,6 @@ const CampaignDetail = () => {
                     </div>
                   )}
 
-                  {/* Final report date popover (unchanged) */}
-                  {userRole === 'admin' && (
-                    <Popover open={editingFinalReport} onOpenChange={setEditingFinalReport}>
-                      <PopoverTrigger className="hidden" />
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarPicker
-                          mode="single"
-                          defaultMonth={new Date(campaign.final_report_date)}
-                          selected={new Date(campaign.final_report_date)}
-                          onSelect={saveFinalReportDate}
-                          disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
-                          initialFocus
-                        />
-                        <p className="text-xs text-muted-foreground text-center pb-3 px-3">Fecha en que se enviará el informe final.</p>
-                      </PopoverContent>
-                    </Popover>
-                  )}
                 </div>
               </div>
 

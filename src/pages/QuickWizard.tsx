@@ -1635,10 +1635,10 @@ const QuickWizard = () => {
                             <Label className="text-sm text-muted-foreground">Duración de campaña previa al estreno (días)</Label>
                             <input
                               type="number"
-                              min={1}
+                              min={0}
                               max={90}
                               value={preCampaignDays}
-                              onChange={(e) => setPreCampaignDays(Math.max(1, parseInt(e.target.value) || 14))}
+                              onChange={(e) => setPreCampaignDays(Math.max(0, parseInt(e.target.value) || 0))}
                               className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                           </div>
