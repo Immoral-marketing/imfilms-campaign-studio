@@ -79,7 +79,8 @@ export const addBusinessDaysWithHolidays = (startDate: Date, daysToAdd: number):
 export const calculateCampaignDates = (
   releaseDate: Date,
   hasAdaptationAddon: boolean,
-  campaignEndDate?: Date
+  campaignEndDate?: Date,
+  preCampaignDays: number = 14
 ): CampaignDates => {
   const release = startOfDay(releaseDate);
 
@@ -88,8 +89,8 @@ export const calculateCampaignDates = (
   const premiereWeekendStart = getFridayOfWeek(release);
   const premiereWeekendEnd = addDays(premiereWeekendStart, 2); // Sunday
 
-  // Pre-campaign: 14 days before premiere weekend start until day before
-  const preStartDate = subDays(premiereWeekendStart, 14);
+  // Pre-campaign: preCampaignDays before premiere weekend start until day before
+  const preStartDate = subDays(premiereWeekendStart, preCampaignDays);
   const preEndDate = subDays(premiereWeekendStart, 1);
 
   // Campaign end date (user selected or default to premiere weekend end)

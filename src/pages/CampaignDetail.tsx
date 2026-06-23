@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell, RefreshCw, CalendarPlus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell, RefreshCw, CalendarPlus, Trash2, Pencil } from 'lucide-react';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CampaignNotifications from '@/components/CampaignNotifications';
@@ -33,6 +33,9 @@ const CampaignDetail = () => {
   const [recalculating, setRecalculating] = useState(false);
   const [postEstrenoPickerOpen, setPostEstrenoPickerOpen] = useState(false);
   const [savingPostEstreno, setSavingPostEstreno] = useState(false);
+  const [editingPreStart, setEditingPreStart] = useState(false);
+  const [editingFinalReport, setEditingFinalReport] = useState(false);
+  const [savingDate, setSavingDate] = useState(false);
 
   // Get pending film edit proposal
   const { data: pendingProposal } = usePendingFilmProposal(film?.id);
@@ -275,6 +278,44 @@ const CampaignDetail = () => {
       toast.error('Error al eliminar la fecha post-estreno');
     } finally {
       setSavingPostEstreno(false);
+    }
+  };
+
+  const savePreStartDate = async (date: Date | undefined) => {
+    if (!date || !campaignId) return;
+    setSavingDate(true);
+    setEditingPreStart(false);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ pre_start_date: date.toISOString().split('T')[0] })
+        .eq('id', campaignId);
+      if (error) throw error;
+      toast.success('Fecha de inicio de campaña actualizada');
+      await loadCampaign();
+    } catch (err: any) {
+      toast.error('Error al guardar la fecha');
+    } finally {
+      setSavingDate(false);
+    }
+  };
+
+  const saveFinalReportDate = async (date: Date | undefined) => {
+    if (!date || !campaignId) return;
+    setSavingDate(true);
+    setEditingFinalReport(false);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({ final_report_date: date.toISOString().split('T')[0] })
+        .eq('id', campaignId);
+      if (error) throw error;
+      toast.success('Fecha de reporte final actualizada');
+      await loadCampaign();
+    } catch (err: any) {
+      toast.error('Error al guardar la fecha');
+    } finally {
+      setSavingDate(false);
     }
   };
 
@@ -551,120 +592,169 @@ const CampaignDetail = () => {
               <div>
                 <h3 className="font-cinema text-xl text-primary mb-3">Fechas Clave</h3>
 
-                {campaign.post_estreno_end_date ? (
-                  <div className="space-y-4">
-                    {/* Row 1: 3 columns */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[
-                        { label: "Deadline Creativos", date: new Date(campaign.creatives_deadline) },
-                        { label: "Pre-campaña (Inicio)", date: new Date(campaign.pre_start_date) },
-                        { label: "Estreno", date: new Date(campaign.premiere_weekend_start) },
-                      ].map((item, index) => {
-                        const relative = getRelativeTime(item.date);
-                        return (
-                          <div key={index} className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
-                            <p className="text-sm text-muted-foreground">{item.label}</p>
-                            <div className="flex items-center justify-between">
-                              <p className="text-foreground font-medium">{formatDateShort(item.date)}</p>
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relative.text}</span>
-                            </div>
+                <div className="space-y-4">
+                  {/* Row 1: Deadline + Campaña Inicio + Estreno */}
+                  <div className={`grid grid-cols-1 gap-4 ${campaign.post_estreno_end_date ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                    {/* Deadline Creativos — read-only */}
+                    {(() => {
+                      const date = new Date(campaign.creatives_deadline);
+                      const relative = getRelativeTime(date);
+                      return (
+                        <div className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <p className="text-sm text-muted-foreground">Deadline Creativos</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(date)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relative.text}</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                    {/* Row 2: post-estreno + reporte final */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(() => {
-                        const postDate = new Date(campaign.post_estreno_end_date);
-                        const relPost = getRelativeTime(postDate);
-                        return (
-                          <div className="flex flex-col space-y-1 p-3 rounded border bg-primary/5 border-primary/20">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-muted-foreground">Post-estreno (Fin)</p>
-                              <button
-                                onClick={removePostEstrenoDate}
-                                disabled={savingPostEstreno}
-                                className="text-muted-foreground hover:text-red-400 transition-colors"
-                                title="Eliminar post-estreno"
-                              >
+                        </div>
+                      );
+                    })()}
+
+                    {/* Campaña (Inicio) — editable by admin */}
+                    {(() => {
+                      const date = new Date(campaign.pre_start_date);
+                      const relative = getRelativeTime(date);
+                      return (
+                        <div className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Campaña (Inicio)</p>
+                            {userRole === 'admin' && (
+                              <button onClick={() => setEditingPreStart(true)} className="text-muted-foreground hover:text-primary transition-colors" title="Editar fecha">
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(date)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relative.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Estreno — read-only */}
+                    {(() => {
+                      const date = new Date(campaign.premiere_weekend_start);
+                      const relative = getRelativeTime(date);
+                      return (
+                        <div className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <p className="text-sm text-muted-foreground">Estreno</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(date)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relative.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Row 2: post-estreno (if set) + Reporte Final */}
+                  <div className={`grid grid-cols-1 gap-4 ${campaign.post_estreno_end_date ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                    {campaign.post_estreno_end_date && (() => {
+                      const postDate = new Date(campaign.post_estreno_end_date);
+                      const relPost = getRelativeTime(postDate);
+                      return (
+                        <div className="flex flex-col space-y-1 p-3 rounded border bg-primary/5 border-primary/20">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Fecha de finalización</p>
+                            {userRole === 'admin' && (
+                              <button onClick={removePostEstrenoDate} disabled={savingPostEstreno} className="text-muted-foreground hover:text-red-400 transition-colors" title="Eliminar fecha de finalización">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <p className="text-foreground font-medium">{formatDateShort(postDate)}</p>
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${relPost.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relPost.text}</span>
-                            </div>
+                            )}
                           </div>
-                        );
-                      })()}
-                      {(() => {
-                        const repDate = new Date(campaign.final_report_date);
-                        const relRep = getRelativeTime(repDate);
-                        return (
-                          <div className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
-                            <p className="text-sm text-muted-foreground">Reporte final</p>
-                            <div className="flex items-center justify-between">
-                              <p className="text-foreground font-medium">{formatDateShort(repDate)}</p>
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${relRep.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relRep.text}</span>
-                            </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(postDate)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relPost.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relPost.text}</span>
                           </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {[
-                        { label: "Deadline Creativos", date: new Date(campaign.creatives_deadline) },
-                        { label: "Pre-campaña (Inicio)", date: new Date(campaign.pre_start_date) },
-                        { label: "Estreno", date: new Date(campaign.premiere_weekend_start) },
-                        { label: "Reporte final", date: new Date(campaign.final_report_date) },
-                      ].map((item, index) => {
-                        const relative = getRelativeTime(item.date);
-                        return (
-                          <div key={index} className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
-                            <p className="text-sm text-muted-foreground">{item.label}</p>
-                            <div className="flex items-center justify-between">
-                              <p className="text-foreground font-medium">{formatDateShort(item.date)}</p>
-                              <span className={`text-xs px-2 py-1 rounded font-medium ${relative.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relative.text}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })()}
 
-                    <div className="mt-4">
-                      <Popover open={postEstrenoPickerOpen} onOpenChange={setPostEstrenoPickerOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            disabled={savingPostEstreno}
-                            className="w-full min-h-[72px] border-dashed border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/60 hover:bg-primary/5 gap-2"
-                          >
-                            <CalendarPlus className="h-4 w-4" />
-                            {savingPostEstreno ? 'Guardando...' : 'Continuar campaña post-estreno'}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="center">
+                    {/* Reporte Final — editable by admin */}
+                    {(() => {
+                      const repDate = new Date(campaign.final_report_date);
+                      const relRep = getRelativeTime(repDate);
+                      return (
+                        <div className="flex flex-col space-y-1 p-3 bg-muted/20 rounded border border-white/5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">Reporte final</p>
+                            {userRole === 'admin' && (
+                              <button onClick={() => setEditingFinalReport(true)} className="text-muted-foreground hover:text-primary transition-colors" title="Editar fecha">
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-foreground font-medium">{formatDateShort(repDate)}</p>
+                            <span className={`text-xs px-2 py-1 rounded font-medium ${relRep.isPast ? 'bg-red-500/10 text-red-400' : 'bg-primary/20 text-primary'}`}>{relRep.text}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Admin-only: add/change finalization date */}
+                  {userRole === 'admin' && !campaign.post_estreno_end_date && (
+                    <Popover open={postEstrenoPickerOpen} onOpenChange={setPostEstrenoPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" disabled={savingPostEstreno} className="w-full min-h-[52px] border-dashed border-primary/30 text-muted-foreground hover:text-primary hover:border-primary/60 hover:bg-primary/5 gap-2">
+                          <CalendarPlus className="h-4 w-4" />
+                          {savingPostEstreno ? 'Guardando...' : 'Agregar fecha de finalización'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="center">
+                        <CalendarPicker
+                          mode="single"
+                          defaultMonth={new Date(campaign.premiere_weekend_start)}
+                          modifiers={{ premiere: new Date(campaign.premiere_weekend_start) }}
+                          modifiersClassNames={{ premiere: 'border border-primary/60 text-primary font-bold' }}
+                          onSelect={savePostEstrenoDate}
+                          disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
+                          initialFocus
+                        />
+                        <p className="text-xs text-muted-foreground text-center pb-3 px-3">
+                          Fecha en la que finaliza la campaña.<br />
+                          El reporte final se actualizará a 7 días después.
+                        </p>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+
+                  {/* Admin date pickers (popover) */}
+                  {userRole === 'admin' && (
+                    <>
+                      <Popover open={editingPreStart} onOpenChange={setEditingPreStart}>
+                        <PopoverTrigger className="hidden" />
+                        <PopoverContent className="w-auto p-0" align="start">
                           <CalendarPicker
                             mode="single"
-                            defaultMonth={new Date(campaign.premiere_weekend_start)}
-                            modifiers={{ premiere: new Date(campaign.premiere_weekend_start) }}
-                            modifiersClassNames={{ premiere: 'border border-primary/60 text-primary font-bold' }}
-                            onSelect={savePostEstrenoDate}
+                            defaultMonth={new Date(campaign.pre_start_date)}
+                            selected={new Date(campaign.pre_start_date)}
+                            onSelect={savePreStartDate}
+                            disabled={(date) => date >= new Date(campaign.premiere_weekend_start)}
+                            initialFocus
+                          />
+                          <p className="text-xs text-muted-foreground text-center pb-3 px-3">Inicio de la campaña previa al estreno.</p>
+                        </PopoverContent>
+                      </Popover>
+                      <Popover open={editingFinalReport} onOpenChange={setEditingFinalReport}>
+                        <PopoverTrigger className="hidden" />
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarPicker
+                            mode="single"
+                            defaultMonth={new Date(campaign.final_report_date)}
+                            selected={new Date(campaign.final_report_date)}
+                            onSelect={saveFinalReportDate}
                             disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
                             initialFocus
                           />
-                          <p className="text-xs text-muted-foreground text-center pb-3 px-3">
-                            Selecciona el fin de la campaña post-estreno.<br />
-                            El reporte final se actualizará a 7 días después.
-                          </p>
+                          <p className="text-xs text-muted-foreground text-center pb-3 px-3">Fecha en que se enviará el informe final.</p>
                         </PopoverContent>
                       </Popover>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div>

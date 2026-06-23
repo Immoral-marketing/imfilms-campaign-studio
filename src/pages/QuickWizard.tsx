@@ -158,6 +158,9 @@ const QuickWizard = () => {
   const [releaseDate, setReleaseDate] = useState<Date | undefined>(undefined);
   const [campaignEndDate, setCampaignEndDate] = useState<Date | undefined>(undefined);
   const [manualEndDateMode, setManualEndDateMode] = useState(false);
+  const [preCampaignDays, setPreCampaignDays] = useState(14);
+  const [customFinalReportDate, setCustomFinalReportDate] = useState<Date | undefined>(undefined);
+  const [showCustomReportPicker, setShowCustomReportPicker] = useState(false);
 
   // Step 3: Platforms & Investment
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -198,7 +201,7 @@ const QuickWizard = () => {
   const costs = useCampaignCalculator(campaignConfig);
 
   const campaignDates = releaseDate
-    ? calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate)
+    ? calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate, preCampaignDays)
     : null;
 
   // Auto-sync campaign end date with premiere weekend end when release date changes
@@ -938,7 +941,7 @@ const QuickWizard = () => {
           pre_end_date: campaignDates.preEndDate.toISOString().split("T")[0],
           premiere_weekend_start: campaignDates.premiereWeekendStart.toISOString().split("T")[0],
           premiere_weekend_end: campaignDates.premiereWeekendEnd.toISOString().split("T")[0],
-          final_report_date: campaignDates.finalReportDate.toISOString().split("T")[0],
+          final_report_date: (customFinalReportDate ?? campaignDates.finalReportDate).toISOString().split("T")[0],
           creatives_deadline: campaignDates.creativesDeadline.toISOString().split("T")[0],
           ad_investment_amount: costs.adInvestment,
           fixed_fee_amount: costs.fixedFeePlatforms,
@@ -1588,11 +1591,11 @@ const QuickWizard = () => {
                         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-[100px] -mr-8 -mt-8 pointer-events-none" />
                       </div>
 
-                      {/* Pre-campaign Card */}
+                      {/* Campaign Card */}
                       <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3 relative overflow-hidden group hover:border-primary/30 transition-colors">
                         <div className="flex items-center gap-2 text-primary">
                           <CalendarRange className="w-5 h-5" />
-                          <span className="font-cinema text-lg">Pre-campaña</span>
+                          <span className="font-cinema text-lg">Campaña</span>
                         </div>
                         <div className="text-2xl font-teko text-cinema-ivory">
                           {formatDateEs(campaignDates.preStartDate)} - {formatDateEs(campaignDates.preEndDate)}
@@ -1618,10 +1621,57 @@ const QuickWizard = () => {
                           <span className="font-cinema text-lg text-muted-foreground">Este día recibirás el informe final</span>
                         </div>
                         <div className="text-2xl font-teko text-cinema-ivory">
-                          {formatDateEs(campaignDates.finalReportDate)}
+                          {formatDateEs(customFinalReportDate ?? campaignDates.finalReportDate)}
                         </div>
                       </div>
                     </div>
+
+                    {/* Admin-only date options */}
+                    {isAdmin && (
+                      <div className="border border-dashed border-primary/30 rounded-xl p-4 space-y-4">
+                        <p className="text-xs text-primary/70 font-medium uppercase tracking-wider">Opciones de fechas (admin)</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm text-muted-foreground">Duración de campaña previa al estreno (días)</Label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={90}
+                              value={preCampaignDays}
+                              onChange={(e) => setPreCampaignDays(Math.max(1, parseInt(e.target.value) || 14))}
+                              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-sm text-muted-foreground">
+                              Reporte final personalizado
+                              {customFinalReportDate && (
+                                <button onClick={() => { setCustomFinalReportDate(undefined); setShowCustomReportPicker(false); }} className="ml-2 text-xs text-red-400 hover:text-red-300">× resetear</button>
+                              )}
+                            </Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowCustomReportPicker(!showCustomReportPicker)}
+                              className="w-full text-left bg-muted border border-border rounded-md px-3 py-2 text-sm text-foreground hover:border-primary/50 transition-colors"
+                            >
+                              {customFinalReportDate ? formatDateEs(customFinalReportDate) : formatDateEs(campaignDates.finalReportDate)}
+                            </button>
+                            {showCustomReportPicker && (
+                              <div className="flex justify-center">
+                                <Calendar
+                                  mode="single"
+                                  selected={customFinalReportDate ?? campaignDates.finalReportDate}
+                                  onSelect={(d) => { setCustomFinalReportDate(d); setShowCustomReportPicker(false); }}
+                                  disabled={(date) => date < campaignDates.premiereWeekendEnd}
+                                  className="bg-muted border border-border rounded-md"
+                                  weekStartsOn={1}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
