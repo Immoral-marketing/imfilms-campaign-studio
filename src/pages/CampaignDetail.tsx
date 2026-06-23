@@ -36,6 +36,8 @@ const CampaignDetail = () => {
   const [editingPreStart, setEditingPreStart] = useState(false);
   const [editingFinalReport, setEditingFinalReport] = useState(false);
   const [savingDate, setSavingDate] = useState(false);
+  const [tempPreStart, setTempPreStart] = useState<Date | undefined>(undefined);
+  const [tempCampaignEnd, setTempCampaignEnd] = useState<Date | undefined>(undefined);
 
   // Get pending film edit proposal
   const { data: pendingProposal } = usePendingFilmProposal(film?.id);
@@ -281,20 +283,27 @@ const CampaignDetail = () => {
     }
   };
 
-  const savePreStartDate = async (date: Date | undefined) => {
-    if (!date || !campaignId) return;
+  const openCampaignDateEditor = () => {
+    setTempPreStart(new Date(campaign!.pre_start_date));
+    setTempCampaignEnd(campaign!.post_estreno_end_date ? new Date(campaign!.post_estreno_end_date) : undefined);
+    setEditingPreStart(true);
+  };
+
+  const saveCampaignDates = async () => {
+    if (!tempPreStart || !campaignId) return;
     setSavingDate(true);
     setEditingPreStart(false);
     try {
-      const { error } = await supabase
-        .from('campaigns')
-        .update({ pre_start_date: date.toISOString().split('T')[0] })
-        .eq('id', campaignId);
+      const updates: Record<string, string | null> = {
+        pre_start_date: tempPreStart.toISOString().split('T')[0],
+        post_estreno_end_date: tempCampaignEnd ? tempCampaignEnd.toISOString().split('T')[0] : null,
+      };
+      const { error } = await supabase.from('campaigns').update(updates).eq('id', campaignId);
       if (error) throw error;
-      toast.success('Fecha de inicio de campaña actualizada');
+      toast.success('Fechas de campaña actualizadas');
       await loadCampaign();
     } catch (err: any) {
-      toast.error('Error al guardar la fecha');
+      toast.error('Error al guardar las fechas');
     } finally {
       setSavingDate(false);
     }
@@ -619,7 +628,7 @@ const CampaignDetail = () => {
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-muted-foreground">Campaña (Inicio)</p>
                             {userRole === 'admin' && (
-                              <button onClick={() => setEditingPreStart(true)} className="text-muted-foreground hover:text-primary transition-colors" title="Editar fecha">
+                              <button onClick={openCampaignDateEditor} className="text-muted-foreground hover:text-primary transition-colors" title="Editar fechas de campaña">
                                 <Pencil className="h-3 w-3" />
                               </button>
                             )}
@@ -721,38 +730,72 @@ const CampaignDetail = () => {
                     </Popover>
                   )}
 
-                  {/* Admin date pickers (popover) */}
-                  {userRole === 'admin' && (
-                    <>
-                      <Popover open={editingPreStart} onOpenChange={setEditingPreStart}>
-                        <PopoverTrigger className="hidden" />
-                        <PopoverContent className="w-auto p-0" align="start">
+                  {/* Admin inline campaign date editor */}
+                  {userRole === 'admin' && editingPreStart && (
+                    <div className="border border-dashed border-primary/40 rounded-xl p-4 space-y-4 bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-primary">Editar fechas de campaña</p>
+                        <button onClick={() => setEditingPreStart(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">Inicio de campaña</p>
                           <CalendarPicker
                             mode="single"
-                            defaultMonth={new Date(campaign.pre_start_date)}
-                            selected={new Date(campaign.pre_start_date)}
-                            onSelect={savePreStartDate}
+                            selected={tempPreStart}
+                            onSelect={setTempPreStart}
+                            defaultMonth={tempPreStart}
                             disabled={(date) => date >= new Date(campaign.premiere_weekend_start)}
-                            initialFocus
+                            className="rounded-md border border-border bg-background w-fit"
                           />
-                          <p className="text-xs text-muted-foreground text-center pb-3 px-3">Inicio de la campaña previa al estreno.</p>
-                        </PopoverContent>
-                      </Popover>
-                      <Popover open={editingFinalReport} onOpenChange={setEditingFinalReport}>
-                        <PopoverTrigger className="hidden" />
-                        <PopoverContent className="w-auto p-0" align="start">
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">Fin de campaña</p>
+                            {tempCampaignEnd && (
+                              <button onClick={() => setTempCampaignEnd(undefined)} className="text-xs text-muted-foreground hover:text-foreground underline">× quitar</button>
+                            )}
+                          </div>
                           <CalendarPicker
                             mode="single"
-                            defaultMonth={new Date(campaign.final_report_date)}
-                            selected={new Date(campaign.final_report_date)}
-                            onSelect={saveFinalReportDate}
+                            selected={tempCampaignEnd}
+                            onSelect={setTempCampaignEnd}
+                            defaultMonth={tempCampaignEnd ?? new Date(campaign.premiere_weekend_start)}
                             disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
-                            initialFocus
+                            className="rounded-md border border-border bg-background w-fit"
                           />
-                          <p className="text-xs text-muted-foreground text-center pb-3 px-3">Fecha en que se enviará el informe final.</p>
-                        </PopoverContent>
-                      </Popover>
-                    </>
+                          {!tempCampaignEnd && (
+                            <p className="text-xs text-muted-foreground">Sin fecha de fin → termina el fin de semana del estreno.</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => setEditingPreStart(false)}>Cancelar</Button>
+                        <Button size="sm" onClick={saveCampaignDates} disabled={!tempPreStart || savingDate}>
+                          {savingDate ? 'Guardando...' : 'Guardar fechas'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Final report date popover (unchanged) */}
+                  {userRole === 'admin' && (
+                    <Popover open={editingFinalReport} onOpenChange={setEditingFinalReport}>
+                      <PopoverTrigger className="hidden" />
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <CalendarPicker
+                          mode="single"
+                          defaultMonth={new Date(campaign.final_report_date)}
+                          selected={new Date(campaign.final_report_date)}
+                          onSelect={saveFinalReportDate}
+                          disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
+                          initialFocus
+                        />
+                        <p className="text-xs text-muted-foreground text-center pb-3 px-3">Fecha en que se enviará el informe final.</p>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </div>

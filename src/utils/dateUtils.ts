@@ -80,7 +80,8 @@ export const calculateCampaignDates = (
   releaseDate: Date,
   hasAdaptationAddon: boolean,
   campaignEndDate?: Date,
-  preCampaignDays: number = 14
+  preCampaignDays: number = 14,
+  absolutePreStartDate?: Date
 ): CampaignDates => {
   const release = startOfDay(releaseDate);
 
@@ -89,8 +90,10 @@ export const calculateCampaignDates = (
   const premiereWeekendStart = getFridayOfWeek(release);
   const premiereWeekendEnd = addDays(premiereWeekendStart, 2); // Sunday
 
-  // Pre-campaign: preCampaignDays before premiere weekend start until day before
-  const preStartDate = subDays(premiereWeekendStart, preCampaignDays);
+  // Pre-campaign: use absolute date if provided, otherwise compute from preCampaignDays
+  const preStartDate = absolutePreStartDate
+    ? startOfDay(absolutePreStartDate)
+    : subDays(premiereWeekendStart, preCampaignDays);
   const preEndDate = subDays(premiereWeekendStart, 1);
 
   // Campaign end date (user selected or default to premiere weekend end)

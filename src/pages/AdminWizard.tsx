@@ -167,8 +167,11 @@ const AdminWizard = () => {
   const [campaignEndDate, setCampaignEndDate] = useState<Date | undefined>(undefined);
   const [manualEndDateMode, setManualEndDateMode] = useState(false);
   const [preCampaignDays, setPreCampaignDays] = useState(14);
+  const [customPreStartDate, setCustomPreStartDate] = useState<Date | undefined>(undefined);
+  const [showCustomStartPicker, setShowCustomStartPicker] = useState(false);
   const [customFinalReportDate, setCustomFinalReportDate] = useState<Date | undefined>(undefined);
   const [showCustomReportPicker, setShowCustomReportPicker] = useState(false);
+  const [showAdminEndDatePicker, setShowAdminEndDatePicker] = useState(false);
 
   // Step 3: Platforms & Investment
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
@@ -209,7 +212,7 @@ const AdminWizard = () => {
   const costs = useCampaignCalculator(campaignConfig);
 
   const campaignDates = releaseDate
-    ? calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate, preCampaignDays)
+    ? calculateCampaignDates(releaseDate, selectedAddons.adaptacion, campaignEndDate, preCampaignDays, customPreStartDate)
     : null;
 
   // Auto-sync campaign end date with premiere weekend end when release date changes
@@ -1546,20 +1549,80 @@ const AdminWizard = () => {
                       <div className="border border-dashed border-primary/30 rounded-xl p-4 space-y-4">
                         <p className="text-xs text-primary/70 font-medium uppercase tracking-wider">Opciones de fechas (admin)</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-cinema-ivory">Duración de campaña previa al estreno (días)</Label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={90}
-                              value={preCampaignDays}
-                              onChange={(e) => setPreCampaignDays(Math.max(1, parseInt(e.target.value) || 14))}
-                              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm"
-                            />
-                          </div>
+                          {/* Pre-campaign days OR exact start date */}
                           <div className="space-y-2">
                             <Label className="text-cinema-ivory">
-                              Reporte final personalizado{" "}
+                              Inicio de campaña{" "}
+                              {customPreStartDate && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setCustomPreStartDate(undefined); setShowCustomStartPicker(false); }}
+                                  className="ml-2 text-xs text-muted-foreground hover:text-foreground underline"
+                                >
+                                  × resetear
+                                </button>
+                              )}
+                            </Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowCustomStartPicker(!showCustomStartPicker)}
+                              className="w-full text-left bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm hover:border-primary/50 transition-colors"
+                            >
+                              {formatDateEs(customPreStartDate ?? campaignDates.preStartDate)}
+                            </button>
+                            {showCustomStartPicker && (
+                              <Calendar
+                                mode="single"
+                                selected={customPreStartDate ?? campaignDates.preStartDate}
+                                onSelect={(d) => {
+                                  setCustomPreStartDate(d);
+                                  setShowCustomStartPicker(false);
+                                }}
+                                disabled={(date) => date >= campaignDates.premiereWeekendStart}
+                                className="rounded-md border border-border bg-background"
+                              />
+                            )}
+                          </div>
+
+                          {/* Campaign end date */}
+                          <div className="space-y-2">
+                            <Label className="text-cinema-ivory">
+                              Fin de campaña{" "}
+                              {campaignEndDate && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setCampaignEndDate(undefined); setShowAdminEndDatePicker(false); }}
+                                  className="ml-2 text-xs text-muted-foreground hover:text-foreground underline"
+                                >
+                                  × resetear
+                                </button>
+                              )}
+                            </Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowAdminEndDatePicker(!showAdminEndDatePicker)}
+                              className="w-full text-left bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm hover:border-primary/50 transition-colors"
+                            >
+                              {formatDateEs(campaignEndDate ?? campaignDates.premiereWeekendEnd)}
+                            </button>
+                            {showAdminEndDatePicker && (
+                              <Calendar
+                                mode="single"
+                                selected={campaignEndDate ?? campaignDates.premiereWeekendEnd}
+                                onSelect={(d) => {
+                                  setCampaignEndDate(d);
+                                  setShowAdminEndDatePicker(false);
+                                }}
+                                disabled={(date) => date < campaignDates.premiereWeekendStart}
+                                className="rounded-md border border-border bg-background"
+                              />
+                            )}
+                          </div>
+
+                          {/* Final report date */}
+                          <div className="space-y-2">
+                            <Label className="text-cinema-ivory">
+                              Reporte final{" "}
                               {customFinalReportDate && (
                                 <button
                                   type="button"
@@ -1590,6 +1653,21 @@ const AdminWizard = () => {
                               />
                             )}
                           </div>
+
+                          {/* Pre-campaign duration (days) — only relevant when no exact start date is set */}
+                          {!customPreStartDate && (
+                            <div className="space-y-2">
+                              <Label className="text-cinema-ivory">Días de campaña antes del estreno</Label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={90}
+                                value={preCampaignDays}
+                                onChange={(e) => setPreCampaignDays(Math.max(1, parseInt(e.target.value) || 14))}
+                                className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
