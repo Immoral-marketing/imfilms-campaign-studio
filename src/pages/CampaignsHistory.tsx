@@ -1791,6 +1791,7 @@ const CampaignsHistory = () => {
       />
 
       <MobileBottomNav
+        mode="dashboard"
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isAdmin={isAdmin}

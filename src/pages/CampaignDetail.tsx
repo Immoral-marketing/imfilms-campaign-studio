@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell, RefreshCw, CalendarPlus, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Film, Calendar, DollarSign, Target, MessageSquare, FileText, Edit, Save, X, Bell, RefreshCw, CalendarPlus, Trash2, Pencil, Clock, Image } from 'lucide-react';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import CampaignTimeline from '@/components/CampaignTimeline';
 import CampaignChat from '@/components/CampaignChat';
 import CampaignNotifications from '@/components/CampaignNotifications';
@@ -534,12 +535,12 @@ const CampaignDetail = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="w-full flex h-auto flex-wrap sm:grid sm:grid-cols-4 sm:h-10">
-            <TabsTrigger value="timeline" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Timeline</TabsTrigger>
-            <TabsTrigger value="details" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Detalles</TabsTrigger>
-            <TabsTrigger value="chat" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Chat</TabsTrigger>
-            <TabsTrigger value="assets" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Creativos</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 pb-20 sm:pb-0">
+          <TabsList className="hidden sm:grid w-full sm:grid-cols-4">
+            <TabsTrigger value="timeline" className="text-sm">Timeline</TabsTrigger>
+            <TabsTrigger value="details" className="text-sm">Detalles</TabsTrigger>
+            <TabsTrigger value="chat" className="text-sm">Chat</TabsTrigger>
+            <TabsTrigger value="assets" className="text-sm">Creativos</TabsTrigger>
           </TabsList>
 
           {/* Timeline Tab */}
@@ -901,8 +902,20 @@ const CampaignDetail = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </main >
-    </div >
+      </main>
+
+      <MobileBottomNav
+        mode="tabs"
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        tabs={[
+          { value: "timeline", icon: Clock, label: "Timeline" },
+          { value: "details", icon: FileText, label: "Detalles" },
+          { value: "chat", icon: MessageSquare, label: "Chat" },
+          { value: "assets", icon: Image, label: "Creativos" },
+        ]}
+      />
+    </div>
   );
 };
 
