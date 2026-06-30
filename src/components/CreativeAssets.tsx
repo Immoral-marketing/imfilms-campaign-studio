@@ -43,7 +43,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const [uploadMode, setUploadMode] = useState<'file' | 'drive'>('file');
+  const [uploadMode, setUploadMode] = useState<'file' | 'drive'>('drive');
   const [driveUrl, setDriveUrl] = useState("");
   const [driveName, setDriveName] = useState("");
   const [savingDrive, setSavingDrive] = useState(false);
@@ -532,20 +532,20 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
       <Card className="bg-cinema-charcoal/60 border-cinema-yellow/20">
         <CardContent className="p-6 space-y-4">
           {/* Mode toggle */}
-          <div className="flex items-center gap-1 p-1 bg-cinema-charcoal rounded-lg w-fit">
-            <button
-              onClick={() => setUploadMode('file')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${uploadMode === 'file' ? 'bg-cinema-yellow text-cinema-black' : 'text-cinema-ivory/60 hover:text-cinema-ivory'}`}
-            >
-              <Upload className="w-4 h-4" />
-              Subir archivos
-            </button>
+          <div className="flex items-center p-1 bg-black/40 border border-white/10 rounded-full w-fit">
             <button
               onClick={() => setUploadMode('drive')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${uploadMode === 'drive' ? 'bg-cinema-yellow text-cinema-black' : 'text-cinema-ivory/60 hover:text-cinema-ivory'}`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'drive' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
             >
               <LinkIcon className="w-4 h-4" />
               Enlace Google Drive
+            </button>
+            <button
+              onClick={() => setUploadMode('file')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'file' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
+            >
+              <Upload className="w-4 h-4" />
+              Subir imágenes
             </button>
           </div>
 
