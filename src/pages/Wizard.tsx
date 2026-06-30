@@ -2852,12 +2852,12 @@ const Wizard = () => {
           }
 
           {/* Navigation buttons */}
-          <div className="flex flex-wrap justify-between items-center gap-3 pt-6">
+          <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-6">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
                 variant="outline"
-                className="border-primary text-primary hover:bg-primary/10"
+                className="w-full sm:w-auto border-primary text-primary hover:bg-primary/10"
               >
                 ← Volver
               </Button>
@@ -2866,7 +2866,7 @@ const Wizard = () => {
             {currentStep < 4 ? (
               <Button
                 onClick={handleNext}
-                className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"
+                className="w-full sm:w-auto sm:ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"
               >
                 Siguiente →
               </Button>

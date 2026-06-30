@@ -535,11 +535,11 @@ const CampaignDetail = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-            <TabsTrigger value="timeline" className="text-xs sm:text-sm">Timeline</TabsTrigger>
-            <TabsTrigger value="details" className="text-xs sm:text-sm">Detalles</TabsTrigger>
-            <TabsTrigger value="chat" className="text-xs sm:text-sm">Chat</TabsTrigger>
-            <TabsTrigger value="assets" className="text-xs sm:text-sm">Creativos</TabsTrigger>
+          <TabsList className="w-full flex h-auto flex-wrap sm:grid sm:grid-cols-4 sm:h-10">
+            <TabsTrigger value="timeline" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Timeline</TabsTrigger>
+            <TabsTrigger value="details" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Detalles</TabsTrigger>
+            <TabsTrigger value="chat" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Chat</TabsTrigger>
+            <TabsTrigger value="assets" className="flex-1 min-w-[80px] text-xs sm:text-sm py-2 sm:py-0">Creativos</TabsTrigger>
           </TabsList>
 
           {/* Timeline Tab */}
