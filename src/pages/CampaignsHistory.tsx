@@ -887,10 +887,10 @@ const CampaignsHistory = () => {
                 </DropdownMenu>
               </div>
             )}
-            <div className="flex rounded-md shadow-sm w-full sm:w-auto">
+            <div className="flex rounded-md shadow-sm">
               <Button
                 onClick={() => navigate("/quick-wizard")}
-                className="bg-[#ebc453] text-black hover:bg-[#d0ab40] rounded-r-none border-r border-[#black/20] flex-1 sm:flex-none"
+                className="bg-[#ebc453] text-black hover:bg-[#d0ab40] rounded-r-none border-r border-[#black/20]"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Nueva campaña
@@ -923,27 +923,27 @@ const CampaignsHistory = () => {
         </div>
 
         <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="bg-cinema-black border border-border w-full overflow-x-auto flex h-auto flex-wrap sm:flex-nowrap">
-            <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-black flex-1 min-w-[100px]">
+          <TabsList className="bg-cinema-black border border-border w-full grid grid-cols-2 sm:flex h-auto sm:h-10">
+            <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
               <Film className="w-4 h-4 mr-1 sm:mr-2" />
-              <span>Campañas</span>
+              Campañas
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="distributors" className="data-[state=active]:bg-primary data-[state=active]:text-black flex-1 min-w-[120px]">
+              <TabsTrigger value="distributors" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
                 <Building2 className="w-4 h-4 mr-1 sm:mr-2" />
-                <span>Distribuidoras</span>
+                Distribuidoras
               </TabsTrigger>
             )}
             {isAdmin && (
-              <TabsTrigger value="partners" className="data-[state=active]:bg-primary data-[state=active]:text-black flex-1 min-w-[100px]">
+              <TabsTrigger value="partners" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
                 <Users className="w-4 h-4 mr-1 sm:mr-2" />
-                <span>Afiliados</span>
+                Afiliados
               </TabsTrigger>
             )}
             {isEnabled('show_metrics_comparative') && (
-              <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black flex-1 min-w-[140px]">
+              <TabsTrigger value="comparative" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
                 <BarChart className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Métricas / </span>Comparativas
+                Comparativas
               </TabsTrigger>
             )}
           </TabsList>
