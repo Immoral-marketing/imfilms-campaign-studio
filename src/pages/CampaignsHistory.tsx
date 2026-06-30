@@ -1015,56 +1015,6 @@ const CampaignsHistory = () => {
               </Card>
             )}
 
-            {/* Admin: distributor drill-down grid */}
-            {!loading && isAdmin && selectedDistributorId === null && (
-              <div className="space-y-4">
-                <h2 className="font-cinema text-2xl text-foreground">Distribuidoras</h2>
-                {distributorList.length === 0 ? (
-                  <Card className="cinema-card p-8 text-center">
-                    <p className="text-muted-foreground">No hay campañas registradas aún.</p>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {distributorList.map((dist) => (
-                      <Card
-                        key={dist.id}
-                        className="cinema-card p-6 cursor-pointer hover:border-primary/60 transition-all group"
-                        onClick={() => setSelectedDistributorId(dist.id)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                              <Building2 className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{dist.name}</p>
-                              <p className="text-xs text-muted-foreground">{dist.count} {dist.count === 1 ? "campaña" : "campañas"}</p>
-                            </div>
-                          </div>
-                          <span className="text-muted-foreground group-hover:text-primary transition-colors text-lg">→</span>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!loading && campaigns.length > 0 && isAdmin && selectedDistributorId !== null && (
-              <div className="flex items-center gap-3 pb-2 border-b border-border/40">
-                <button
-                  onClick={() => setSelectedDistributorId(null)}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  ← Distribuidoras
-                </button>
-                <span className="text-muted-foreground">/</span>
-                <span className="text-sm font-medium text-foreground">
-                  {distributorList.find(d => d.id === selectedDistributorId)?.name}
-                </span>
-              </div>
-            )}
-
             {!loading && campaigns.length > 0 && (
               /* KPI Cards — always visible, reflect selected distributor or global */
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -1143,6 +1093,56 @@ const CampaignsHistory = () => {
                       Inversión promedio por estreno
                     </p>
                   </Card>
+              </div>
+            )}
+
+            {/* Admin: distributor drill-down grid */}
+            {!loading && isAdmin && selectedDistributorId === null && (
+              <div className="space-y-4">
+                <h2 className="font-cinema text-2xl text-foreground">Distribuidoras</h2>
+                {distributorList.length === 0 ? (
+                  <Card className="cinema-card p-8 text-center">
+                    <p className="text-muted-foreground">No hay campañas registradas aún.</p>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {distributorList.map((dist) => (
+                      <Card
+                        key={dist.id}
+                        className="cinema-card p-6 cursor-pointer hover:border-primary/60 transition-all group"
+                        onClick={() => setSelectedDistributorId(dist.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                              <Building2 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{dist.name}</p>
+                              <p className="text-xs text-muted-foreground">{dist.count} {dist.count === 1 ? "campaña" : "campañas"}</p>
+                            </div>
+                          </div>
+                          <span className="text-muted-foreground group-hover:text-primary transition-colors text-lg">→</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!loading && campaigns.length > 0 && isAdmin && selectedDistributorId !== null && (
+              <div className="flex items-center gap-3 pb-2 border-b border-border/40">
+                <button
+                  onClick={() => setSelectedDistributorId(null)}
+                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  ← Distribuidoras
+                </button>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-sm font-medium text-foreground">
+                  {distributorList.find(d => d.id === selectedDistributorId)?.name}
+                </span>
               </div>
             )}
 
