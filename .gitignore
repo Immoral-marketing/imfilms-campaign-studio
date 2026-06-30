@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code internals
+.agents/
+.claude/
+mi-proyecto/
+
+# Environment variables (never commit)
+.env
+.env.*
+!.env.example
