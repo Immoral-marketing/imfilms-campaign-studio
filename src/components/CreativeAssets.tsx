@@ -552,28 +552,33 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
           {uploadMode === 'file' ? (
             <div className="grid gap-4">
               <div>
-                <Label htmlFor="file" className="text-cinema-ivory">Archivo</Label>
-                <div className="relative">
-                  <Input
-                    id="file"
-                    type="file"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory cursor-pointer file:cursor-pointer file:text-black file:bg-cinema-yellow file:border-0 file:mr-4 file:px-4 file:py-1 file:rounded-sm file:font-semibold hover:file:bg-cinema-yellow/90 transition-colors"
-                    accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-                  />
-                </div>
+                <Label className="text-cinema-ivory">Archivos</Label>
+                {/* Custom file trigger — avoids browser-styled file button misalignment */}
+                <label
+                  htmlFor="file"
+                  className="flex items-center gap-3 w-full h-10 px-3 rounded-md border border-cinema-yellow/20 bg-muted/20 text-cinema-ivory cursor-pointer hover:border-cinema-yellow/40 transition-colors"
+                >
+                  <span className="bg-cinema-yellow text-cinema-black text-xs font-semibold px-3 py-1 rounded-sm flex-shrink-0">
+                    Elegir archivos
+                  </span>
+                  <span className="text-sm text-cinema-ivory/50 truncate">
+                    {selectedFiles.length > 0 ? `${selectedFiles.length} archivo(s) seleccionado(s)` : "Sin archivos seleccionados"}
+                  </span>
+                </label>
+                <input
+                  id="file"
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                  className="sr-only"
+                />
                 {selectedFiles.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs text-cinema-ivory/60 font-semibold">
-                      {selectedFiles.length} archivo(s) seleccionado(s):
-                    </p>
-                    <ul className="text-xs text-cinema-ivory/50 list-disc list-inside max-h-24 overflow-y-auto">
-                      {selectedFiles.map((f, i) => (
-                        <li key={i} className="truncate">{f.name}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <ul className="mt-2 text-xs text-cinema-ivory/50 list-disc list-inside max-h-24 overflow-y-auto">
+                    {selectedFiles.map((f, i) => (
+                      <li key={i} className="truncate">{f.name}</li>
+                    ))}
+                  </ul>
                 )}
               </div>
 
@@ -610,23 +615,23 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
             <div className="grid gap-4">
               <div>
                 <Label htmlFor="drive-name" className="text-cinema-ivory">Nombre del enlace</Label>
-                <Input
+                <input
                   id="drive-name"
                   value={driveName}
                   onChange={(e) => setDriveName(e.target.value)}
                   placeholder="Ej: Carpeta creatividades película"
-                  className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30"
+                  className="flex h-10 w-full rounded-md border border-cinema-yellow/20 bg-muted/20 px-3 py-2 text-sm text-cinema-ivory placeholder:text-cinema-ivory/30 focus:outline-none focus:border-cinema-yellow/50 transition-colors"
                 />
               </div>
 
               <div>
                 <Label htmlFor="drive-url" className="text-cinema-ivory">Enlace de Google Drive *</Label>
-                <Input
+                <input
                   id="drive-url"
                   value={driveUrl}
                   onChange={(e) => setDriveUrl(e.target.value)}
                   placeholder="https://drive.google.com/drive/folders/..."
-                  className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30"
+                  className="flex h-10 w-full rounded-md border border-cinema-yellow/20 bg-muted/20 px-3 py-2 text-sm text-cinema-ivory placeholder:text-cinema-ivory/30 focus:outline-none focus:border-cinema-yellow/50 transition-colors"
                 />
                 <p className="text-xs text-cinema-ivory/40 mt-1">Asegúrate de que el enlace esté configurado como "cualquier persona con el enlace puede ver".</p>
               </div>
