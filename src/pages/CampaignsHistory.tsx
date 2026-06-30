@@ -996,7 +996,7 @@ const CampaignsHistory = () => {
             {!loading && campaigns.length > 0 && (
               <>
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                   {/* Total Campaigns */}
                   <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
                     <div className="flex items-center justify-between">
