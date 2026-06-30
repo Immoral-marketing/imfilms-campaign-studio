@@ -438,23 +438,23 @@ const CampaignDetail = () => {
         {/* Campaign Header */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <Film className="h-8 w-8 text-primary" />
-                <h1 className="font-cinema text-2xl sm:text-4xl text-foreground">{film.title}</h1>
+            <div className="space-y-1 sm:space-y-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Film className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+                <h1 className="font-cinema text-3xl sm:text-4xl text-foreground leading-tight">{film.title}</h1>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground pl-8 sm:pl-0">
                 {film.genre}{film.secondary_genre ? ` / ${film.secondary_genre}` : ''} • {film.country}
               </p>
             </div>
-            <div className="text-right space-y-1">
+            <div className="flex sm:flex-col sm:items-end sm:text-right items-center justify-between gap-2 pl-8 sm:pl-0">
               <p className="text-sm text-muted-foreground">Estado actual</p>
               {userRole === 'admin' ? (
                 <Select
                   value={campaign.status}
                   onValueChange={updateCampaignStatus}
                 >
-                  <SelectTrigger className="w-full sm:w-[200px] h-auto py-1 border-none bg-transparent">
+                  <SelectTrigger className="w-auto sm:w-[200px] h-auto py-1 border-none bg-transparent">
                     <SelectValue className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -477,13 +477,13 @@ const CampaignDetail = () => {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <p className="text-xs font-semibold">Estreno</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <Card className="p-3 sm:p-4 space-y-1 sm:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide">Estreno</p>
               </div>
-              <p className="text-lg font-cinema text-foreground">
+              <p className="text-base sm:text-lg font-cinema text-foreground">
                 {formatDateShort(new Date(campaign.premiere_weekend_start))}
               </p>
             </Card>
@@ -495,39 +495,39 @@ const CampaignDetail = () => {
               const netInvestment = isIntegrated ? (campaign.ad_investment_amount - totalFees) : campaign.ad_investment_amount;
 
               return (
-                <Card className="p-4 space-y-2 relative overflow-hidden">
+                <Card className="p-3 sm:p-4 space-y-1 sm:space-y-2 relative overflow-hidden">
                   {isIntegrated && (
-                    <div className="absolute top-0 right-0 bg-primary/10 text-primary text-[10px] px-2 py-0.5 rounded-bl font-medium border-l border-b border-primary/20">
+                    <div className="absolute top-0 right-0 bg-primary text-black text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-bl font-semibold">
                       Fees incluidos
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    <p className="text-xs font-semibold">Inversión Publicitaria</p>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                    <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">Inversión</p>
                   </div>
-                  <p className="text-lg font-cinema text-foreground">
+                  <p className="text-base sm:text-lg font-cinema text-foreground">
                     {netInvestment?.toLocaleString('es-ES')}€
                   </p>
                 </Card>
               );
             })()}
 
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Target className="h-4 w-4" />
-                <p className="text-xs font-semibold">Coste Total</p>
+            <Card className="p-3 sm:p-4 space-y-1 sm:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide">Coste Total</p>
               </div>
-              <p className="text-lg font-cinema text-foreground">
+              <p className="text-base sm:text-lg font-cinema text-foreground">
                 {campaign.total_estimated_amount?.toLocaleString('es-ES')}€
               </p>
             </Card>
 
-            <Card className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                <p className="text-xs font-semibold">Deadline Creativos</p>
+            <Card className="p-3 sm:p-4 space-y-1 sm:space-y-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground">
+                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">Deadline</p>
               </div>
-              <p className="text-lg font-cinema text-foreground">
+              <p className="text-base sm:text-lg font-cinema text-foreground">
                 {formatDateShort(new Date(campaign.creatives_deadline))}
               </p>
             </Card>
