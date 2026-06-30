@@ -506,9 +506,9 @@ const CampaignsHistory = () => {
     if (!status || status === 'borrador') return null;
 
     const colors: any = {
-      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
-      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
+      pendiente_aprobacion: "bg-blue-600 text-white border-blue-700",
+      aprobado: "bg-green-600 text-white border-green-700",
+      rechazado: "bg-red-600 text-white border-red-700",
     };
 
     const labels: any = {
@@ -667,9 +667,9 @@ const CampaignsHistory = () => {
     if (!status || status === 'borrador') return null;
 
     const colors = {
-      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
-      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
+      pendiente_aprobacion: "bg-blue-600 text-white border-blue-700",
+      aprobado: "bg-green-600 text-white border-green-700",
+      rechazado: "bg-red-600 text-white border-red-700",
     };
 
     const labels = {
@@ -690,9 +690,9 @@ const CampaignsHistory = () => {
     if (!status || status === 'borrador') return null;
 
     const colors = {
-      pendiente_aprobacion: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-      aprobado: "bg-green-500/20 text-green-400 border-green-500/30",
-      rechazado: "bg-red-500/20 text-red-400 border-red-500/30",
+      pendiente_aprobacion: "bg-blue-600 text-white border-blue-700",
+      aprobado: "bg-green-600 text-white border-green-700",
+      rechazado: "bg-red-600 text-white border-red-700",
     };
 
     const labels = {
