@@ -613,7 +613,9 @@ const CampaignsHistory = () => {
   }, [campaigns, statusFilter, sortOrder, isAdmin, selectedDistributorId]);
 
   const kpis = useMemo(() => {
-    const source = filteredCampaigns;
+    const source = (isAdmin && selectedDistributorId)
+      ? campaigns.filter(c => c.distributor_id === selectedDistributorId)
+      : campaigns;
     const total = source.length;
     const activeCampaigns = source.filter(c =>
       ['nuevo', 'en_revision', 'aprobado'].includes(c.status || 'nuevo')
@@ -621,7 +623,7 @@ const CampaignsHistory = () => {
     const totalInvestment = source.reduce((sum, c) => sum + (c.ad_investment_amount || 0), 0);
     const avgInvestment = total > 0 ? totalInvestment / total : 0;
     return { total, active: activeCampaigns, totalInvestment, avgInvestment };
-  }, [filteredCampaigns]);
+  }, [campaigns, isAdmin, selectedDistributorId]);
 
   const getStatusBadge = (status: string) => {
     const styles: any = {
@@ -945,7 +947,7 @@ const CampaignsHistory = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 pb-20 sm:pb-0">
-          <TabsList className="hidden sm:flex bg-cinema-black border border-border h-10">
+          <TabsList className="hidden sm:inline-flex bg-cinema-black border border-border">
             <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
               <Film className="w-4 h-4 mr-1 sm:mr-2" />
               Campañas
@@ -1063,10 +1065,9 @@ const CampaignsHistory = () => {
               </div>
             )}
 
-            {!loading && campaigns.length > 0 && (!isAdmin || selectedDistributorId !== null) && (
-              <>
-                {/* KPI Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {!loading && campaigns.length > 0 && (
+              /* KPI Cards — always visible, reflect selected distributor or global */
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                   {/* Total Campaigns */}
                   <Card className="cinema-card p-6 space-y-3 hover:border-primary/40 transition-colors">
                     <div className="flex items-center justify-between">
@@ -1142,8 +1143,11 @@ const CampaignsHistory = () => {
                       Inversión promedio por estreno
                     </p>
                   </Card>
-                </div>
+              </div>
+            )}
 
+            {!loading && campaigns.length > 0 && (!isAdmin || selectedDistributorId !== null) && (
+              <>
                 {/* Filters */}
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-muted/20 p-4 rounded-lg border border-border">
                   <div className="flex gap-4 items-center flex-wrap">
