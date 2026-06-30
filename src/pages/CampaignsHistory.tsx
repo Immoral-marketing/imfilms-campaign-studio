@@ -27,6 +27,7 @@ import { NavbarAdmin } from "@/components/NavbarAdmin";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import CalendlyModal from "@/components/CalendlyModal";
 import ChangeDistributorModal from "@/components/distributors/ChangeDistributorModal";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 const loginSchema = z.object({
   email: z.string().trim().email("Email inválido"),
@@ -67,6 +68,7 @@ const CampaignsHistory = () => {
   const [showKPIModal, setShowKPIModal] = useState(false);
   const [showCalendly, setShowCalendly] = useState(false);
   const [meetingType, setMeetingType] = useState<'admin' | 'paid_media'>('admin');
+  const [activeTab, setActiveTab] = useState("campaigns");
   const [selectedCampaignForKPI, setSelectedCampaignForKPI] = useState<any>(null);
   const [kpiData, setKPIData] = useState({
     reach: "",
@@ -887,7 +889,7 @@ const CampaignsHistory = () => {
                 </DropdownMenu>
               </div>
             )}
-            <div className="flex rounded-md shadow-sm">
+            <div className="hidden sm:flex rounded-md shadow-sm">
               <Button
                 onClick={() => navigate("/quick-wizard")}
                 className="bg-[#ebc453] text-black hover:bg-[#d0ab40] rounded-r-none border-r border-[#black/20]"
@@ -922,8 +924,8 @@ const CampaignsHistory = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="campaigns" className="space-y-6">
-          <TabsList className="bg-cinema-black border border-border w-full grid grid-cols-2 sm:flex h-auto sm:h-10">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 pb-20 sm:pb-0">
+          <TabsList className="hidden sm:flex bg-cinema-black border border-border h-10">
             <TabsTrigger value="campaigns" className="data-[state=active]:bg-primary data-[state=active]:text-black py-2 sm:py-0">
               <Film className="w-4 h-4 mr-1 sm:mr-2" />
               Campañas
@@ -1712,6 +1714,14 @@ const CampaignsHistory = () => {
         open={showCreateDistributor}
         onOpenChange={setShowCreateDistributor}
         onSuccess={() => loadData(user?.id, isAdmin)}
+      />
+
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isAdmin={isAdmin}
+        showComparative={isEnabled('show_metrics_comparative')}
+        onNewCampaign={() => navigate("/quick-wizard")}
       />
     </div>
   );
