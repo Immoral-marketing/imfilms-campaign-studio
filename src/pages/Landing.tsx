@@ -220,13 +220,13 @@ const Landing = () => {
               <div className="absolute inset-0" />
             </div>
 
-            <div className="w-full max-w-[95%] mx-auto px-8 relative z-10 h-full flex flex-col justify-center">
+            <div className="w-full max-w-[95%] mx-auto px-4 md:px-8 relative z-10 h-full flex flex-col justify-center">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 items-center">
 
                 {/* Left Column - Title */}
                 <div className="lg:col-span-4 flex flex-col justify-center">
                   <div>
-                    <h2 className="font-cinema text-5xl md:text-7xl lg:text-8xl text-white leading-[0.85] tracking-tight mb-8">
+                    <h2 className="font-cinema text-4xl md:text-7xl lg:text-8xl text-white leading-[0.85] tracking-tight mb-8">
                       QUÉ <br /> PUEDES <br /> <span className="text-cinema-yellow">HACER</span> <br /> AQUÍ
                     </h2>
                     <p className="text-zinc-400 text-lg md:text-xl max-w-sm font-light leading-relaxed">
@@ -237,7 +237,7 @@ const Landing = () => {
 
                 {/* Right Column - 3 Cards */}
                 <div className="lg:col-span-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full min-h-[500px] lg:h-[65vh]">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full min-h-0 md:min-h-[500px] lg:h-[65vh]">
 
                     {/* Card 1: Dark Gray */}
                     <div className="group relative rounded-[2rem] bg-zinc-900 border border-white/10 p-8 flex flex-col justify-end overflow-hidden hover:-translate-y-2 transition-transform duration-500">
@@ -245,7 +245,7 @@ const Landing = () => {
                         <Crosshair className="w-6 h-6 text-white" />
                       </div>
                       <div className="space-y-4 mb-4">
-                        <h3 className="font-cinema text-4xl lg:text-5xl text-white leading-none uppercase">
+                        <h3 className="font-cinema text-2xl md:text-4xl lg:text-5xl text-white leading-none uppercase">
                           DEFINE <br /> AUDIENCIAS <br /> con criterio
                         </h3>
                         <p className="text-zinc-400 text-sm leading-relaxed">
@@ -260,7 +260,7 @@ const Landing = () => {
                         <Film className="w-6 h-6 text-black" />
                       </div>
                       <div className="space-y-4 mb-4">
-                        <h3 className="font-cinema text-4xl lg:text-5xl text-black leading-none uppercase">
+                        <h3 className="font-cinema text-2xl md:text-4xl lg:text-5xl text-black leading-none uppercase">
                           DISEÑA <br /> la ESTRATEGIA <br /> de campaña
                         </h3>
                         <p className="text-zinc-600 text-sm leading-relaxed font-medium">
@@ -275,7 +275,7 @@ const Landing = () => {
                         <BarChart3 className="w-6 h-6 text-black" />
                       </div>
                       <div className="space-y-4 mb-4">
-                        <h3 className="font-cinema text-4xl lg:text-5xl text-black leading-none uppercase">
+                        <h3 className="font-cinema text-2xl md:text-4xl lg:text-5xl text-black leading-none uppercase">
                           Lanza, MIDE Y <br /> guarda tu histórico
                         </h3>
                         <p className="text-zinc-800 text-sm leading-relaxed font-medium">
@@ -294,7 +294,7 @@ const Landing = () => {
           <section id="process" className="min-h-screen flex flex-col justify-center py-20 bg-black border-t border-white/5 relative z-20 overflow-hidden">
             <div className="w-full max-w-[95%] mx-auto px-6">
               <div className="flex flex-col mb-20">
-                <h2 className="font-cinema text-5xl md:text-8xl text-white tracking-tight leading-none mb-6">
+                <h2 className="font-cinema text-4xl md:text-8xl text-white tracking-tight leading-none mb-6">
                   CÓMO <span className="text-cinema-yellow">FUNCIONA</span>
                 </h2>
                 <p className="text-zinc-400 max-w-xl text-lg font-light">
@@ -393,9 +393,9 @@ const Landing = () => {
               </div>
 
               <div className="max-w-6xl mx-auto px-6 relative z-10">
-                <div className="grid md:grid-cols-2 gap-16 items-center">
+                <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
                   <div>
-                    <h2 className="font-cinema text-5xl md:text-7xl text-white mb-8 leading-[0.9]">
+                    <h2 className="font-cinema text-4xl md:text-7xl text-white mb-8 leading-[0.9]">
                       POR QUÉ <br /> <span className="text-cinema-yellow">TRABAJAR</span> CON <br /> NOSOTROS
                     </h2>
                     <div className="h-1 w-24 bg-primary rounded-full mb-8" />
@@ -407,7 +407,7 @@ const Landing = () => {
                         <CheckCircle2 className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-cinema text-3xl text-white mb-2">Especializados en cine</h3>
+                        <h3 className="font-cinema text-2xl md:text-3xl text-white mb-2">Especializados en cine</h3>
                         <p className="text-muted-foreground text-lg">
                           Entendemos el lenguaje del cine y sabemos cómo conectar cada película con su público.
                         </p>
@@ -419,7 +419,7 @@ const Landing = () => {
                         <CheckCircle2 className="w-6 h-6 text-cinema-yellow" />
                       </div>
                       <div>
-                        <h3 className="font-cinema text-3xl text-white mb-2">Data-driven con emoción</h3>
+                        <h3 className="font-cinema text-2xl md:text-3xl text-white mb-2">Data-driven con emoción</h3>
                         <p className="text-muted-foreground text-lg">
                           Combinamos análisis de datos con storytelling para campañas que conectan.
                         </p>
@@ -431,7 +431,7 @@ const Landing = () => {
                         <CheckCircle2 className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-cinema text-3xl text-white mb-2">Proceso medible</h3>
+                        <h3 className="font-cinema text-2xl md:text-3xl text-white mb-2">Proceso medible</h3>
                         <p className="text-muted-foreground text-lg">
                           Nos integramos con tu equipo de PR para lograr resultados concretos en cada película.
                         </p>
@@ -451,7 +451,7 @@ const Landing = () => {
               />
 
               <div className="container mx-auto px-4 text-center relative z-10">
-                <h2 className="font-cinema text-5xl md:text-8xl text-white mb-8 tracking-tight leading-tight py-4">
+                <h2 className="font-cinema text-4xl md:text-8xl text-white mb-8 tracking-tight leading-tight py-4">
                   ¿LISTO PARA TU <br /> <span className="text-cinema-yellow">PRÓXIMO ESTRENO?</span>
                 </h2>
                 <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
@@ -459,12 +459,12 @@ const Landing = () => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-8 justify-center items-center">
-                  <TicketButton text="PROBAR DEMO" onClick={() => navigate("/demo")} className="w-80" />
+                  <TicketButton text="PROBAR DEMO" onClick={() => navigate("/demo")} className="w-full sm:w-80" />
                   <TicketButton
                     text="EMPEZAR AHORA"
                     onClick={() => navigate("/quick-wizard")}
                     variant="solid"
-                    className="w-80 font-body"
+                    className="w-full sm:w-80 font-body"
                     style={{ fontFamily: "'Manrope', sans-serif" }}
                   />
                 </div>

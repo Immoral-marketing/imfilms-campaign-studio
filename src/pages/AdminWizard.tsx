@@ -1021,7 +1021,7 @@ const AdminWizard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-screen bg-background py-12 px-6">
+      <div className="min-h-screen bg-background py-6 md:py-12 px-4 md:px-6">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <button onClick={() => navigate("/")} className="block mx-auto">
@@ -1031,7 +1031,7 @@ const AdminWizard = () => {
                 className="w-32 md:w-40 cursor-pointer hover:opacity-80 transition-opacity"
               />
             </button>
-            <h1 className="font-cinema text-4xl md:text-5xl text-primary">
+            <h1 className="font-cinema text-2xl sm:text-4xl md:text-5xl text-primary">
               Configura tu campaña
             </h1>
             <p className="text-muted-foreground">
@@ -1075,7 +1075,7 @@ const AdminWizard = () => {
 
           {/* Step 1: Film Data */}
           {currentStep === 1 && (
-            <Card className="cinema-card p-8 space-y-6">
+            <Card className="cinema-card p-4 md:p-8 space-y-6">
               <h2 className="font-cinema text-3xl text-primary">Datos de la película</h2>
 
               <div className="space-y-4 mb-6">
@@ -1110,7 +1110,7 @@ const AdminWizard = () => {
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 h-6">
                         <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
@@ -1249,7 +1249,7 @@ const AdminWizard = () => {
                             </Button>
                           </div>
                         ))}
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Input
                             id="new-url-input"
                             placeholder="https://"
@@ -1269,7 +1269,7 @@ const AdminWizard = () => {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"
+                            className="h-8 border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10 shrink-0"
                             onClick={() => {
                               const input = document.getElementById('new-url-input') as HTMLInputElement;
                               const val = input.value.trim();
@@ -1352,7 +1352,7 @@ const AdminWizard = () => {
                       content="Los objetivos nos ayudan a configurar la estrategia correcta: timing, plataformas, creativos y presión publicitaria. Cada objetivo requiere un enfoque diferente."
                     />
                   </div>
-                  <div className="grid md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {GOALS.map((goal) => (
                       <button
                         key={goal}
@@ -1682,7 +1682,7 @@ const AdminWizard = () => {
           {/* Step 2: Platforms & Investment (formerly Step 3) */}
           {
             currentStep === 2 && (
-              <Card className="cinema-card p-8 space-y-6">
+              <Card className="cinema-card p-4 md:p-8 space-y-6">
                 <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
 
                 <div className="space-y-6">
@@ -1780,7 +1780,7 @@ const AdminWizard = () => {
                             />
                           </div>
 
-                          <div className="grid md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
                               onClick={() => setFeeMode('integrated')}
                               className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${feeMode === 'integrated' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
@@ -1961,7 +1961,7 @@ const AdminWizard = () => {
                   </Card>
                 )}
 
-                <Card className="cinema-card p-8 space-y-6">
+                <Card className="cinema-card p-4 md:p-8 space-y-6">
                   <h2 className="font-cinema text-3xl text-primary">Resumen de tu campaña</h2>
 
                   <div className="space-y-4">
@@ -1979,7 +1979,7 @@ const AdminWizard = () => {
                     {campaignDates && (
                       <div>
                         <h3 className="font-cinema text-xl text-primary mb-2">Calendario</h3>
-                        <div className="grid md:grid-cols-3 gap-2 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
                           <div>
                             <p className="text-muted-foreground">Pre-campaña:</p>
                             <p className="text-cinema-ivory">{formatDateShort(campaignDates.preStartDate)} - {formatDateShort(campaignDates.preEndDate)}</p>
@@ -2056,7 +2056,7 @@ const AdminWizard = () => {
                 {isDistributor && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
 
                 {!isDistributor ? (
-                  <Card className="cinema-card p-8 space-y-6">
+                  <Card className="cinema-card p-4 md:p-8 space-y-6">
                     <div className="space-y-3 mb-6">
                       <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
                       <p className="text-muted-foreground">
@@ -2064,7 +2064,7 @@ const AdminWizard = () => {
                       </p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label htmlFor="company-name" className="text-cinema-ivory">Nombre de la empresa / distribuidora *</Label>
                         <Input
@@ -2171,10 +2171,10 @@ const AdminWizard = () => {
                     </div>
                   </Card>
                 ) : (
-                  <Card className="cinema-card p-8 space-y-6">
+                  <Card className="cinema-card p-4 md:p-8 space-y-6">
                     <h2 className="font-cinema text-3xl text-primary">Datos de tu distribuidora</h2>
                     <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Distribuidora</p>
                           <p className="text-cinema-yellow font-semibold text-lg">{distributor?.company_name}</p>
@@ -2211,7 +2211,7 @@ const AdminWizard = () => {
           }
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center pt-6">
+          <div className="flex flex-wrap justify-between items-center pt-6 gap-3">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
@@ -2225,7 +2225,7 @@ const AdminWizard = () => {
             {currentStep < 3 ? (
               <Button
                 onClick={handleNext}
-                className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow"
+                className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-base px-4 py-3 md:px-8 md:py-6"
               >
                 Siguiente →
               </Button>
@@ -2235,7 +2235,7 @@ const AdminWizard = () => {
                   <Button
                     onClick={handleCreateAccount}
                     disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-base px-4 py-3 md:px-8 md:py-6"
                   >
                     {loading ? "Creando cuenta..." : "Crear cuenta y enviar campaña"}
                   </Button>
@@ -2243,7 +2243,7 @@ const AdminWizard = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-base px-4 py-3 md:px-8 md:py-6"
                   >
                     {loading ? "Enviando..." : "Confirmar y enviar campaña"}
                   </Button>
@@ -2269,7 +2269,7 @@ const AdminWizard = () => {
       {/* Admin: Success screen with magic link */}
       {adminSubmitted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <Card className="cinema-card w-full max-w-lg p-8 space-y-6">
+          <Card className="cinema-card w-full max-w-lg p-4 md:p-8 space-y-6">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
                 <Check className="w-8 h-8 text-green-400" />
@@ -2285,8 +2285,8 @@ const AdminWizard = () => {
                 <div className="space-y-2">
                   <Label className="text-cinema-ivory">Link para que el cliente elija su contraseña</Label>
                   <p className="text-xs text-muted-foreground">Envía este link al cliente por WhatsApp, email o cualquier canal. Al hacer clic podrá establecer su propia contraseña.</p>
-                  <div className="flex gap-2">
-                    <Input readOnly value={adminMagicLink} className="bg-muted border-border text-xs font-mono" />
+                  <div className="flex gap-2 items-center">
+                    <div className="min-w-0 flex-1"><Input readOnly value={adminMagicLink} className="bg-muted border-border text-xs font-mono min-w-0" /></div>
                     <Button
                       onClick={() => { navigator.clipboard.writeText(adminMagicLink); setAdminLinkCopied(true); setTimeout(() => setAdminLinkCopied(false), 2000); }}
                       variant="outline"

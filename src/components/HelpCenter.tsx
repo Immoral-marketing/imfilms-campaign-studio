@@ -162,7 +162,7 @@ const HelpCenter = () => {
           Centro de Ayuda
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-cinema text-2xl flex items-center gap-2">
             <HelpCircle className="h-6 w-6 text-primary" />
@@ -174,7 +174,7 @@ const HelpCenter = () => {
         </DialogHeader>
 
         <Tabs defaultValue="faq" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="faq">
               <BookOpen className="h-4 w-4 mr-2" />
               FAQ

@@ -317,7 +317,7 @@ const CampaignComparator = ({ isAdmin, userId }: CampaignComparatorProps) => {
                     </Card>
                 </>
             ) : (
-                <Card className="cinema-card p-12 text-center opacity-50 border-dashed">
+                <Card className="cinema-card p-6 md:p-12 text-center opacity-50 border-dashed">
                     <ArrowRightLeft className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-cinema-ivory">Selecciona al menos dos campañas para ver la comparativa visual.</p>
                 </Card>

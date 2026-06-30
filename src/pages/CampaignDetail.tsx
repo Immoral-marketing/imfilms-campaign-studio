@@ -384,10 +384,10 @@ const CampaignDetail = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <button onClick={() => navigate('/')} className="hover:opacity-80 transition-opacity">
-              <img src={logoImfilms} alt="IMFILMS" className="h-12" />
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button onClick={() => navigate('/')} className="hover:opacity-80 transition-opacity shrink-0">
+              <img src={logoImfilms} alt="IMFILMS" className="h-12 shrink-0" />
             </button>
             <Button
               variant="outline"
@@ -396,15 +396,15 @@ const CampaignDetail = () => {
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Volver a Mis Campañas
+              <span className="hidden sm:inline">Volver a Mis Campañas</span>
             </Button>
 
             {/* Edit action buttons - appear when editing campaign details */}
             {isDetailsEditing && (
-              <div className="flex items-center gap-3 ml-auto">
+              <div className="flex items-center gap-3 md:ml-auto">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mr-2">
                   <Edit className="h-3.5 w-3.5 text-primary" />
-                  <span>Modo edición</span>
+                  <span className="hidden sm:inline">Modo edición</span>
                 </div>
                 <Button
                   type="button"
@@ -433,14 +433,14 @@ const CampaignDetail = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8 space-y-8">
+      <main className="container mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Campaign Header */}
         <div className="space-y-4">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <Film className="h-8 w-8 text-primary" />
-                <h1 className="font-cinema text-4xl text-foreground">{film.title}</h1>
+                <h1 className="font-cinema text-2xl sm:text-4xl text-foreground">{film.title}</h1>
               </div>
               <p className="text-muted-foreground">
                 {film.genre}{film.secondary_genre ? ` / ${film.secondary_genre}` : ''} • {film.country}
@@ -453,7 +453,7 @@ const CampaignDetail = () => {
                   value={campaign.status}
                   onValueChange={updateCampaignStatus}
                 >
-                  <SelectTrigger className="w-[200px] h-auto py-1 border-none bg-transparent">
+                  <SelectTrigger className="w-full sm:w-[200px] h-auto py-1 border-none bg-transparent">
                     <SelectValue className={`font-cinema text-2xl ${getStatusColor(campaign.status)}`} />
                   </SelectTrigger>
                   <SelectContent>
@@ -535,11 +535,11 @@ const CampaignDetail = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="details">Detalles</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="assets">Creativos</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="timeline" className="text-xs sm:text-sm">Timeline</TabsTrigger>
+            <TabsTrigger value="details" className="text-xs sm:text-sm">Detalles</TabsTrigger>
+            <TabsTrigger value="chat" className="text-xs sm:text-sm">Chat</TabsTrigger>
+            <TabsTrigger value="assets" className="text-xs sm:text-sm">Creativos</TabsTrigger>
           </TabsList>
 
           {/* Timeline Tab */}
@@ -763,7 +763,7 @@ const CampaignDetail = () => {
                             onSelect={setTempPreStart}
                             defaultMonth={tempPreStart}
                             disabled={(date) => date >= new Date(campaign.premiere_weekend_start)}
-                            className="rounded-md border border-border bg-background w-fit"
+                            className="rounded-md border border-border bg-background w-full max-w-[320px]"
                           />
                         </div>
                         <div className="space-y-2">
@@ -779,7 +779,7 @@ const CampaignDetail = () => {
                             onSelect={setTempCampaignEnd}
                             defaultMonth={tempCampaignEnd ?? new Date(campaign.premiere_weekend_start)}
                             disabled={(date) => date < new Date(campaign.premiere_weekend_start)}
-                            className="rounded-md border border-border bg-background w-fit"
+                            className="rounded-md border border-border bg-background w-full max-w-[320px]"
                           />
                           {!tempCampaignEnd && (
                             <p className="text-xs text-muted-foreground">Sin fecha de fin → termina el fin de semana del estreno.</p>
@@ -867,14 +867,14 @@ const CampaignDetail = () => {
 
           {/* Chat Tab */}
           <TabsContent value="chat" className="space-y-4">
-            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: '600px' }}>
+            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: 'min(600px, 80vh)' }}>
               <Tabs defaultValue="conversation" className="flex flex-col h-full border-none">
                 <TabsList className="grid w-full grid-cols-2 rounded-none border-b border-border/40 bg-muted/30">
-                  <TabsTrigger value="conversation" className="flex items-center gap-2 data-[state=active]:bg-background">
+                  <TabsTrigger value="conversation" className="flex items-center gap-2 text-xs sm:text-sm data-[state=active]:bg-background">
                     <MessageSquare className="h-4 w-4" />
                     Conversación
                   </TabsTrigger>
-                  <TabsTrigger value="notifications" className="flex items-center gap-2 data-[state=active]:bg-background">
+                  <TabsTrigger value="notifications" className="flex items-center gap-2 text-xs sm:text-sm data-[state=active]:bg-background">
                     <Bell className="h-4 w-4" />
                     Notificaciones
                   </TabsTrigger>

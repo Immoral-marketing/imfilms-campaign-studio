@@ -292,7 +292,7 @@ const TeamManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-4 sm:px-6">
       <NavbarAdmin />
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
@@ -300,7 +300,7 @@ const TeamManagement = () => {
 
 
           <div>
-            <h1 className="font-cinema text-5xl md:text-6xl text-primary mb-2">
+            <h1 className="font-cinema text-3xl md:text-5xl lg:text-6xl text-primary mb-2">
               Gestión de Equipo
             </h1>
             <p className="text-cinema-ivory text-lg">
@@ -325,7 +325,7 @@ const TeamManagement = () => {
               {pendingRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border"
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-background/50 rounded-lg border border-border"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -338,7 +338,7 @@ const TeamManagement = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-2 sm:mt-0">
                     <Button
                       onClick={() => handleApproveRequest(request.id)}
                       size="sm"
@@ -452,7 +452,7 @@ const TeamManagement = () => {
           <div className="space-y-4">
             {teamMembers.map((member) => (
               <Card key={member.id} className="p-6 bg-muted/20 space-y-4">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
                       {getRoleIcon(member.role)}

@@ -532,17 +532,17 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
       <Card className="bg-cinema-charcoal/60 border-cinema-yellow/20">
         <CardContent className="p-6 space-y-4">
           {/* Mode toggle */}
-          <div className="flex items-center p-1 bg-black/40 border border-white/10 rounded-full w-fit">
+          <div className="flex flex-wrap items-center p-1 bg-black/40 border border-white/10 rounded-full w-full sm:w-fit">
             <button
               onClick={() => setUploadMode('drive')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'drive' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
+              className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'drive' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
             >
               <LinkIcon className="w-4 h-4" />
               Enlace Google Drive
             </button>
             <button
               onClick={() => setUploadMode('file')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'file' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
+              className={`flex items-center gap-2 px-3 sm:px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${uploadMode === 'file' ? 'bg-cinema-yellow text-cinema-black shadow-sm' : 'text-cinema-ivory/50 hover:text-cinema-ivory'}`}
             >
               <Upload className="w-4 h-4" />
               Subir imágenes
@@ -684,7 +684,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
                     }`}
                 >
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="mt-1 flex-shrink-0">
                           {isDriveLink(asset) ? (
@@ -714,7 +714,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
 
                         <div className="flex-1 min-w-0 space-y-1">
                           {editingId === asset.id ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Input
                                 value={editingName}
                                 onChange={(e) => setEditingName(e.target.value)}
@@ -841,7 +841,7 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
       </div>
 
       <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="bg-cinema-charcoal/95 border-cinema-yellow/20 max-w-4xl w-full p-1 overflow-hidden">
+        <DialogContent className="bg-cinema-charcoal/95 border-cinema-yellow/20 max-w-4xl w-[95vw] p-1 overflow-hidden">
           {previewUrl && (
             <div className="relative w-full h-[80vh] flex items-center justify-center">
               <img

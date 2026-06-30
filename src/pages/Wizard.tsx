@@ -1392,7 +1392,7 @@ const Wizard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-screen bg-background py-12 px-6">
+      <div className="min-h-screen bg-background py-6 md:py-12 px-4 md:px-6">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <button onClick={() => navigate("/")} className="block mx-auto">
@@ -1402,7 +1402,7 @@ const Wizard = () => {
                 className="w-32 md:w-40 cursor-pointer hover:opacity-80 transition-opacity"
               />
             </button>
-            <h1 className="font-cinema text-4xl md:text-5xl text-primary">
+            <h1 className="font-cinema text-3xl md:text-4xl lg:text-5xl text-primary">
               {isEditMode ? 'Revisar campaña' : 'Configura tu campaña'}
             </h1>
             <p className="text-muted-foreground">
@@ -1455,8 +1455,8 @@ const Wizard = () => {
                   </div>
                 </Card>
               )}
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Datos de la película</h2>
+              <Card className="cinema-card p-4 md:p-8 space-y-6">
+                <h2 className="font-cinema text-2xl md:text-3xl text-primary">Datos de la película</h2>
 
                 <div className="space-y-4 mb-6">
                   <p className="text-cinema-ivory leading-relaxed">
@@ -1490,7 +1490,7 @@ const Wizard = () => {
                       />
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-6">
+                    <div className="grid md:grid-cols-4 gap-4 md:gap-6">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 h-6">
                           <Label htmlFor="genre" className="text-cinema-ivory">Género principal *</Label>
@@ -1774,8 +1774,8 @@ const Wizard = () => {
           {/* Step 2: Calendar */}
           {
             currentStep === 2 && (
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Calendario y momentos clave</h2>
+              <Card className="cinema-card p-4 md:p-8 space-y-6">
+                <h2 className="font-cinema text-2xl md:text-3xl text-primary">Calendario y momentos clave</h2>
 
                 <div className="space-y-4">
                   <div className="space-y-3 mb-6">
@@ -1996,8 +1996,8 @@ const Wizard = () => {
           {/* Step 3: Platforms & Investment */}
           {
             currentStep === 3 && (
-              <Card className="cinema-card p-8 space-y-6">
-                <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
+              <Card className="cinema-card p-4 md:p-8 space-y-6">
+                <h2 className="font-cinema text-2xl md:text-3xl text-primary">Plataformas e inversión</h2>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -2159,7 +2159,7 @@ const Wizard = () => {
                       )}
 
                       {/* Distribution Detail Area */}
-                      <div className="p-8 rounded-xl border border-border bg-card/50 shadow-inner">
+                      <div className="p-4 md:p-8 rounded-xl border border-border bg-card/50 shadow-inner">
                         {planningMode === 'simple' ? (
                           <div className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
@@ -2333,7 +2333,7 @@ const Wizard = () => {
                 {/* Add-ons section merged from previous Step 4 */}
                 <div className="pt-8 border-t border-border space-y-6">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-cinema text-3xl text-primary">Complementa tu lanzamiento</h2>
+                    <h2 className="font-cinema text-2xl md:text-3xl text-primary">Complementa tu lanzamiento</h2>
                     <HelpTooltip
                       fieldId="addons"
                       title="Servicios adicionales"
@@ -2383,9 +2383,9 @@ const Wizard = () => {
           {/* Step 4: Creative Assets — REMOVED */}
           {
             false && (
-              <Card className="cinema-card p-8 space-y-6">
+              <Card className="cinema-card p-4 md:p-8 space-y-6">
                 <div className="space-y-4">
-                  <h2 className="font-cinema text-3xl text-primary">Materiales y Creatividades</h2>
+                  <h2 className="font-cinema text-2xl md:text-3xl text-primary">Materiales y Creatividades</h2>
                   <p className="text-muted-foreground leading-relaxed">
                     Sube las piezas creativas de tu campaña (trailers, clips, posters, gráficas). Si aún no las tienes listas, no te preocupes, este paso es <strong>opcional</strong>.
                   </p>
@@ -2531,8 +2531,8 @@ const Wizard = () => {
                   </Card>
                 )}
 
-                <Card className="cinema-card p-8 space-y-6">
-                  <h2 className="font-cinema text-3xl text-primary">Resumen de tu campaña</h2>
+                <Card className="cinema-card p-4 md:p-8 space-y-6">
+                  <h2 className="font-cinema text-2xl md:text-3xl text-primary">Resumen de tu campaña</h2>
 
                   <div className="space-y-4">
                     <div>
@@ -2626,8 +2626,8 @@ const Wizard = () => {
                 {(isEditMode || isDistributor) && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
 
                 {isEditMode ? (
-                  <Card className="cinema-card p-8 space-y-6">
-                    <h2 className="font-cinema text-3xl text-primary">Notas del administrador</h2>
+                  <Card className="cinema-card p-4 md:p-8 space-y-6">
+                    <h2 className="font-cinema text-2xl md:text-3xl text-primary">Notas del administrador</h2>
                     <div className="space-y-2">
                       <Label htmlFor="admin-comments" className="text-cinema-ivory">Comentarios adicionales</Label>
                       <Textarea
@@ -2640,9 +2640,9 @@ const Wizard = () => {
                     </div>
                   </Card>
                 ) : !isDistributor ? (
-                  <Card className="cinema-card p-8 space-y-6">
+                  <Card className="cinema-card p-4 md:p-8 space-y-6">
                     <div className="space-y-3 mb-6">
-                      <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
+                      <h2 className="font-cinema text-2xl md:text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
                       <p className="text-muted-foreground">
                         Crear tu cuenta es gratis y solo te llevará un minuto. Así podrás ver el presupuesto estimado, guardar el histórico de tus estrenos y seguir el estado de cada campaña.
                       </p>
@@ -2673,7 +2673,7 @@ const Wizard = () => {
 
                       <div className="space-y-2">
                         <Label htmlFor="contact-email" className="text-cinema-ivory">Email *</Label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             id="contact-email"
                             type="email"
@@ -2812,8 +2812,8 @@ const Wizard = () => {
                     </div>
                   </Card>
                 ) : (
-                  <Card className="cinema-card p-8 space-y-6">
-                    <h2 className="font-cinema text-3xl text-primary">Datos de tu distribuidora</h2>
+                  <Card className="cinema-card p-4 md:p-8 space-y-6">
+                    <h2 className="font-cinema text-2xl md:text-3xl text-primary">Datos de tu distribuidora</h2>
                     <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
                         <div>
@@ -2852,7 +2852,7 @@ const Wizard = () => {
           }
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center pt-6">
+          <div className="flex flex-wrap justify-between items-center gap-3 pt-6">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
@@ -2876,7 +2876,7 @@ const Wizard = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-sm md:text-lg px-4 md:px-8 py-3 md:py-6"
                   >
                     {loading ? "Guardando..." : "Guardar cambios"}
                   </Button>
@@ -2884,7 +2884,7 @@ const Wizard = () => {
                   <Button
                     onClick={handleCreateAccount}
                     disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password || step5VerificationState !== "verified"}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-sm md:text-lg px-4 md:px-8 py-3 md:py-6"
                   >
                     {loading ? "Creando cuenta..." : step5VerificationState !== "verified" ? "Verifica tu email para continuar" : "Crear cuenta y ver mi presupuesto"}
                   </Button>
@@ -2892,7 +2892,7 @@ const Wizard = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-sm md:text-lg px-4 md:px-8 py-3 md:py-6"
                   >
                     {loading ? "Enviando..." : "Confirmar y enviar campaña"}
                   </Button>

@@ -114,7 +114,7 @@ function StepCard({ n, icon: Icon, title, body, accent, accentBg, accentBorder, 
     <div
       ref={ref}
       className={cn(
-        'relative flex items-start gap-6 md:gap-8 mb-4 last:mb-0',
+        'relative flex items-start gap-3 sm:gap-6 md:gap-8 mb-4 last:mb-0',
         'transition-all duration-[1000ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
         visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-5'
       )}
@@ -131,7 +131,7 @@ function StepCard({ n, icon: Icon, title, body, accent, accentBg, accentBorder, 
         )}
       </div>
       <div className="flex-1 rounded-[1.5rem] p-[1.5px] mb-3" style={{ background: `linear-gradient(135deg, ${accentBorder}, rgba(255,255,255,0.03))` }}>
-        <div className="rounded-[calc(1.5rem-1.5px)] p-8 relative overflow-hidden" style={{ background: '#0a0a0c' }}>
+        <div className="rounded-[calc(1.5rem-1.5px)] p-5 sm:p-8 relative overflow-hidden" style={{ background: '#0a0a0c' }}>
           <span className="absolute right-6 top-1/2 -translate-y-1/2 font-cinema text-[120px] leading-none select-none pointer-events-none" style={{ color: 'rgba(255,255,255,0.02)', letterSpacing: '-0.04em' }}>
             {n}
           </span>
@@ -256,8 +256,8 @@ const RecomiendaPage = () => {
         {/* Content */}
         <div className={cn('relative z-10 container mx-auto px-6 text-center transition-all duration-[1100ms] ease-[cubic-bezier(0.32,0.72,0,1)]', heroIn ? 'opacity-100 translate-y-0 blur-0' : 'opacity-0 translate-y-16 blur-sm')}>
           <h1 className="font-cinema leading-[0.88] tracking-tight mb-8">
-            <span className="block text-[clamp(72px,12vw,160px)] text-white/90" style={{ letterSpacing: '-0.025em' }}>Recomienda.</span>
-            <span className="block text-[clamp(72px,12vw,160px)] text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #F5D849 0%, #ffe87a 40%, #B8A237 100%)', letterSpacing: '-0.025em', filter: 'drop-shadow(0 0 80px rgba(245,216,73,0.4))' }}>
+            <span className="block text-[clamp(40px,12vw,160px)] text-white/90" style={{ letterSpacing: '-0.025em' }}>Recomienda.</span>
+            <span className="block text-[clamp(40px,12vw,160px)] text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #F5D849 0%, #ffe87a 40%, #B8A237 100%)', letterSpacing: '-0.025em', filter: 'drop-shadow(0 0 80px rgba(245,216,73,0.4))' }}>
               Gana dinero.
             </span>
           </h1>
@@ -349,7 +349,7 @@ const RecomiendaPage = () => {
         <div className="container mx-auto px-6">
           <div ref={section2.ref} className={cn('text-center mb-20 transition-all duration-[900ms] ease-[cubic-bezier(0.32,0.72,0,1)]', section2.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10')}>
             <Eyebrow>Proceso</Eyebrow>
-            <h2 className="font-cinema mt-6 text-[clamp(44px,7vw,88px)] text-white/90 leading-[0.9]" style={{ letterSpacing: '-0.025em' }}>
+            <h2 className="font-cinema mt-6 text-[clamp(32px,7vw,88px)] text-white/90 leading-[0.9]" style={{ letterSpacing: '-0.025em' }}>
               Tres pasos.<br />
               <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.06))' }}>Sin fricción.</span>
             </h2>
@@ -401,11 +401,11 @@ const RecomiendaPage = () => {
 
           {/* Headline */}
           <h2 className="font-cinema leading-[0.88] tracking-tight mb-8">
-            <span className="block text-[clamp(56px,9vw,120px)] text-white/90" style={{ letterSpacing: '-0.025em' }}>
+            <span className="block text-[clamp(36px,9vw,120px)] text-white/90" style={{ letterSpacing: '-0.025em' }}>
               Comparte.
             </span>
             <span
-              className="block text-[clamp(56px,9vw,120px)] text-transparent bg-clip-text"
+              className="block text-[clamp(36px,9vw,120px)] text-transparent bg-clip-text"
               style={{
                 backgroundImage: 'linear-gradient(135deg, #F5D849 0%, #ffe87a 40%, #B8A237 100%)',
                 letterSpacing: '-0.025em',
@@ -426,7 +426,7 @@ const RecomiendaPage = () => {
           {user && (
             <div className="max-w-lg mx-auto mb-10">
               <div className="p-[1px] rounded-2xl bg-white/[0.06] border border-white/[0.06]">
-                <div className="flex items-center gap-3 rounded-[calc(1rem-1px)] bg-[#0d0d10]/80 backdrop-blur-sm px-5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="flex items-center gap-3 rounded-[calc(1rem-1px)] bg-[#0d0d10]/80 backdrop-blur-sm px-3 sm:px-5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                   <span className="flex-1 text-xs text-white/30 truncate font-mono text-left">
                     {referralUrl}
                   </span>
@@ -439,7 +439,7 @@ const RecomiendaPage = () => {
                         : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 hover:text-white/80'
                     )}
                   >
-                    {copied ? <><CheckCircle2 className="h-3 w-3" /> Copiado</> : <><Copy className="h-3 w-3" /> Copiar</>}
+                    {copied ? <><CheckCircle2 className="h-3 w-3" /><span className="hidden sm:inline"> Copiado</span></> : <><Copy className="h-3 w-3" /><span className="hidden sm:inline"> Copiar</span></>}
                   </button>
                 </div>
               </div>

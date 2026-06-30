@@ -50,11 +50,11 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                                 <h3 className="font-cinema text-2xl text-cinema-gold uppercase">Revisión del Plan de Medios (BETA)</h3>
                                 <p className="text-cinema-ivory/80">Por favor, revisa la estrategia y el desglose detallado antes de proceder.</p>
                             </div>
-                            <div className="flex items-center gap-4 shrink-0">
+                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                                 <Button
                                     onClick={handleApprove}
                                     disabled={saving}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 h-12"
+                                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 md:px-8 h-12 w-full md:w-auto"
                                 >
                                     <CheckCircle2 className="w-5 h-5 mr-2" />
                                     {saving ? 'Aprobando...' : 'Aprobar Plan'}
@@ -63,7 +63,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                                     onClick={() => setShowRejectForm(true)}
                                     disabled={saving}
                                     variant="outline"
-                                    className="border-red-500 text-red-500 hover:bg-red-500/10 h-12"
+                                    className="border-red-500 text-red-500 hover:bg-red-500/10 h-12 w-full md:w-auto"
                                 >
                                     <XCircle className="w-5 h-5 mr-2" />
                                     Sugerir Cambios
@@ -100,16 +100,16 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
             )}
 
             <Tabs defaultValue="strategy" className="w-full">
-                <TabsList className="bg-muted w-full justify-start p-1 mb-6">
-                    <TabsTrigger value="strategy" className="flex items-center gap-2 px-6">
+                <TabsList className="bg-muted w-full justify-start p-1 mb-6 overflow-x-auto">
+                    <TabsTrigger value="strategy" className="flex items-center gap-2 px-3 md:px-6 text-xs md:text-sm whitespace-nowrap">
                         <List className="w-4 h-4" />
                         Estrategia por fases
                     </TabsTrigger>
-                    <TabsTrigger value="plan" className="flex items-center gap-2 px-6">
+                    <TabsTrigger value="plan" className="flex items-center gap-2 px-3 md:px-6 text-xs md:text-sm whitespace-nowrap">
                         <LayoutGrid className="w-4 h-4" />
                         Plan de medios (BETA)
                     </TabsTrigger>
-                    <TabsTrigger value="audiences" className="flex items-center gap-2 px-6">
+                    <TabsTrigger value="audiences" className="flex items-center gap-2 px-3 md:px-6 text-xs md:text-sm whitespace-nowrap">
                         <Users className="w-4 h-4" />
                         Audiencias
                     </TabsTrigger>
@@ -119,7 +119,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                     <Card className="cinema-card p-6">
                         <h2 className="font-cinema text-2xl text-primary mb-6">Estrategia por fases</h2>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full text-left min-w-[560px]">
                                 <thead>
                                     <tr className="border-b border-border/50 text-xs font-teko uppercase tracking-wider text-muted-foreground">
                                         <th className="pb-3 px-2">Fase</th>
@@ -140,7 +140,7 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                                             <td className="py-4 px-2 text-center text-sm">
                                                 {phase.end_date || '?'}
                                             </td>
-                                            <td className="py-4 px-2 text-sm max-w-xs">
+                                            <td className="py-4 px-2 text-sm max-w-[120px]">
                                                 <ul className="list-disc list-inside space-y-1">
                                                     {(Array.isArray(phase.objective) ? phase.objective : [phase.objective]).filter(Boolean).map((obj: string, i: number) => (
                                                         <li key={i}>{obj}</li>
@@ -175,10 +175,10 @@ const MediaPlanPreview = ({ phases, items, audiences, isDistributorMode, status,
                         {phases.map((phase, pIdx) => (
                             <Card key={phase.id || pIdx} className="cinema-card p-6 border-l-4 border-l-cinema-gold">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <h2 className="font-cinema text-3xl text-cinema-gold uppercase tracking-wider">{phase.name}</h2>
+                                    <h2 className="font-cinema text-xl md:text-3xl text-cinema-gold uppercase tracking-wider">{phase.name}</h2>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
+                                    <table className="w-full text-left min-w-[700px]">
                                         <thead>
                                             <tr className="border-b border-border/50 text-xs font-teko uppercase tracking-wider text-muted-foreground">
                                                 <th className="pb-3 px-2">Soporte</th>

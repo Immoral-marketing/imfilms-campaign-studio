@@ -269,7 +269,7 @@ export default function AdminPartners() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Sistema de Afiliados</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -287,7 +287,7 @@ export default function AdminPartners() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard icon={<Users className="h-5 w-5 text-blue-400" />} label="Partners activos"
           value={partners.filter(p => p.activo).length.toString()} bg="bg-blue-500/10" />
         <MetricCard icon={<FileText className="h-5 w-5 text-amber-400" />} label="Solicitudes totales"
@@ -315,7 +315,7 @@ export default function AdminPartners() {
 
       {/* ── PARTNERS ── */}
       {activeSection === 'partners' && (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="rounded-xl border border-border overflow-x-auto">
           {partners.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground">
               <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -366,7 +366,7 @@ export default function AdminPartners() {
 
       {/* ── SOLICITUDES ── */}
       {activeSection === 'solicitudes' && (
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="rounded-xl border border-border overflow-x-auto">
           {solicitudes.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground">
               <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -432,7 +432,7 @@ export default function AdminPartners() {
       {activeSection === 'comisiones' && (
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Filtros */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/20">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border bg-muted/20">
             <Select value={filterComPartner} onValueChange={setFilterComPartner}>
               <SelectTrigger className="w-44 h-8 text-xs">
                 <SelectValue placeholder="Todos los partners" />
@@ -474,6 +474,7 @@ export default function AdminPartners() {
             </div>
           ) : (
             <>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
@@ -509,6 +510,7 @@ export default function AdminPartners() {
                   ))}
                 </tbody>
               </table>
+              </div>
               {/* Totales */}
               <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-end gap-4 text-sm">
                 <span className="text-xs text-muted-foreground">Pendiente:</span>

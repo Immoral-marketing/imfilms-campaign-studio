@@ -794,13 +794,13 @@ const CampaignsHistory = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12 px-6">
+    <div className="min-h-screen bg-background pt-24 pb-12 px-4 sm:px-6">
       <NavbarAdmin />
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="font-cinema text-5xl md:text-6xl text-primary mb-2">
+            <h1 className="font-cinema text-3xl md:text-5xl lg:text-6xl text-primary mb-2">
               {isAdmin ? "Panel de Administración" : "Tus Estrenos"}
             </h1>
             {isAdmin ? (
@@ -821,7 +821,7 @@ const CampaignsHistory = () => {
               }
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {isAdmin && (
               <>
                 <Button
@@ -963,7 +963,7 @@ const CampaignsHistory = () => {
             )}
 
             {!loading && campaigns.length === 0 && (
-              <Card className="cinema-card p-16 text-center space-y-6">
+              <Card className="cinema-card p-8 sm:p-16 text-center space-y-6">
                 <div className="flex justify-center">
                   <Sparkles className="w-16 h-16 text-primary cinema-icon-decorative animate-pulse" />
                 </div>
@@ -1094,10 +1094,10 @@ const CampaignsHistory = () => {
                     </Select>
                   </div>
 
-                  <div className="flex gap-4 items-center">
+                  <div className="flex flex-wrap gap-3 items-center w-full">
                     <Label className="text-cinema-ivory text-sm font-semibold">Filtros Dinámicos:</Label>
                     <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as any)}>
-                      <SelectTrigger className="w-[280px] bg-background border-border">
+                      <SelectTrigger className="w-full sm:w-[280px] bg-background border-border">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1197,7 +1197,7 @@ const CampaignsHistory = () => {
 
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="min-w-[140px]"
+                            className="w-full sm:w-auto sm:min-w-[140px]"
                           >
                             {isAdmin ? (
                               <Select
@@ -1464,7 +1464,7 @@ const CampaignsHistory = () => {
 
                             {/* KPIs - full width */}
                             {campaign.status === 'finalizada' && (campaign.reach || campaign.clicks || campaign.visits) && (
-                              <div className="grid grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10 w-full">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-2 bg-primary/5 rounded-lg border border-primary/10 w-full">
                                 {campaign.reach && (
                                   <div className="text-center">
                                     <p className="text-[10px] text-muted-foreground uppercase">Alcance</p>

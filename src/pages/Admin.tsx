@@ -345,7 +345,7 @@ const Admin = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <Card className="cinema-card max-w-md w-full p-8 space-y-6">
           <div className="text-center">
-            <h1 className="font-cinema text-4xl text-primary mb-2">PANEL INTERNO</h1>
+            <h1 className="font-cinema text-2xl sm:text-4xl text-primary mb-2">PANEL INTERNO</h1>
             <p className="text-muted-foreground">Acceso solo para equipo imfilms</p>
           </div>
 
@@ -394,7 +394,7 @@ const Admin = () => {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="font-cinema text-5xl text-primary">PANEL DE ADMINISTRACIÓN</h1>
+            <h1 className="font-cinema text-2xl sm:text-4xl md:text-5xl text-primary">PANEL DE ADMINISTRACIÓN</h1>
             <p className="text-muted-foreground">Gestión completa de campañas y distribuidoras</p>
           </div>
         </div>
@@ -419,7 +419,7 @@ const Admin = () => {
             <div className="space-y-4">
               {campaigns.map((campaign) => (
                 <Card key={campaign.id} className="cinema-card p-6 space-y-4">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                     <div className="space-y-1">
                       <h3 className="font-cinema text-2xl text-primary">
                         {campaign.films?.title || "Sin título"}
@@ -437,7 +437,7 @@ const Admin = () => {
                         value={campaign.status}
                         onValueChange={(newStatus) => updateCampaignStatus(campaign.id, newStatus)}
                       >
-                        <SelectTrigger className="w-48 bg-muted border-border">
+                        <SelectTrigger className="w-full sm:w-48 bg-muted border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -465,7 +465,7 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 cinema-icon-decorative" />
@@ -525,7 +525,7 @@ const Admin = () => {
                     </div>
                   )}
 
-                  <div className="pt-3 border-t border-border flex gap-2">
+                  <div className="pt-3 border-t border-border flex flex-wrap gap-2">
                     {['en_revision', 'revisando'].includes(campaign.status) && (
                       <Button
                         onClick={() => navigate(`/wizard/review/${campaign.id}`)}

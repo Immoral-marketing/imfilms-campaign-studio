@@ -483,7 +483,7 @@ export const CampaignInfoEditable = ({
                     </Alert>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <p className="text-sm text-muted-foreground">Título</p>
                         <p className="text-foreground text-lg">{film.title}</p>
@@ -499,7 +499,7 @@ export const CampaignInfoEditable = ({
                 </div>
 
                 <div>
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-3">
                         <h3 className="font-cinema text-xl text-primary">Plataformas y Distribución</h3>
                         <div className="text-right">
                             <span className="text-sm text-muted-foreground mr-2">Presupuesto:</span>
@@ -784,11 +784,11 @@ export const CampaignInfoEditable = ({
 
                         <div className="space-y-3">
                             <div className="flex flex-col gap-3">
-                                <div className="flex justify-between items-center">
+                                <div className="flex flex-wrap justify-between items-center">
                                     <h4 className="font-medium">Distribución por Plataforma</h4>
                                     {availablePlatforms.length > 0 && (
                                         <Select onValueChange={handleAddPlatform}>
-                                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                                            <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
                                                 <Plus className="w-3 h-3 mr-2" />
                                                 <SelectValue placeholder="Añadir Plataforma" />
                                             </SelectTrigger>
@@ -828,8 +828,8 @@ export const CampaignInfoEditable = ({
 
                             <div className="grid gap-3">
                                 {fields.map((fieldItem, index) => (
-                                    <div key={fieldItem.id} className="flex items-end gap-3 p-3 bg-card rounded border">
-                                        <div className="flex-none w-32 pt-2">
+                                    <div key={fieldItem.id} className="flex flex-wrap items-end gap-2 p-3 bg-card rounded border">
+                                        <div className="w-full sm:w-32 sm:flex-none pt-2">
                                             <span className="text-sm font-medium block">{form.watch(`platforms.${index}.platform_name`)}</span>
                                         </div>
 
@@ -901,7 +901,7 @@ export const CampaignInfoEditable = ({
                                         />
 
                                         {/* Read-only view of the other value */}
-                                        <div className="flex-none w-24 pb-2 text-right text-sm text-muted-foreground">
+                                        <div className="w-auto sm:w-24 sm:flex-none pb-2 text-right text-sm text-muted-foreground">
                                             {budgetMode === 'percent' ? (
                                                 <span>{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(form.watch(`platforms.${index}.budget_amount`) || 0)}</span>
                                             ) : (
@@ -1154,7 +1154,7 @@ export const CampaignInfoEditable = ({
                         )}
                     />
 
-                    <div className="flex justify-end gap-4 pt-4 border-t">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t">
                         <Button
                             id="campaign-edit-cancel"
                             type="button"

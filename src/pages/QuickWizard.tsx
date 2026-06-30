@@ -1113,7 +1113,7 @@ const QuickWizard = () => {
                 className="w-32 md:w-40 cursor-pointer hover:opacity-80 transition-opacity"
               />
             </button>
-            <h1 className="font-cinema text-4xl md:text-5xl text-primary">
+            <h1 className="font-cinema text-2xl md:text-4xl lg:text-5xl text-primary">
               Configura tu campaña
             </h1>
             <p className="text-muted-foreground">
@@ -1157,7 +1157,7 @@ const QuickWizard = () => {
 
           {/* Step 1: Film Data */}
           {currentStep === 1 && (
-            <Card className="cinema-card p-8 space-y-6">
+            <Card className="cinema-card p-4 sm:p-8 space-y-6">
               <h2 className="font-cinema text-3xl text-primary">Datos de la película</h2>
 
               <div className="space-y-4 mb-6">
@@ -1683,7 +1683,7 @@ const QuickWizard = () => {
           {/* Step 2: Platforms & Investment (formerly Step 3) */}
           {
             currentStep === 2 && (
-              <Card className="cinema-card p-8 space-y-6">
+              <Card className="cinema-card p-4 sm:p-8 space-y-6">
                 <h2 className="font-cinema text-3xl text-primary">Plataformas e inversión</h2>
 
                 <div className="space-y-6">
@@ -1700,7 +1700,7 @@ const QuickWizard = () => {
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       Cada plataforma es una sala distinta: Instagram, Facebook, TikTok, YouTube… cada una tiene su propio lenguaje, su ritmo y su forma de llenar butacas. Selecciona aquí las plataformas publicitarias donde quieres que se anuncie tu estreno:
                     </p>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       {PLATFORMS.map((platform) => {
                         const investmentVal = parseFloat(adInvestment) || 0;
                         const isAboveThreshold = investmentVal >= 30000;
@@ -1962,7 +1962,7 @@ const QuickWizard = () => {
                   </Card>
                 )}
 
-                <Card className="cinema-card p-8 space-y-6">
+                <Card className="cinema-card p-4 sm:p-8 space-y-6">
                   <h2 className="font-cinema text-3xl text-primary">Resumen de tu campaña</h2>
 
                   <div className="space-y-4">
@@ -2057,7 +2057,7 @@ const QuickWizard = () => {
                 {isDistributor && <CostSummary costs={costs} isFirstRelease={isFirstRelease} showPrices={true} />}
 
                 {!isDistributor ? (
-                  <Card className="cinema-card p-8 space-y-6">
+                  <Card className="cinema-card p-4 sm:p-8 space-y-6">
                     <div className="space-y-3 mb-6">
                       <h2 className="font-cinema text-3xl text-primary">Crea tu cuenta de distribuidora</h2>
                       <p className="text-muted-foreground">
@@ -2090,7 +2090,7 @@ const QuickWizard = () => {
 
                       <div className="space-y-2">
                         <Label htmlFor="contact-email" className="text-cinema-ivory">Email *</Label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Input
                             id="contact-email"
                             type="email"
@@ -2103,7 +2103,7 @@ const QuickWizard = () => {
                                 setStep5VerificationCode("");
                               }
                             }}
-                            className="bg-muted border-border text-foreground flex-1"
+                            className="bg-muted border-border text-foreground flex-1 min-w-0"
                             placeholder="tu@email.com"
                             required
                             disabled={step5VerificationState === "verified"}
@@ -2118,7 +2118,7 @@ const QuickWizard = () => {
                               variant="outline"
                               onClick={handleStep5SendVerification}
                               disabled={!signupData.contactEmail || step5VerificationLoading}
-                              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground whitespace-nowrap"
+                              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground whitespace-nowrap w-full sm:w-auto"
                             >
                               {step5VerificationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> :
                                 step5VerificationState === "code" ? "Reenviar" : "Verificar email"}
@@ -2132,7 +2132,7 @@ const QuickWizard = () => {
                             <p className="text-sm text-cinema-ivory">
                               Introduce el código de 4 dígitos enviado a <span className="text-primary">{signupData.contactEmail}</span>
                             </p>
-                            <div className="flex items-center gap-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                               <InputOTP
                                 maxLength={4}
                                 value={step5VerificationCode}
@@ -2229,7 +2229,7 @@ const QuickWizard = () => {
                     </div>
                   </Card>
                 ) : (
-                  <Card className="cinema-card p-8 space-y-6">
+                  <Card className="cinema-card p-4 sm:p-8 space-y-6">
                     <h2 className="font-cinema text-3xl text-primary">Datos de tu distribuidora</h2>
                     <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
@@ -2269,7 +2269,7 @@ const QuickWizard = () => {
           }
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center pt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-6">
             {currentStep > 1 && (
               <Button
                 onClick={handleBack}
@@ -2293,7 +2293,7 @@ const QuickWizard = () => {
                   <Button
                     onClick={handleCreateAccount}
                     disabled={loading || !signupData.companyName || !signupData.contactName || !signupData.contactEmail || !signupData.contactPhone || !signupData.password || step5VerificationState !== "verified"}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="sm:ml-auto w-full sm:w-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
                   >
                     {loading ? "Creando cuenta..." : step5VerificationState !== "verified" ? "Verifica tu email para continuar" : "Crear cuenta y ver mi presupuesto"}
                   </Button>
@@ -2301,7 +2301,7 @@ const QuickWizard = () => {
                   <Button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="ml-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
+                    className="sm:ml-auto w-full sm:w-auto bg-primary text-primary-foreground hover:bg-secondary cinema-glow text-lg px-8 py-6"
                   >
                     {loading ? "Enviando..." : "Confirmar y enviar campaña"}
                   </Button>

@@ -566,9 +566,9 @@ const Settings = () => {
 
     const renderHelpCenterTab = () => (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="font-cinema text-2xl tracking-wide text-cinema-ivory">Centro de Ayuda</h2>
+                    <h2 className="font-cinema text-xl sm:text-2xl tracking-wide text-cinema-ivory">Centro de Ayuda</h2>
                     <p className="text-sm text-muted-foreground mt-1">Gestiona los vídeos tutoriales que ven los usuarios</p>
                 </div>
                 {!showVideoForm && (
@@ -643,7 +643,7 @@ const Settings = () => {
                                         {v.description && <p className="text-xs text-muted-foreground mb-2">{v.description}</p>}
                                         <p className="text-xs text-white/20 font-mono truncate">{v.iframe_url.slice(0, 80)}…</p>
                                     </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                         <Button size="sm" variant="ghost" onClick={() => handleEditVideo(v)} className="h-8 w-8 p-0 text-muted-foreground hover:text-cinema-ivory hover:bg-white/10">
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Button>
@@ -664,7 +664,7 @@ const Settings = () => {
         <div className="min-h-screen bg-[#141416] text-cinema-ivory">
             <NavbarAdmin />
 
-            <div className="max-w-6xl mx-auto px-6 pt-32 pb-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-12">
                 {/* Back button */}
                 <Button
                     variant="ghost"
@@ -677,10 +677,10 @@ const Settings = () => {
 
                 <h1 className="font-cinema text-3xl tracking-wide mb-8">AJUSTES</h1>
 
-                <div className="flex gap-8">
+                <div className="flex flex-col gap-6 md:flex-row md:gap-8">
                     {/* Sidebar */}
-                    <aside className="w-56 flex-shrink-0">
-                        <nav className="space-y-1 sticky top-32">
+                    <aside className="w-full md:w-56 md:flex-shrink-0">
+                        <nav className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:space-y-1 md:overflow-x-visible md:pb-0 md:sticky md:top-32">
                             {sidebarItems.map((item) => {
                                 const Icon = item.icon;
                                 const isActive = activeTab === item.id;
@@ -688,7 +688,7 @@ const Settings = () => {
                                     <button
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id)}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-left ${isActive
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 text-left whitespace-nowrap ${isActive
                                             ? 'bg-primary/10 text-primary border border-primary/30'
                                             : 'text-muted-foreground hover:text-cinema-ivory hover:bg-white/5 border border-transparent'
                                             }`}

@@ -451,9 +451,9 @@ const AdminDistributors = () => {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select value={filterActive} onValueChange={setFilterActive}>
-            <SelectTrigger className="w-40 bg-muted border-border text-foreground">
+            <SelectTrigger className="w-36 sm:w-40 bg-muted border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -464,7 +464,7 @@ const AdminDistributors = () => {
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-48 bg-muted border-border text-foreground">
+            <SelectTrigger className="w-44 sm:w-48 bg-muted border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -487,6 +487,7 @@ const AdminDistributors = () => {
 
       {/* Distributors Table */}
       <Card className="cinema-card overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -560,6 +561,7 @@ const AdminDistributors = () => {
             ))}
           </TableBody>
         </Table>
+        </div>
 
         {filteredAndSortedDistributors.length === 0 && !loading && (
           <div className="p-12 text-center">
@@ -576,7 +578,7 @@ const AdminDistributors = () => {
 
       {/* Distributor Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-border">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-background border-border">
           <DialogHeader>
             <DialogTitle className="font-cinema text-3xl text-primary">
               {selectedDistributor?.company_name}
@@ -594,40 +596,40 @@ const AdminDistributors = () => {
                   <div className="space-y-4 flex-1">
                     {isEditing ? (
                       <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="company_name" className="text-right">Empresa</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                          <Label htmlFor="company_name" className="sm:text-right">Empresa</Label>
                           <Input
                             id="company_name"
                             value={editForm.company_name || ''}
                             onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
-                            className="col-span-3 bg-muted border-border"
+                            className="sm:col-span-3 bg-muted border-border"
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="contact_name" className="text-right">Nombre</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                          <Label htmlFor="contact_name" className="sm:text-right">Nombre</Label>
                           <Input
                             id="contact_name"
                             value={editForm.contact_name || ''}
                             onChange={(e) => setEditForm({ ...editForm, contact_name: e.target.value })}
-                            className="col-span-3 bg-muted border-border"
+                            className="sm:col-span-3 bg-muted border-border"
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="contact_email" className="text-right">Email</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                          <Label htmlFor="contact_email" className="sm:text-right">Email</Label>
                           <Input
                             id="contact_email"
                             value={editForm.contact_email || ''}
                             onChange={(e) => setEditForm({ ...editForm, contact_email: e.target.value })}
-                            className="col-span-3 bg-muted border-border"
+                            className="sm:col-span-3 bg-muted border-border"
                           />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="contact_phone" className="text-right">Teléfono</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-4">
+                          <Label htmlFor="contact_phone" className="sm:text-right">Teléfono</Label>
                           <Input
                             id="contact_phone"
                             value={editForm.contact_phone || ''}
                             onChange={(e) => setEditForm({ ...editForm, contact_phone: e.target.value })}
-                            className="col-span-3 bg-muted border-border"
+                            className="sm:col-span-3 bg-muted border-border"
                           />
                         </div>
                       </div>
@@ -712,7 +714,7 @@ const AdminDistributors = () => {
                                 {campaign.films?.title || "Sin título"}
                               </h4>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
                               <div>
                                 <p className="text-xs text-muted-foreground">Fecha</p>
                                 <p className="text-cinema-ivory">{formatDateShort(new Date(campaign.created_at))}</p>

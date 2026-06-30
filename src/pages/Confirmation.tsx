@@ -8,13 +8,13 @@ const Confirmation = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <Card className="cinema-card max-w-2xl p-12 text-center space-y-6">
+      <Card className="cinema-card max-w-2xl p-6 md:p-12 text-center space-y-6">
         <div className="flex justify-center mb-6">
           <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center">
             <CheckCircle2 className="w-16 h-16 text-primary cinema-glow" />
           </div>
         </div>
-        <h1 className="font-cinema text-5xl text-primary">
+        <h1 className="font-cinema text-3xl md:text-5xl text-primary">
           ¡Listo!
         </h1>
         <div className="space-y-4 text-cinema-ivory">

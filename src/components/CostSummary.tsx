@@ -40,11 +40,11 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
     return (
       <Card className="cinema-card p-6 space-y-4">
         {/* Simple Banner for Step 3 - No detailed breakdown */}
-        <div className="flex justify-between items-center bg-muted/20 p-4 rounded-lg border border-border/50">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-muted/20 p-4 rounded-lg border border-border/50">
           <span className="text-muted-foreground font-medium">
             Inversión total prevista para tu campaña:
           </span>
-          <span className="font-cinema text-4xl text-cinema-yellow cinema-glow">
+          <span className="font-cinema text-2xl sm:text-4xl text-cinema-yellow cinema-glow">
             {formatCurrency(costs.totalEstimated)}
           </span>
         </div>
@@ -101,7 +101,7 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
             <span className="font-semibold text-cinema-yellow">{formatCurrency(costs.fixedFeePlatforms)}</span>
           </div>
 
-          <div className="flex justify-between items-center py-1">
+          <div className="flex flex-wrap gap-1 justify-between items-center py-1">
             <span className="text-cinema-ivory text-sm">
               Fee variable ({variableFeePercentage} sobre inversión):
             </span>
@@ -138,11 +138,11 @@ const CostSummary = ({ costs, isFirstRelease, compact = false, showPrices = true
       </div>
 
       <div className="pt-4 border-t-2 border-primary">
-        <div className="flex justify-between items-center">
-          <span className="font-cinema text-2xl text-cinema-ivory">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <span className="font-cinema text-lg sm:text-2xl text-cinema-ivory">
             {feeMode === 'integrated' ? 'Inversión total:' : 'Inversión total prevista:'}
           </span>
-          <span className={`font-cinema text-4xl text-primary cinema-glow transition-opacity duration-300 ${costs.isLoading ? 'opacity-50' : 'opacity-100'}`}>
+          <span className={`font-cinema text-2xl sm:text-4xl text-primary cinema-glow transition-opacity duration-300 ${costs.isLoading ? 'opacity-50' : 'opacity-100'}`}>
             {formatCurrency(costs.totalEstimated)}
           </span>
         </div>

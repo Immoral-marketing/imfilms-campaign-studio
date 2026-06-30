@@ -340,7 +340,7 @@ function Dashboard({ session }: { session: Session }) {
         {comisiones.length > 0 && (
           <section className="bg-card border border-border rounded-xl p-6">
             <h2 className="font-semibold text-foreground mb-4">Resumen de comisiones</h2>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Generada</p>
                 <p className="text-xl font-bold text-foreground">{formatEur(totalGenerado)}</p>

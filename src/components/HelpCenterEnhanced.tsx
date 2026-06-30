@@ -133,7 +133,7 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-cinema text-2xl flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-yellow-400" />
@@ -307,7 +307,7 @@ const HelpCenterEnhanced = ({ open, onOpenChange, initialContext }: HelpCenterPr
                 )}
               </div>
             ) : (
-              <div className="border-t border-border pt-4 flex items-center justify-between text-sm text-muted-foreground">
+              <div className="border-t border-border pt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-muted-foreground">
                 <span>¿No encuentras lo que buscas?</span>
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSupport(true)}>
                   <MessageCircle className="h-4 w-4" />
