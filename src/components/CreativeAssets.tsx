@@ -8,7 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { FileVideo, FileImage, FileText, Download, Upload, Film, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { FileVideo, FileImage, FileText, Download, Upload, Film, Trash2, ExternalLink, Loader2, Link as LinkIcon } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { isAfter, isSameDay, parseISO, startOfDay } from "date-fns";
 
@@ -42,6 +42,11 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
   const [editingName, setEditingName] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const [uploadMode, setUploadMode] = useState<'file' | 'drive'>('file');
+  const [driveUrl, setDriveUrl] = useState("");
+  const [driveName, setDriveName] = useState("");
+  const [savingDrive, setSavingDrive] = useState(false);
 
   const loadAssets = async () => {
     setLoading(true);
@@ -261,6 +266,55 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
     }
   };
 
+  const handleSaveDriveLink = async () => {
+    if (!driveUrl.trim()) {
+      toast({ title: "Error", description: "Ingresa un enlace de Google Drive", variant: "destructive" });
+      return;
+    }
+    if (!driveUrl.includes("drive.google.com") && !driveUrl.includes("docs.google.com")) {
+      toast({ title: "Error", description: "El enlace debe ser de Google Drive", variant: "destructive" });
+      return;
+    }
+    setSavingDrive(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No autenticado");
+
+      const { error } = await supabase.from("campaign_assets").insert({
+        campaign_id: campaignId,
+        type: "drive_link",
+        file_url: driveUrl.trim(),
+        original_filename: "Google Drive",
+        name: driveName.trim() || "Carpeta de Google Drive",
+        status: "pendiente_revision",
+        uploaded_by: user.id,
+        notes: notes || null,
+      });
+      if (error) throw error;
+
+      try {
+        const uploaderName = user.user_metadata?.contact_name || user.email?.split("@")[0] || "Un usuario";
+        await supabase.from("campaign_messages").insert({
+          campaign_id: campaignId,
+          sender_role: "system",
+          sender_name: "Sistema",
+          message: `🔗 ${uploaderName} ha compartido un enlace de Google Drive: ${driveName.trim() || "Carpeta de Google Drive"}`,
+        } as any);
+      } catch (_) {}
+
+      toast({ title: "Enlace guardado", description: "El enlace de Google Drive se ha guardado correctamente." });
+      setDriveUrl("");
+      setDriveName("");
+      setNotes("");
+      setUploadMode('file');
+      loadAssets();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingDrive(false);
+    }
+  };
+
   const handleDownload = async (url: string, filename: string) => {
     try {
       const response = await fetch(url);
@@ -412,10 +466,13 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
   };
 
   const getIcon = (type: string) => {
+    if (type === "drive_link") return <LinkIcon className="w-5 h-5" />;
     if (type.includes("video") || type === "trailer") return <FileVideo className="w-5 h-5" />;
     if (type.includes("banner") || type === "poster") return <FileImage className="w-5 h-5" />;
     return <FileText className="w-5 h-5" />;
   };
+
+  const isDriveLink = (asset: any) => asset.type === "drive_link";
 
   const isImage = (filename: string) => {
     if (!filename) return false;
@@ -474,67 +531,126 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
       {/* Upload section */}
       <Card className="bg-cinema-charcoal/60 border-cinema-yellow/20">
         <CardContent className="p-6 space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Upload className="w-5 h-5 text-cinema-yellow" />
-            <h3 className="text-lg font-teko text-cinema-ivory">Subir nuevo creativo</h3>
+          {/* Mode toggle */}
+          <div className="flex items-center gap-1 p-1 bg-cinema-charcoal rounded-lg w-fit">
+            <button
+              onClick={() => setUploadMode('file')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${uploadMode === 'file' ? 'bg-cinema-yellow text-cinema-black' : 'text-cinema-ivory/60 hover:text-cinema-ivory'}`}
+            >
+              <Upload className="w-4 h-4" />
+              Subir archivos
+            </button>
+            <button
+              onClick={() => setUploadMode('drive')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${uploadMode === 'drive' ? 'bg-cinema-yellow text-cinema-black' : 'text-cinema-ivory/60 hover:text-cinema-ivory'}`}
+            >
+              <LinkIcon className="w-4 h-4" />
+              Enlace Google Drive
+            </button>
           </div>
 
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="file" className="text-cinema-ivory">Archivo</Label>
-              <div className="relative">
-                <Input
-                  id="file"
-                  type="file"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory cursor-pointer file:cursor-pointer file:text-black file:bg-cinema-yellow file:border-0 file:mr-4 file:px-4 file:py-1 file:rounded-sm file:font-semibold hover:file:bg-cinema-yellow/90 transition-colors"
-                  accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+          {uploadMode === 'file' ? (
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="file" className="text-cinema-ivory">Archivo</Label>
+                <div className="relative">
+                  <Input
+                    id="file"
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory cursor-pointer file:cursor-pointer file:text-black file:bg-cinema-yellow file:border-0 file:mr-4 file:px-4 file:py-1 file:rounded-sm file:font-semibold hover:file:bg-cinema-yellow/90 transition-colors"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                  />
+                </div>
+                {selectedFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-cinema-ivory/60 font-semibold">
+                      {selectedFiles.length} archivo(s) seleccionado(s):
+                    </p>
+                    <ul className="text-xs text-cinema-ivory/50 list-disc list-inside max-h-24 overflow-y-auto">
+                      {selectedFiles.map((f, i) => (
+                        <li key={i} className="truncate">{f.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="notes" className="text-cinema-ivory">Notas (opcional)</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ej: Versión final aprobada por productora"
+                  className="bg-muted/20 border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30 focus:border-cinema-yellow/50 transition-colors min-h-[80px]"
                 />
               </div>
-              {selectedFiles.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-xs text-cinema-ivory/60 font-semibold">
-                    {selectedFiles.length} archivo(s) seleccionado(s):
-                  </p>
-                  <ul className="text-xs text-cinema-ivory/50 list-disc list-inside max-h-24 overflow-y-auto">
-                    {selectedFiles.map((f, i) => (
-                      <li key={i} className="truncate">{f.name}</li>
-                    ))}
-                  </ul>
+
+              {uploading && (
+                <div className="flex flex-col items-center gap-2 py-1">
+                  <div className="flex items-center gap-2 text-cinema-ivory/80">
+                    <Loader2 className="h-4 w-4 animate-spin text-cinema-yellow" />
+                    <span className="text-sm font-medium">Subiendo archivos...</span>
+                  </div>
+                  <p className="text-xs text-cinema-ivory/50">Esto puede demorar unos minutos para archivos grandes</p>
                 </div>
               )}
-            </div>
 
-            <div>
-              <Label htmlFor="notes" className="text-cinema-ivory">Notas (opcional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ej: Versión final aprobada por productora"
-                className="bg-muted/20 border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30 focus:border-cinema-yellow/50 transition-colors min-h-[100px]"
-              />
+              <Button
+                onClick={handleUpload}
+                disabled={uploading || selectedFiles.length === 0}
+                className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-cinema-black font-semibold"
+              >
+                {uploading ? "Subiendo..." : `Subir ${selectedFiles.length > 0 ? selectedFiles.length + " " : ""}archivos`}
+              </Button>
             </div>
-
-            {uploading && (
-              <div className="flex flex-col items-center gap-2 py-1">
-                <div className="flex items-center gap-2 text-cinema-ivory/80">
-                  <Loader2 className="h-4 w-4 animate-spin text-cinema-yellow" />
-                  <span className="text-sm font-medium">Subiendo archivos...</span>
-                </div>
-                <p className="text-xs text-cinema-ivory/50">Esto puede demorar unos minutos para archivos grandes</p>
+          ) : (
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="drive-name" className="text-cinema-ivory">Nombre del enlace</Label>
+                <Input
+                  id="drive-name"
+                  value={driveName}
+                  onChange={(e) => setDriveName(e.target.value)}
+                  placeholder="Ej: Carpeta creatividades película"
+                  className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30"
+                />
               </div>
-            )}
 
-            <Button
-              onClick={handleUpload}
-              disabled={uploading || selectedFiles.length === 0}
-              className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-cinema-black font-semibold"
-            >
-              {uploading ? "Subiendo..." : `Subir ${selectedFiles.length > 0 ? selectedFiles.length + " " : ""}archivos`}
-            </Button>
-          </div>
+              <div>
+                <Label htmlFor="drive-url" className="text-cinema-ivory">Enlace de Google Drive *</Label>
+                <Input
+                  id="drive-url"
+                  value={driveUrl}
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  className="bg-cinema-charcoal border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30"
+                />
+                <p className="text-xs text-cinema-ivory/40 mt-1">Asegúrate de que el enlace esté configurado como "cualquier persona con el enlace puede ver".</p>
+              </div>
+
+              <div>
+                <Label htmlFor="drive-notes" className="text-cinema-ivory">Notas (opcional)</Label>
+                <Textarea
+                  id="drive-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ej: Contiene versiones finales en todos los formatos"
+                  className="bg-muted/20 border-cinema-yellow/20 text-cinema-ivory placeholder:text-cinema-ivory/30 focus:border-cinema-yellow/50 transition-colors min-h-[80px]"
+                />
+              </div>
+
+              <Button
+                onClick={handleSaveDriveLink}
+                disabled={savingDrive || !driveUrl.trim()}
+                className="bg-cinema-yellow hover:bg-cinema-yellow/90 text-cinema-black font-semibold"
+              >
+                {savingDrive ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : "Guardar enlace"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -566,7 +682,14 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="mt-1 flex-shrink-0">
-                          {isImage(asset.original_filename || asset.file_url) ? (
+                          {isDriveLink(asset) ? (
+                            <a href={asset.file_url} target="_blank" rel="noopener noreferrer"
+                              className="w-16 h-16 flex items-center justify-center rounded-md bg-blue-950/40 border border-blue-500/30 text-blue-400 hover:bg-blue-950/60 transition-colors"
+                              title="Abrir en Google Drive"
+                            >
+                              <LinkIcon className="w-6 h-6" />
+                            </a>
+                          ) : isImage(asset.original_filename || asset.file_url) ? (
                             <img
                               src={asset.file_url}
                               alt={asset.name}
@@ -616,9 +739,19 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
                             </div>
                           )}
 
-                          <p className="text-xs text-cinema-ivory/60 truncate" title={asset.original_filename}>
-                            {asset.original_filename}
-                          </p>
+                          {isDriveLink(asset) ? (
+                            <a href={asset.file_url} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-blue-400 hover:text-blue-300 truncate flex items-center gap-1 max-w-xs"
+                              title={asset.file_url}
+                            >
+                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">Abrir Google Drive</span>
+                            </a>
+                          ) : (
+                            <p className="text-xs text-cinema-ivory/60 truncate" title={asset.original_filename}>
+                              {asset.original_filename}
+                            </p>
+                          )}
 
                           {asset.notes && (
                             <p className="text-sm text-cinema-ivory/60 mt-2 italic">
@@ -651,15 +784,29 @@ export default function CreativeAssets({ campaignId, isAdmin, creativesDeadline 
                               </Button>
                             )}
 
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleDownload(asset.file_url, asset.original_filename)}
-                              className={`h-8 w-8 ${isLate ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"}`}
-                              title="Descargar"
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
+                            {isDriveLink(asset) ? (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                asChild
+                                className="h-8 w-8 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                                title="Abrir en Google Drive"
+                              >
+                                <a href={asset.file_url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleDownload(asset.file_url, asset.original_filename)}
+                                className={`h-8 w-8 ${isLate ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-cinema-yellow/30 text-cinema-yellow hover:bg-cinema-yellow/10"}`}
+                                title="Descargar"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
 
                           {isAdmin && (
