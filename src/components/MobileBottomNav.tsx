@@ -22,6 +22,7 @@ interface TabsProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   tabs: NavItem[];
+  onNewCampaign?: () => void;
 }
 
 type MobileBottomNavProps = DashboardProps | TabsProps;
@@ -53,13 +54,31 @@ const NavBtn = ({
 export const MobileBottomNav = (props: MobileBottomNavProps) => {
   const base = "fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-[#0e0e10] border-t border-border/60 h-16 flex items-stretch";
 
-  // ── Tabs mode: 4 items evenly distributed, no + button ──────────────────
+  // ── Tabs mode: items split around optional center + button ──────────────
   if (props.mode === "tabs") {
+    const half = Math.floor(props.tabs.length / 2);
+    const left = props.tabs.slice(0, half);
+    const right = props.tabs.slice(half);
     return (
       <div className={base}>
-        {props.tabs.map((item) => (
-          <NavBtn key={item.value} item={item} activeTab={props.activeTab} setActiveTab={props.setActiveTab} />
-        ))}
+        <div className="flex flex-1 items-stretch">
+          {left.map((item) => (
+            <NavBtn key={item.value} item={item} activeTab={props.activeTab} setActiveTab={props.setActiveTab} />
+          ))}
+        </div>
+        <div className="flex items-center justify-center px-2">
+          <button
+            onClick={props.onNewCampaign}
+            className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          >
+            <Plus className="w-6 h-6 text-black" strokeWidth={2.5} />
+          </button>
+        </div>
+        <div className="flex flex-1 items-stretch">
+          {right.map((item) => (
+            <NavBtn key={item.value} item={item} activeTab={props.activeTab} setActiveTab={props.setActiveTab} />
+          ))}
+        </div>
       </div>
     );
   }

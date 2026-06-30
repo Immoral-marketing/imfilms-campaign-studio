@@ -477,7 +477,7 @@ const CampaignDetail = () => {
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="p-4 space-y-2">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
@@ -908,6 +908,7 @@ const CampaignDetail = () => {
         mode="tabs"
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onNewCampaign={() => navigate("/quick-wizard")}
         tabs={[
           { value: "timeline", icon: Clock, label: "Timeline" },
           { value: "details", icon: FileText, label: "Detalles" },
